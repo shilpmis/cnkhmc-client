@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "jsx": "react-jsx",
+        "strict": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": ".", // Sets the base directory for module resolution
+        "paths": {
+            "@/*": ["./src/*"] // Configures import alias for the src directory
+        },
+        "types": ["node"],
+        "lib": ["dom", "esnext"]
+    },
+    "include": ["src/**/*"], // Includes all files in the src directory
+    "exclude": ["node_modules", "dist"] // Excludes the node_modules and dist directories
+}

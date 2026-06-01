@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "jsx": "react",
+      "strict": true,
+      "noEmit": true,
+      "baseUrl": ".",
+      "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+    }
+  }
+  

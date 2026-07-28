@@ -41,6 +41,7 @@ import { SaralPagination } from "../ui/common/SaralPagination"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
 import OnboardingForm from "../Students/OnboardingForm"
+import HostelAllotmentModal from "../Students/HostelAllotmentModal"
 import { useNavigate } from "react-router-dom"
 
 export default function InquiriesManagement() {
@@ -68,7 +69,9 @@ export default function InquiriesManagement() {
   const [showStudentForm, setShowStudentForm] = useState(false)
   const [currentInquiryForOnboarding, setCurrentInquiryForOnboarding] = useState<Inquiry | null>(null)
   const [editInquiryDialogOpen, setEditInquiryDialogOpen] = useState(false)
-  const [inquiryToEdit, setInquiryToEdit] = useState<Inquiry | null>(null)
+  const [inquiryToEdit, setInquiryToEdit] = useState<any>(null)
+  const [showHostelModal, setShowHostelModal] = useState(false)
+  const [newStudentData, setNewStudentData] = useState<Student | null>(null)
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<number | null>(null)
   const { t } = useTranslation()
 
@@ -673,17 +676,32 @@ export default function InquiriesManagement() {
                 initial_data={
                   transformInquiryToStudent(currentInquiryForOnboarding, authState.user!.school_id) as Student
                 }
-                onSubmitSuccess={() => {
+                onSubmitSuccess={(student: any) => {
                   GetInquiries({
                     page: inquiriesData?.meta.currentPage,
                     academic_session_id: selectedAcademicYear!,
                   })
                   setShowStudentForm(false)
                   setCurrentInquiryForOnboarding(null)
+                  // Show the hostel allotment modal right after successful onboarding
+                  setNewStudentData(student)
+                  setShowHostelModal(true)
                 }}
               />
             </DialogContent>
           </Dialog>
+        )}
+
+        {/* Hostel Allotment Modal */}
+        {showHostelModal && newStudentData && (
+          <HostelAllotmentModal
+            isOpen={showHostelModal}
+            onClose={() => setShowHostelModal(false)}
+            studentId={newStudentData.id || (newStudentData as any).student?.id}
+            schoolId={authState.user!.school_id}
+            studentGender={newStudentData.gender || (newStudentData as any).student?.gender}
+            onSuccess={() => setShowHostelModal(false)}
+          />
         )}
 
         {/* Edit Inquiry Dialog */}

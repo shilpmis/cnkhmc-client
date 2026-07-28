@@ -32,6 +32,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { StudentSchemaForUploadData, CollegeStudentSchemaForUploadData } from "@/utils/student.validation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useNavigate, useNavigation } from "react-router-dom" 
+import HostelAllotmentModal from "@/components/Students/HostelAllotmentModal"
 // Type for validation results
 type ValidationResult = {
   row: number
@@ -160,6 +161,9 @@ export const Students: React.FC = () => {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false)
   const [serverValidationErrors, setServerValidationErrors] = useState<ValidationResult[]>([])
 
+  const [showHostelModal, setShowHostelModal] = useState(false)
+  const [newStudentData, setNewStudentData] = useState<Student | null>(null)
+
   const isCollege = authState.user?.school?.school_type === 'COLLEGE'
   const activeUploadSchema = isCollege ? CollegeStudentSchemaForUploadData : StudentSchemaForUploadData
 
@@ -226,7 +230,10 @@ export const Students: React.FC = () => {
           student.last_name?.toLowerCase().includes(searchLower) ||
           student.middle_name?.toLowerCase().includes(searchLower) ||
           student.gr_no?.toString().includes(searchLower) ||
-          student.roll_number?.toString().includes(searchLower) ||
+          student.first_year_roll_number?.toString().includes(searchLower) ||
+          student.second_year_roll_number?.toString().includes(searchLower) ||
+          student.third_year_roll_number?.toString().includes(searchLower) ||
+          student.fourth_year_roll_number?.toString().includes(searchLower) ||
           student.aadhar_no?.toString().includes(searchLower) ||
           student.father_name?.toLowerCase().includes(searchLower) ||
           student.primary_mobile?.toString().includes(searchLower)
@@ -611,9 +618,19 @@ export const Students: React.FC = () => {
     if (CurrentAcademicSessionForSchool) {
       setSelectedSession(CurrentAcademicSessionForSchool.id)
       sessionStorage.setItem(SESSION_SELECTED_SESSION_KEY, CurrentAcademicSessionForSchool.id.toString())
-      // setSelectedSessionForDownloadExcel(CurrentAcademicSessionForSchool.id);
+      
+      // Refetch students when the global academic session changes
+      if (hasRestoredSession && selectedDivision) {
+        getStudentForClass({
+          class_id: selectedDivision.id,
+          academic_session: CurrentAcademicSessionForSchool.id,
+          page: 1, 
+        })
+        setCurrentPage(1)
+        sessionStorage.setItem(SESSION_SELECTED_PAGE_KEY, "1")
+      }
     }
-  }, [CurrentAcademicSessionForSchool])
+  }, [CurrentAcademicSessionForSchool, hasRestoredSession, selectedDivision, getStudentForClass])
 
   useEffect(() => {
     if (!AcademicClasses && authState.user) {
@@ -1109,7 +1126,7 @@ export const Students: React.FC = () => {
                 </Select>
                 <Input
                   placeholder={t("search_students")}
-                  value={searchValue}
+                  value={searchValue || ""}
                   onChange={(e) => setSearchValue(e.target.value)}
                   className="w-[200px]"
                 />
@@ -1127,7 +1144,22 @@ export const Students: React.FC = () => {
           </Alert>
         )}
 
-        {selectedClass && selectedDivision && (
+        {selectedClass && !selectedDivision && !listedStudentForSelectedClass && (
+          <div className="text-center py-4 text-gray-500">{t("no_records_found")}</div>
+        )}
+
+      {showHostelModal && newStudentData && (
+        <HostelAllotmentModal
+          isOpen={showHostelModal}
+          onClose={() => setShowHostelModal(false)}
+          studentId={newStudentData.id}
+          schoolId={authState.user!.school_id}
+          studentGender={newStudentData.gender}
+          onSuccess={() => setShowHostelModal(false)}
+        />
+      )}
+
+      {selectedClass && selectedDivision && (
           isStudentsLoading ? (
             <Card className="mb-6">
               <CardHeader>
@@ -1212,6 +1244,10 @@ export const Students: React.FC = () => {
                         student_meta: false,
                       })
                     }
+
+                    // Show the hostel allotment modal right after successful student creation
+                    setNewStudentData(student_data)
+                    setShowHostelModal(true)
                   }}
                   form_type="create"
                 />

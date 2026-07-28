@@ -58,7 +58,10 @@ export default function SyllabusUploadDialog({
       const formData = new FormData()
       formData.append("file", file)
       formData.append("subjectId", subject.id.toString())
+      formData.append("subject_id", subject.id.toString())
+      formData.append("academicYear", academicSessionId.toString())
       formData.append("academicSessionId", academicSessionId.toString())
+      formData.append("academic_session_id", academicSessionId.toString())
 
       await LessonPlanService.bulkUploadSyllabus(formData)
 

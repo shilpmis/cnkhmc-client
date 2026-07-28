@@ -404,7 +404,15 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
 
   // Function to handle status change with API integration and remarks
   const submitStatusUpdate = async () => {
-    if (!pendingAction.requestId || !pendingAction.status || !pendingAction.academicSessionId) return
+    if (!pendingAction.requestId || !pendingAction.status || !pendingAction.academicSessionId) {
+      console.error("Missing required fields for status update", pendingAction);
+      toast({
+        title: "Error",
+        description: "Missing required data (like academic session ID). Please refresh the page and try again.",
+        variant: "destructive",
+      })
+      return;
+    }
 
     try {
       setProcessingRequestId(pendingAction.requestId)
@@ -632,7 +640,7 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
           <div className="py-4">
             <div className="space-y-2">
               <Label htmlFor="remarks">
-                {t("remarks")} <span className="text-red-500">*</span>
+                {t("remarks")} {pendingAction.status === "rejected" && <span className="text-red-500">*</span>}
               </Label>
               <Textarea
                 id="remarks"
@@ -641,7 +649,9 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
                 placeholder={t("please_provide_remarks_for_this_action")}
                 className="min-h-[100px]"
               />
-              {!remarks.trim() && <p className="text-sm text-destructive">{t("remarks_are_required")}</p>}
+              {pendingAction.status === "rejected" && !remarks.trim() && (
+                <p className="text-sm text-destructive">{t("remarks_are_required")}</p>
+              )}
             </div>
           </div>
 
@@ -657,7 +667,7 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
             </Button>
             <Button
               onClick={submitStatusUpdate}
-              disabled={!remarks.trim() || isUpdatingStatus}
+              disabled={(pendingAction.status === "rejected" && !remarks.trim()) || isUpdatingStatus}
               className={
                 pendingAction.status === "approved"
                   ? "bg-green-600 hover:bg-green-700 text-white"

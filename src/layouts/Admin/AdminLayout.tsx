@@ -92,33 +92,7 @@ export default function AdminLayout() {
 
   return (
     <>
-      {!currentAcademicSession && 
-        !isLoadingSchool && 
-        !verificationStatus.isVerificationInProgress && 
-        user?.role_id !== 8 && // SUPER_ADMIN ID
-        user?.role_id !== 11 && // DEVELOPER ID
-        (
-        <AlertDialog open={!currentAcademicSession} onOpenChange={() => {}}>
-          <AlertDialogContent className="bg-yellow-50 border-yellow-200">
-            <AlertDialogHeader>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <AlertCircle className="h-6 w-6 text-yellow-500 mr-2" />
-                  <AlertDialogTitle className="text-yellow-700">No Active Academic Session</AlertDialogTitle>
-                </div>
-              </div>
-              <AlertDialogDescription className="text-yellow-600">
-                There is no active academic session. Please create or activate an academic session.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <Button onClick={() => setShowAcademicSessionForm(true)}>
-                Create Academic Session
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {/* Deprecated academic session modal */}
       <Dialog open={showAcademicSessionForm} onOpenChange={setShowAcademicSessionForm}>
         <DialogContent>
           <DialogHeader>

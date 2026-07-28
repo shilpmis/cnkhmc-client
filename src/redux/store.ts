@@ -31,6 +31,10 @@ import { TimeTableApi } from "@/services/timetableService";
 import { StaffAttendanceApi } from "@/services/StaffAttendanceService";
 import { AcademicCalendarApi } from "@/services/AcademicCalendarService";
 import { DepartmentApi } from "@/services/DepartmentService";
+import { CertificateTemplateApi } from "@/services/CertificateTemplateService";
+import { ExamApi } from "@/services/ExamService";
+import { HostelApi } from "@/services/HostelService";
+import { DeadStockApi } from "@/services/DeadStockService";
 
 const store = configureStore({
   reducer: {
@@ -63,7 +67,11 @@ const store = configureStore({
     [StaffAttendanceApi.reducerPath]: StaffAttendanceApi.reducer,
     [OrganisationApi.reducerPath]: OrganisationApi.reducer,
     [AcademicCalendarApi.reducerPath]: AcademicCalendarApi.reducer,
-    [DepartmentApi.reducerPath]: DepartmentApi.reducer
+    [DepartmentApi.reducerPath]: DepartmentApi.reducer,
+    [CertificateTemplateApi.reducerPath]: CertificateTemplateApi.reducer,
+    [ExamApi.reducerPath]: ExamApi.reducer,
+    [HostelApi.reducerPath]: HostelApi.reducer,
+    [DeadStockApi.reducerPath]: DeadStockApi.reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -88,7 +96,11 @@ const store = configureStore({
       StaffAttendanceApi.middleware,
       OrganisationApi.middleware,
       AcademicCalendarApi.middleware,
-      DepartmentApi.middleware
+      DepartmentApi.middleware,
+      CertificateTemplateApi.middleware,
+      ExamApi.middleware,
+      HostelApi.middleware,
+      DeadStockApi.middleware
     ),
 });
 

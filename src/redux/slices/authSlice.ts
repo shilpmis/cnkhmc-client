@@ -1,4 +1,39 @@
-import { createSlice } from "@reduxjs/toolkit";
+const currentYear = new Date().getFullYear();
+
+export const generateDefaultAcademicYears = () => {
+  let customYears: any[] = [];
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('custom_academic_years') : null;
+    customYears = raw ? JSON.parse(raw) : [];
+  } catch {
+    customYears = [];
+  }
+
+  const defaultYears: any[] = [];
+  for (let year = currentYear - 3; year <= currentYear + 5; year++) {
+    defaultYears.push({
+      id: year,
+      academic_year: year,
+      session_name: `${year}-${year + 1}`,
+      start_year: `${year}`,
+      end_year: `${year + 1}`,
+      start_month: `01-${year}`,
+      end_month: `12-${year}`,
+      year: year,
+      is_active: year === currentYear,
+    });
+  }
+
+  const map = new Map();
+  defaultYears.forEach((y) => map.set(y.id, y));
+  customYears.forEach((y: any) => map.set(y.id || y.academic_year, y));
+
+  return Array.from(map.values());
+};
+
+export const DEFAULT_ACADEMIC_SESSION: any = generateDefaultAcademicYears().find((y: any) => y.academic_year === currentYear) || generateDefaultAcademicYears()[0];
+
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "../store";
 import { login, logout } from "../../services/AuthService";
 import {
@@ -68,7 +103,7 @@ interface AuthState {
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  currentActiveAcademicSession: null,
+  currentActiveAcademicSession: DEFAULT_ACADEMIC_SESSION,
   token: null,
   status: "idle",
   error: null,
@@ -113,10 +148,13 @@ const authSlice = createSlice({
       state.currentActiveAcademicSession =
         newUser.school?.academicSessions?.find(
           (session: AcademicSession) => session.is_active
-        ) || null;
+        ) || DEFAULT_ACADEMIC_SESSION;
       state.token = action.payload.token;
       state.isAuthenticated = true;
       state.status = "succeeded";
+    },
+    setCurrentActiveAcademicSession: (state, action) => {
+      state.currentActiveAcademicSession = action.payload;
     },
 
     setCredentialsForVerificationStatus: (state, action) => {
@@ -133,7 +171,7 @@ const authSlice = createSlice({
         state.currentActiveAcademicSession =
           action.payload.academicSessions?.find(
             (session: AcademicSession) => session.is_active
-          ) || null;
+          ) || DEFAULT_ACADEMIC_SESSION;
         
         // Persist for Super Admin
         if (state.user.system_role === UserRole.SUPER_ADMIN || state.user.system_role === UserRole.DEVELOPER) {
@@ -158,7 +196,7 @@ const authSlice = createSlice({
         state.currentActiveAcademicSession =
           updatedSchool.academicSessions?.find(
             (session: AcademicSession) => session.is_active
-          ) || null;
+          ) || DEFAULT_ACADEMIC_SESSION;
       }
     },
   },
@@ -200,7 +238,7 @@ const authSlice = createSlice({
         state.currentActiveAcademicSession =
           state.user?.school?.academicSessions?.find(
             (session) => session.is_active
-          ) || null;
+          ) || DEFAULT_ACADEMIC_SESSION;
         state.token = action.payload.token;
       })
       .addCase(login.rejected, (state) => {
@@ -233,10 +271,15 @@ export const selectCurrentUser = (state: RootState) => state.auth.user;
 export const selectCurrentSchool = (state: RootState) => state.auth.user?.school || null;
 export const selectCurrentStaff = (state: RootState) =>
   state.auth.user?.staff || null;
-export const selectAccademicSessionsForSchool = (state: RootState) =>
-  state.auth.user?.school?.academicSessions || [];
+const selectAcademicSessionsRaw = (state: RootState) => state.auth.user?.school?.academicSessions;
+
+export const selectAccademicSessionsForSchool = createSelector(
+  [selectAcademicSessionsRaw],
+  (sessions) => sessions?.length ? sessions : generateDefaultAcademicYears()
+);
+
 export const selectActiveAccademicSessionsForSchool = (state: RootState) =>
-  state.auth.currentActiveAcademicSession;
+  state.auth.currentActiveAcademicSession || DEFAULT_ACADEMIC_SESSION;
 export const selectVerificationStatus = (state: RootState) => state.auth;
 export const selectIsAuthenticated = (state: RootState) =>
   state.auth.isAuthenticated;
@@ -244,6 +287,6 @@ export const selectAuthStatus = (state: RootState) => state.auth.status;
 export const selectAuthError = (state: RootState) => state.auth.error;
 export const selectAuthState = (state: RootState) => state.auth;
 
-export const { setCredentials, setCredentialsForVerificationStatus, switchSchool, updateUserSchool } =
+export const { setCredentials, setCredentialsForVerificationStatus, switchSchool, updateUserSchool, setCurrentActiveAcademicSession } =
   authSlice.actions;
 export default authSlice.reducer;

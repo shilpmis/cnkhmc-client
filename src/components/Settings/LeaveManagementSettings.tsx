@@ -228,7 +228,8 @@ export function LeaveManagementSettings() {
           requires_proof: false,
           is_active: true,
           academic_session_id: CurrentAcademicSessionForSchool!.id,
-        })
+          school_id: CurrentAcademicSessionForSchool!.school_id,
+        } as any)
 
         if ("error" in new_type) {
           toast({
@@ -276,7 +277,8 @@ export function LeaveManagementSettings() {
           approval_hierarchy: {},
           requires_approval: data.requires_approval ? 1 : 0,
           academic_session_id: CurrentAcademicSessionForSchool!.id,
-        })
+          school_id: CurrentAcademicSessionForSchool!.school_id,
+        } as any)
 
         if ("data" in new_policy) {
           toast({

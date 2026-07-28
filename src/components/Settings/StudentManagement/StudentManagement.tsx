@@ -57,6 +57,8 @@ import {
   useDropStudentMutation,
   useUpdaeStudentStatusToCompleteMutation,
   useSuspensendStudentMutation,
+  useAutoAssignRollNumbersMutation,
+  useManuallyUpdateRollNumberMutation
 } from "@/services/StudentManagementService"
 import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
@@ -152,7 +154,10 @@ const ManageStudents: React.FC = () => {
   const [completeStudent, { isLoading: isCompletingStudent }] = useUpdaeStudentStatusToCompleteMutation()
   const [suspendStudent, { isLoading: isSuspendingStudent }] = useSuspensendStudentMutation()
 
-  // Redux & API hooks
+  const [autoAssignRollNumbers, { isLoading: isAutoAssigningRollNumbers }] = useAutoAssignRollNumbersMutation()
+  const [manuallyUpdateRollNumber, { isLoading: isManuallyUpdatingRollNumber }] = useManuallyUpdateRollNumberMutation()
+
+  // Data fetching hooks
   const [getAcademicClasses] = useLazyGetAcademicClassesQuery()
 
   // Forms
@@ -823,6 +828,34 @@ const ManageStudents: React.FC = () => {
                 />
               </div>
             </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                disabled={!selectedDivision || isAutoAssigningRollNumbers}
+                onClick={async () => {
+                  if (selectedDivision) {
+                    try {
+                      await autoAssignRollNumbers({ division_id: Number(selectedDivision) }).unwrap()
+                      toast({
+                        title: t("success"),
+                        description: t("roll_numbers_assigned_successfully"),
+                      })
+                      refetch()
+                    } catch (error: any) {
+                      toast({
+                        title: t("error"),
+                        description: error.data?.message || t("failed_to_assign_roll_numbers"),
+                        variant: "destructive",
+                      })
+                    }
+                  }
+                }}
+              >
+                {isAutoAssigningRollNumbers && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t("auto_assign_roll_numbers")}
+              </Button>
+            </div>
           </div>
 
           {/* Student List */}
@@ -837,6 +870,7 @@ const ManageStudents: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("gr_number")}</TableHead>
+                      <TableHead>{t("roll_number")}</TableHead>
                       <TableHead>{t("student_name")}</TableHead>
                       <TableHead>{t("enrollment_code")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
@@ -864,6 +898,9 @@ const ManageStudents: React.FC = () => {
                       .map((enrollment) => (
                         <TableRow key={enrollment.id}>
                           <TableCell>{enrollment.student.gr_no}</TableCell>
+                          <TableCell>
+                            {enrollment.student.fourth_year_roll_number || enrollment.student.third_year_roll_number || enrollment.student.second_year_roll_number || enrollment.student.first_year_roll_number || "-"}
+                          </TableCell>
                           <TableCell>
                             {`${enrollment.student.first_name} ${enrollment.student.middle_name || ""} ${enrollment.student.last_name}`}
                           </TableCell>

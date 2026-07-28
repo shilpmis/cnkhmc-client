@@ -74,6 +74,7 @@ export interface ClassDayConfigForTimeTable {
     break_durations: number[] | null
     day_start_time: string;
     day_end_time: string;
+    is_working_day: boolean;
     period_config : PeriodsConfig[]
 }
 

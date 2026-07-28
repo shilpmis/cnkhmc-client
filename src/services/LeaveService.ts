@@ -90,7 +90,7 @@ export const LeaveApi = createApi({
       { academic_session_id: number; page: number }
     >({
       query: ({ page, academic_session_id }) => ({
-        url: `/leave-type?academic_session_id=${academic_session_id}&page=${page}`,
+        url: `/leave-type?academic_year=${academic_session_id}&page=${page}`,
         method: "GET",
       }),
     }),
@@ -99,7 +99,7 @@ export const LeaveApi = createApi({
       { academic_session_id: number }
     >({
       query: ({ academic_session_id }) => ({
-        url: `/leave-type?academic_session_id=${academic_session_id}&page=all`,
+        url: `/leave-type?academic_year=${academic_session_id}&page=all`,
         method: "GET",
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
@@ -118,7 +118,7 @@ export const LeaveApi = createApi({
       { academic_session_id: number }
     >({
       query: ({ academic_session_id }) => ({
-        url: `/leave-policy/user?academic_session_id=${academic_session_id}`,
+        url: `/leave-policy/user?academic_year=${academic_session_id}`,
         method: "GET",
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
@@ -137,7 +137,7 @@ export const LeaveApi = createApi({
       { academic_session_id: number; page: number }
     >({
       query: ({ page, academic_session_id }) => ({
-        url: `/leave-policy?academic_session_id=${academic_session_id}&page=${page}`,
+        url: `/leave-policy?academic_year=${academic_session_id}&page=${page}`,
         method: "GET",
       }),
     }),
@@ -145,11 +145,14 @@ export const LeaveApi = createApi({
       LeaveType,
       Omit<LeaveType, "id" | "school_id">
     >({
-      query: (payload) => ({
-        url: `/leave-type`,
-        method: "POST",
-        body: payload,
-      }),
+      query: (payload: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-type`,
+          method: "POST",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -167,21 +170,27 @@ export const LeaveApi = createApi({
         payload: Partial<Omit<LeaveType, "id" | "school_id">>;
       }
     >({
-      query: ({ leave_type_id, payload }) => ({
-        url: `/leave-type/${leave_type_id}`,
-        method: "PUT",
-        body: payload,
-      }),
+      query: ({ leave_type_id, payload }: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-type/${leave_type_id}`,
+          method: "PUT",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
     }),
     createLeavePolicy: builder.mutation<
       LeavePolicy,
       Omit<LeavePolicy, "id" | "staff_role" | "leave_type">
     >({
-      query: (payload) => ({
-        url: `/leave-policy`,
-        method: "POST",
-        body: payload,
-      }),
+      query: (payload: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-policy`,
+          method: "POST",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
     }),
     updateLeavePolicy: builder.mutation<
       LeavePolicy,
@@ -190,11 +199,14 @@ export const LeaveApi = createApi({
         payload: Partial<Omit<LeavePolicy, "id" | "staff_role" | "leave_type">>;
       }
     >({
-      query: ({ policy_id, payload }) => ({
-        url: `/leave-policy/${policy_id}`,
-        method: "PUT",
-        body: payload,
-      }),
+      query: ({ policy_id, payload }: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-policy/${policy_id}`,
+          method: "PUT",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
     }),
 
     getStaffsLeaveAppication: builder.query<
@@ -207,7 +219,7 @@ export const LeaveApi = createApi({
       }
     >({
       query: ({ staff_id, page, status, academic_session_id }) => ({
-        url: `/leave-applications/${staff_id}?academic_session_id=${academic_session_id}&status=${status}&page=${page}`,
+        url: `/leave-applications/${staff_id}?academic_year=${academic_session_id}&status=${status}&page=${page}`,
         method: "GET",
       }),
     }),
@@ -226,11 +238,14 @@ export const LeaveApi = createApi({
         | "staff"
       >>
     >({
-      query: (payload) => ({
-        url: `/leave-application`,
-        method: "POST",
-        body: payload,
-      }),
+      query: (payload: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-application`,
+          method: "POST",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
     }),
 
     updateLeaveForStaff: builder.mutation<
@@ -240,11 +255,14 @@ export const LeaveApi = createApi({
         application_id: string;
       }
     >({
-      query: ({ payload, application_id }) => ({
-        url: `/leave-application/${application_id}`,
-        method: "PUT",
-        body: payload,
-      }),
+      query: ({ payload, application_id }: any) => {
+        const { academic_session_id, ...rest } = payload;
+        return {
+          url: `/leave-application/${application_id}`,
+          method: "PUT",
+          body: { ...rest, academic_year: academic_session_id || payload.academic_year },
+        };
+      },
     }),
 
     fetchLeaveApplicationOfTeachingStaffForAdmin: builder.query<
@@ -259,8 +277,8 @@ export const LeaveApi = createApi({
     >({
       query: ({ date, role, status, page = 1, academic_session_id }) => ({
         url: date
-          ? `/leave-applications?role=${role}&academic_session_id=${academic_session_id}&status=${status}&date=${date}&page=${page}`
-          : `/leave-applications?role=${role}&academic_session_id=${academic_session_id}&status=${status}&page=${page}`,
+          ? `/leave-applications?role=${role}&academic_year=${academic_session_id}&status=${status}&date=${date}&page=${page}`
+          : `/leave-applications?role=${role}&academic_year=${academic_session_id}&status=${status}&page=${page}`,
         method: "GET",  
       }),
     }),
@@ -277,8 +295,8 @@ export const LeaveApi = createApi({
     >({
       query: ({ date, role, status, page = 1, academic_session_id }) => ({
         url: date
-          ? `/leave-applications?role=${role}&academic_session_id=${academic_session_id}&status=${status}&date=${date}&page=${page}`
-          : `/leave-applications?role=${role}&academic_session_id=${academic_session_id}&status=${status}&page=${page}`,
+          ? `/leave-applications?role=${role}&academic_year=${academic_session_id}&status=${status}&date=${date}&page=${page}`
+          : `/leave-applications?role=${role}&academic_year=${academic_session_id}&status=${status}&page=${page}`,
         method: "GET",
       }),
     }),
@@ -293,7 +311,7 @@ export const LeaveApi = createApi({
       }
     >({
       query: ({ application_id, status, academic_session_id, remarks }) => ({
-        url: `/leave-application/status/${application_id}?status=${status}&academic_session_id=${academic_session_id}`,
+        url: `/leave-application/status/${application_id}?status=${status}&academic_year=${academic_session_id}`,
         method: "PUT",
         body: { status, remarks }, // Include remarks in the request body
       }),
@@ -301,7 +319,7 @@ export const LeaveApi = createApi({
 
     getLeaveBalances: builder.query<LeaveBalanceResponse[], { staff_id: number; academic_session_id: number }>({
       query: ({ staff_id, academic_session_id }) => ({
-        url: `/leave-balances/${staff_id}/?academic_session_id=${academic_session_id}`,
+        url: `/leave-balances/${staff_id}/?academic_year=${academic_session_id}`,
         method: "GET",
       }),
     }),

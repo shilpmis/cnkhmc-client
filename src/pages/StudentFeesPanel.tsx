@@ -549,7 +549,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
           <div class="summary-box">
             <p><strong>Name:</strong> ${student.first_name} ${student.middle_name || ""} ${student.last_name}</p>
             <p><strong>GR Number:</strong> ${student.gr_no}</p>
-            <p><strong>Roll Number:</strong> ${student.roll_number}</p>
+            <p><strong>Roll Number:</strong> ${student.fourth_year_roll_number || student.third_year_roll_number || student.second_year_roll_number || student.first_year_roll_number || "N/A"}</p>
             <p><strong>Fee Plan:</strong> ${studentFeeDetails?.detail?.fees_plan?.name}</p>
           </div>
         </div>
@@ -1018,7 +1018,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("roll_number")}</p>
-              <p className="text-lg font-semibold">{student.roll_number}</p>
+              <p className="text-lg font-semibold">{student.fourth_year_roll_number || student.third_year_roll_number || student.second_year_roll_number || student.first_year_roll_number || "N/A"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("fee_plan")}</p>

@@ -24,12 +24,13 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { selectAcademicClasses, selectAllAcademicClasses } from "@/redux/slices/academicSlice"
-import { Loader2, Plus, AlertCircle, Check, UserPlus, Users, Search, Ban } from "lucide-react"
+import { Loader2, Plus, AlertCircle, Check, UserPlus, Users, Search, Ban, Trash2 } from "lucide-react"
 import {
   useLazyGetAllSubjectsQuery,
   useAssignSubjectToDivisionMutation,
   useLazyGetSubjectsForDivisionQuery,
   useAssignStaffToSubjectsMutation,
+  useUnassignStaffFromSubjectMutation,
 } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
@@ -88,6 +89,7 @@ export default function SubjectAssignment() {
   const [assignSubjectToDivision, { isLoading: isAssigning }] = useAssignSubjectToDivisionMutation()
   const [getTeachingStaff, { isLoading: isLoadingTeachers }] = useLazyGetAllTeachingStaffQuery()
   const [assignStaffToSubjects, { isLoading: isAssigningTeachers }] = useAssignStaffToSubjectsMutation()
+  const [unassignStaffFromSubject, { isLoading: isUnassigningTeacher }] = useUnassignStaffFromSubjectMutation()
 
   // Setup forms
   const form = useForm<z.infer<typeof subjectAssignmentSchema>>({
@@ -147,8 +149,27 @@ export default function SubjectAssignment() {
   // Handle class change
   const handleClassChange = useCallback((value: string) => {
     setSelectedClass(value)
-    setSelectedDivision("")
-  }, [])
+    
+    // Auto-select the first division if it exists for this class
+    if (AcademicClasses) {
+      const classObj = AcademicClasses.find((cls) => cls.id.toString() === value)
+      if (classObj && classObj.divisions && classObj.divisions.length > 0) {
+        const firstDivId = classObj.divisions[0].id.toString()
+        setSelectedDivision(firstDivId)
+        
+        if (currentAcademicSession) {
+          getSubjectsForDivision({
+            academic_session_id: currentAcademicSession.id,
+            division_id: Number(firstDivId),
+          })
+        }
+      } else {
+        setSelectedDivision("")
+      }
+    } else {
+      setSelectedDivision("")
+    }
+  }, [AcademicClasses, currentAcademicSession, getSubjectsForDivision])
 
   // Handle division change
   const handleDivisionChange = useCallback(
@@ -246,10 +267,12 @@ export default function SubjectAssignment() {
   const filteredTeachingStaff = useMemo(() => {
     if (!teachingStaff) return []
 
-    // First filter by search term
-    let filtered = teachingStaff
+    // First filter out staff who don't have an enrollment in the current session
+    let filtered = teachingStaff.filter(staff => staff.staff_enrollment_id != null)
+
+    // Then filter by search term
     if (searchTerm.trim()) {
-      filtered = teachingStaff.filter((staff) => {
+      filtered = filtered.filter((staff) => {
         const fullName = `${staff.first_name || ""} ${staff.middle_name || ""} ${staff.last_name || ""}`.toLowerCase()
         const employeeCode = staff.employee_code?.toLowerCase() || ""
         const searchLower = searchTerm.toLowerCase()
@@ -365,6 +388,33 @@ export default function SubjectAssignment() {
     }
   }
 
+  const handleUnassignTeacher = async (teacherId: number) => {
+    try {
+      await unassignStaffFromSubject({ id: teacherId }).unwrap()
+      
+      toast({
+        title: t("teacher_unassigned"),
+        description: t("teacher_has_been_unassigned_from_subject_successfully"),
+      })
+
+      // Refresh subjects for division
+      if (selectedDivision && currentAcademicSession) {
+        getSubjectsForDivision({
+          academic_session_id: currentAcademicSession.id,
+          division_id: Number(selectedDivision),
+        })
+      }
+    } catch (error) {
+      console.error("Error unassigning teacher:", error)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("failed_to_unassign_teacher"),
+      })
+    }
+  }
+
+
   // Open teacher assignment dialog
   const openTeacherDialog = (subject: SubjectDivisionMaster) => {
     setSelectedSubject(subject)
@@ -421,7 +471,7 @@ export default function SubjectAssignment() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Class and Division Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 gap-4 mb-6">
             <div>
               <Label htmlFor="class-filter">{t("class")}</Label>
               <Select value={selectedClass} onValueChange={handleClassChange}>
@@ -435,29 +485,6 @@ export default function SubjectAssignment() {
                   {AcademicClasses?.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id.toString()}>
                       Class {cls.class}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="division-filter">{t("division")}</Label>
-              <Select
-                value={selectedDivision}
-                onValueChange={handleDivisionChange}
-                disabled={!filteredDivisions.length}
-              >
-                <SelectTrigger id="division-filter">
-                  <SelectValue placeholder={t("select_division")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_empty" disabled>
-                    {t("select_division")}
-                  </SelectItem>
-                  {filteredDivisions.map((division) => (
-                    <SelectItem key={division.id} value={division.id.toString()}>
-                      {`${division.division} ${division.aliases ? "-" + division.aliases : ""}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -860,6 +887,7 @@ export default function SubjectAssignment() {
                         <TableHead>{t("qualification")}</TableHead>
                         <TableHead>{t("notes")}</TableHead>
                         <TableHead>{t("status")}</TableHead>
+                        <TableHead className="text-right">{t("actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -884,6 +912,21 @@ export default function SubjectAssignment() {
                               <Badge variant={teacher.status === "Active" ? "default" : "secondary"}>
                                 {teacher.status}
                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleUnassignTeacher(teacher.id)}
+                                disabled={isUnassigningTeacher}
+                              >
+                                {isUnassigningTeacher ? (
+                                  <Loader2 className="h-4 w-4 animate-spin lg:mr-2" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 lg:mr-2" />
+                                )}
+                                <span className="hidden lg:inline">{t("unassign")}</span>
+                              </Button>
                             </TableCell>
                           </TableRow>
                         )

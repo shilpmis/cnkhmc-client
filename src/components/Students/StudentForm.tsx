@@ -126,6 +126,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
       primary_mobile: undefined,
       secondary_mobile: null,
 
+      enrollment_code: "",
       gr_no: undefined,
       roll_number: null,
       admission_date: "",
@@ -238,6 +239,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
   })
 
   const tabMapping: { [key: string]: string } = {
+    enrollment_code: "personal",
     first_name: "personal",
     middle_name: "personal",
     last_name: "personal",
@@ -483,43 +485,47 @@ const StudentForm: React.FC<StudentFormProps> = ({
           first_name: values.first_name,
           middle_name: values.middle_name ?? null,
           last_name: values.last_name,
-          first_name_in_guj: values.first_name_in_guj,
-          middle_name_in_guj: values.middle_name_in_guj,
-          last_name_in_guj: values.last_name_in_guj,
+          first_name_in_guj: values.first_name_in_guj ?? null,
+          middle_name_in_guj: values.middle_name_in_guj ?? null,
+          last_name_in_guj: values.last_name_in_guj ?? null,
           gender: values.gender,
           birth_date: values.birth_date,
+          enrollment_code: values.enrollment_code ?? "",
           gr_no: values.gr_no,
           primary_mobile: values.primary_mobile,
-          father_name: values.father_name,
-          father_name_in_guj: values.father_name_in_guj,
-          mother_name: values.mother_name,
-          mother_name_in_guj: values.mother_name_in_guj,
-          roll_number: values.roll_number,
+          father_name: values.father_name ?? null,
+          father_name_in_guj: values.father_name_in_guj ?? null,
+          mother_name: values.mother_name ?? null,
+          mother_name_in_guj: values.mother_name_in_guj ?? null,
+          first_year_roll_number: values.roll_number ? Number(values.roll_number) : null,
+          second_year_roll_number: null,
+          third_year_roll_number: null,
+          fourth_year_roll_number: null,
           aadhar_no: values.aadhar_no,
           is_active: true,
         },
         student_meta_data: {
-          aadhar_dise_no: values.aadhar_dise_no,
-          birth_place: values.birth_place,
-          birth_place_in_guj: values.birth_place_in_guj,
-          religion: values.religion,
-          religion_in_guj: values.religion_in_guj,
-          caste: values.caste,
-          caste_in_guj: values.caste_in_guj,
-          category: values.category,
-          admission_date: values.admission_date,
+          aadhar_dise_no: values.aadhar_dise_no ?? null,
+          birth_place: values.birth_place ?? null,
+          birth_place_in_guj: values.birth_place_in_guj ?? null,
+          religion: values.religion ?? null,
+          religion_in_guj: values.religion_in_guj ?? null,
+          caste: values.caste ?? null,
+          caste_in_guj: values.caste_in_guj ?? null,
+          category: (values.category as "ST" | "SC" | "OBC" | "OPEN" | null) ?? null,
+          admission_date: values.admission_date ?? null,
           admission_class_id: null,
-          secondary_mobile: values.secondary_mobile,
-          privious_school: values.privious_school,
-          privious_school_in_guj: values.privious_school_in_guj,
-          address: values.address,
-          district: values.district,
-          city: values.city,
-          state: values.state,
+          secondary_mobile: values.secondary_mobile ?? null,
+          privious_school: values.privious_school ?? null,
+          privious_school_in_guj: values.privious_school_in_guj ?? null,
+          address: values.address ?? null,
+          district: values.district ?? null,
+          city: values.city ?? null,
+          state: values.state ?? null,
           postal_code: values.postal_code ?? null,
-          bank_name: values.bank_name,
-          account_no: values.account_no,
-          IFSC_code: values.IFSC_code,
+          bank_name: values.bank_name ?? null,
+          account_no: values.account_no ?? null,
+          IFSC_code: values.IFSC_code ?? null,
         },
       }
 
@@ -642,7 +648,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         payload.student_meta_data.caste_in_guj = values.caste_in_guj
       }
       if (values.category !== initial_data?.student_meta?.category) {
-        payload.student_meta_data.category = values.category
+        payload.student_meta_data.category = values.category as "ST" | "SC" | "OBC" | "OPEN" | null | undefined
       }
       if (formatData(values.admission_date) !== formatData(initial_data!.student_meta!.admission_date)) {
         payload.student_meta_data.admission_date = values.admission_date ? formatData(values.admission_date) : null
@@ -711,6 +717,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (values.birth_date !== initial_data?.birth_date) {
         payload.students_data.birth_date = values.birth_date ?? null
       }
+      if (values.enrollment_code !== initial_data?.enrollment_code) {
+        payload.students_data.enrollment_code = values.enrollment_code ?? undefined
+      }
       if (values.gr_no !== initial_data?.gr_no) {
         payload.students_data.gr_no = values.gr_no
       }
@@ -730,8 +739,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (values.mother_name_in_guj !== initial_data?.mother_name_in_guj) {
         payload.students_data.mother_name_in_guj = values.mother_name_in_guj
       }
-      if (values.roll_number !== initial_data?.roll_number) {
-        payload.students_data.roll_number = values.roll_number
+      const initialRollNumber = initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number;
+      if (values.roll_number?.toString() !== initialRollNumber?.toString()) {
+        payload.students_data.first_year_roll_number = values.roll_number ? Number(values.roll_number) : null;
       }
       if (values.aadhar_no !== initial_data?.aadhar_no) {
         payload.students_data.aadhar_no = values.aadhar_no
@@ -864,13 +874,14 @@ const StudentForm: React.FC<StudentFormProps> = ({
         middle_name_in_guj: initial_data?.middle_name_in_guj,
         gender: initial_data?.gender,
         birth_date: initial_data?.birth_date ? formatData(initial_data.birth_date) : "",
+        enrollment_code: initial_data?.enrollment_code,
         gr_no: initial_data?.gr_no,
         primary_mobile: initial_data?.primary_mobile,
         father_name: initial_data?.father_name,
         father_name_in_guj: initial_data?.father_name_in_guj,
         mother_name: initial_data?.mother_name,
         mother_name_in_guj: initial_data?.mother_name_in_guj,
-        roll_number: initial_data?.roll_number,
+        roll_number: initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number || null,
         aadhar_no: initial_data?.aadhar_no ? Number(initial_data?.aadhar_no) : undefined,
         aadhar_dise_no: initial_data?.student_meta?.aadhar_dise_no
           ? Number(initial_data?.student_meta?.aadhar_dise_no)
@@ -1025,8 +1036,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         mother_name: initial_data.mother_name || null,
         mother_name_in_guj: initial_data.mother_name_in_guj || null,
         class: initial_data?.class_id ? initial_data?.class_id.toString() : undefined,
-
-        roll_number: initial_data?.roll_number || null,
+        roll_number: initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number || null,
         aadhar_no: initial_data?.aadhar_no ? Number(initial_data?.aadhar_no) : null,
         aadhar_dise_no: initial_data?.student_meta?.aadhar_dise_no
           ? Number(initial_data?.student_meta?.aadhar_dise_no)
@@ -1192,6 +1202,21 @@ const StudentForm: React.FC<StudentFormProps> = ({
                 <CardTitle>{t("personal_details")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="enrollment_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enrollment Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -1975,22 +2000,14 @@ const StudentForm: React.FC<StudentFormProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t("category")}</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value ?? undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t("select_category")} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ST">ST</SelectItem>
-                          <SelectItem value="SC">SC</SelectItem>
-                          <SelectItem value="OBC">OBC</SelectItem>
-                          <SelectItem value="OPEN">OPEN</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          placeholder={t("select_category")}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

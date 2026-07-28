@@ -18,10 +18,15 @@ class LessonPlanService {
   }
 
   static async getCoverageReport(subjectId: number, academicSessionId: number) {
-    const response = await ApiService.get(`lesson-plans/reports/coverage/${academicSessionId}`);
-    // The backend might return subjects by ID or name depending on the endpoint version
-    const report = response.data?.find((r: any) => r.subjectId === subjectId || r.subject_id === subjectId);
-    return { data: report || null };
+    const response = await ApiService.get(`lesson-plans/reports/coverage/${academicSessionId}?subjectId=${subjectId}`);
+    const data = Array.isArray(response.data)
+      ? response.data.find((r: any) => r.subjectId === subjectId || r.subject_id === subjectId) || response.data[0]
+      : response.data;
+    return { data: data || null };
+  }
+
+  static async getAllCoverageReports(academicSessionId: number) {
+    return ApiService.get(`lesson-plans/reports/coverage/${academicSessionId}`);
   }
 
   static async exportPDF(academicSessionId: number) {
@@ -54,6 +59,14 @@ class LessonPlanService {
 
   static async updateTopicStatus(id: number, isCompleted: boolean) {
     return ApiService.patch(`lesson-plans/topics/${id}/status`, { isCompleted });
+  }
+
+  static async assignTopicToTeacher(topicId: number, staffIds: number[] | null) {
+    return ApiService.put(`lesson-plans/topics/${topicId}/assign`, { staff_ids: staffIds });
+  }
+
+  static async assignSubtopicToTeacher(subtopicId: number, staffIds: number[] | null) {
+    return ApiService.put(`lesson-plans/subtopics/${subtopicId}/assign`, { staff_ids: staffIds });
   }
 }
 

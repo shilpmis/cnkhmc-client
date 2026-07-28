@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import {
   AlertDialog,
@@ -42,6 +45,7 @@ import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 import LessonPlanService from "@/services/LessonPlanService"
 import { useLazyGetAllSubjectsQuery } from "@/services/subjects"
+import { useGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useToast } from "@/hooks/use-toast"
 import { UserRole } from "@/types/user"
 
@@ -50,6 +54,8 @@ export default function LessonPlanManager() {
   const { toast } = useToast()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
   const currentUser = useAppSelector(selectCurrentUser)
+
+  const { data: teachingStaff } = useGetAllTeachingStaffQuery({ academic_sessions: currentAcademicSession?.id ?? 0 }, { skip: !currentAcademicSession?.id })
 
   // Only SUPER_ADMIN, DEVELOPER, and ADMIN can delete syllabus data
   const canDeleteSyllabus = [
@@ -63,9 +69,75 @@ export default function LessonPlanManager() {
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [lessonPlan, setLessonPlan] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [coverageReport, setCoverageReport] = useState<any>(null)
+
+  const handleAssignTeacher = async (item: any, staffIds: number[]) => {
+    // Optimistic update — change the assigned staff in local state immediately
+    // so the UI responds instantly without re-fetching all 166+ rows.
+    setLessonPlan((prev: any) => {
+      if (!prev) return prev
+      const plan = prev?.data ? { ...prev, data: { ...prev.data } } : { ...prev }
+      const root = plan?.data || plan
+      const topics = root?.topics || root?.lesson_plan_topics || []
+
+      const isTopicRow = item.id && typeof item.id === 'string' && item.id.startsWith('topic-')
+      const targetTopicId = item.topicId || item.id
+
+      const updatedTopics = topics.map((topic: any) => {
+        // Update topic-level assignment
+        if (isTopicRow && topic.id === targetTopicId) {
+          return { ...topic, assignedStaffIds: staffIds, assigned_staff_ids: staffIds }
+        }
+        // Update subtopic-level assignment
+        const subtopics = topic.subtopics || topic.lesson_plan_subtopics || []
+        if (subtopics.some((s: any) => s.id === item.id)) {
+          return {
+            ...topic,
+            subtopics: subtopics.map((s: any) =>
+              s.id === item.id ? { ...s, assignedStaffIds: staffIds, assigned_staff_ids: staffIds } : s
+            ),
+            lesson_plan_subtopics: (topic.lesson_plan_subtopics || []).map((s: any) =>
+              s.id === item.id ? { ...s, assignedStaffIds: staffIds, assigned_staff_ids: staffIds } : s
+            ),
+          }
+        }
+        return topic
+      })
+
+      if (plan.data) {
+        return { ...plan, data: { ...plan.data, topics: updatedTopics, lesson_plan_topics: updatedTopics } }
+      }
+      return { ...plan, topics: updatedTopics, lesson_plan_topics: updatedTopics }
+    })
+
+    // Persist to server in background (no await needed — state already updated)
+    try {
+      if (item.id && typeof item.id === 'string' && item.id.startsWith('topic-')) {
+        await LessonPlanService.assignTopicToTeacher(item.topicId, staffIds.length ? staffIds : null)
+      } else if (item.topicId) {
+        await LessonPlanService.assignSubtopicToTeacher(item.id, staffIds.length ? staffIds : null)
+      } else {
+        await LessonPlanService.assignTopicToTeacher(item.id, staffIds.length ? staffIds : null)
+      }
+
+      toast({
+        title: t("success"),
+        description: "Teacher assigned successfully",
+      })
+    } catch (error) {
+      console.error("Assign teacher error:", error)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: "Failed to assign teacher",
+      })
+      // Rollback: re-fetch correct server state on error
+      if (selectedSubjectId) {
+        fetchLessonPlan(selectedSubjectId)
+      }
+    }
+  }
 
   const years = [
     { value: "all", label: t("all_years") },
@@ -97,24 +169,49 @@ export default function LessonPlanManager() {
     }
   }, [currentAcademicSession, getSubjects])
 
+  useEffect(() => {
+    if (filteredSubjects && filteredSubjects.length > 0 && currentAcademicSession) {
+      const isSelectedValid = filteredSubjects.some((s: any) => s.id.toString() === selectedSubjectId)
+      if (!selectedSubjectId || !isSelectedValid) {
+        const organonSubject = filteredSubjects.find((s: any) => 
+          s.name.toLowerCase().includes("organon")
+        )
+        const targetSubject = organonSubject || filteredSubjects[0]
+        const targetId = targetSubject.id.toString()
+        setSelectedSubjectId(targetId)
+        fetchLessonPlan(targetId)
+      } else if (selectedSubjectId) {
+        fetchLessonPlan(selectedSubjectId)
+      }
+    }
+  }, [filteredSubjects, currentAcademicSession])
+
   const fetchLessonPlan = async (subjectId: string) => {
     try {
       setIsLoading(true)
-      const response = await LessonPlanService.getLessonPlan(Number(subjectId), currentAcademicSession!.id)
-      setLessonPlan(response.data)
-      
-      const reportResponse = await LessonPlanService.getCoverageReport(Number(subjectId), currentAcademicSession!.id)
-      setCoverageReport(reportResponse.data)
+      const response = await LessonPlanService.getLessonPlan(Number(subjectId), currentAcademicSession?.id || 0)
+      const planData = response.data?.data || response.data
+      setLessonPlan(planData)
     } catch (error) {
       console.error("Error fetching lesson plan:", error)
       setLessonPlan({
         subjectId: Number(subjectId),
-        academicSessionId: currentAcademicSession!.id,
+        academicSessionId: currentAcademicSession?.id || 0,
         totalRequiredHours: 40,
         topics: []
       })
     } finally {
       setIsLoading(false)
+    }
+
+    // Load coverage report independently so failures do not wipe loaded syllabus
+    try {
+      if (currentAcademicSession?.id) {
+        const reportResponse = await LessonPlanService.getCoverageReport(Number(subjectId), currentAcademicSession.id)
+        setCoverageReport(reportResponse.data)
+      }
+    } catch (reportErr) {
+      console.warn("Could not load coverage report:", reportErr)
     }
   }
 
@@ -123,31 +220,6 @@ export default function LessonPlanManager() {
     fetchLessonPlan(value)
   }
 
-  const handleAddTopic = () => {
-    setLessonPlan({
-      subjectId: Number(selectedSubjectId),
-      academicSessionId: currentAcademicSession?.id,
-      ...lessonPlan,
-      topics: [
-        ...(lessonPlan?.topics || []),
-        { name: "", requiredHours: 1, isCompleted: false }
-      ]
-    })
-  }
-
-  const handleRemoveTopic = (index: number) => {
-    if (!lessonPlan?.topics) return
-    const newTopics = [...lessonPlan.topics]
-    newTopics.splice(index, 1)
-    setLessonPlan({ ...lessonPlan, topics: newTopics })
-  }
-
-  const handleTopicUpdate = (index: number, field: string, value: any) => {
-    if (!lessonPlan?.topics) return
-    const newTopics = [...lessonPlan.topics]
-    newTopics[index] = { ...newTopics[index], [field]: value }
-    setLessonPlan({ ...lessonPlan, topics: newTopics })
-  }
 
   const toggleCompletion = async (item: any) => {
     // Determine if it's a topic or subtopic
@@ -252,26 +324,6 @@ export default function LessonPlanManager() {
     }
   }
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true)
-      await LessonPlanService.createLessonPlan(lessonPlan)
-      toast({
-        title: t("success"),
-        description: t("lesson_plan_saved_successfully")
-      })
-      fetchLessonPlan(selectedSubjectId)
-    } catch (error) {
-      console.error("Error saving lesson plan:", error)
-      toast({
-        variant: "destructive",
-        title: t("error"),
-        description: t("failed_to_save_lesson_plan")
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
 
   const handleDeleteSyllabus = async () => {
     if (!selectedSubjectId || !currentAcademicSession) return
@@ -298,15 +350,21 @@ export default function LessonPlanManager() {
 
   // Flatten topics and subtopics for grid display
   const flattenedSyllabus = useMemo(() => {
-    if (!lessonPlan?.topics) return []
+    const plan = lessonPlan?.data || lessonPlan
+    const topics = plan?.topics || plan?.lesson_plan_topics || []
+    if (!topics || !Array.isArray(topics) || topics.length === 0) return []
+
     const flat: any[] = []
-    lessonPlan.topics.forEach((topic: any) => {
-      if (topic.subtopics && topic.subtopics.length > 0) {
-        topic.subtopics.forEach((sub: any) => {
+    topics.forEach((topic: any) => {
+      const subtopics = topic.subtopics || topic.lesson_plan_subtopics || []
+      if (subtopics && subtopics.length > 0) {
+        subtopics.forEach((sub: any) => {
           flat.push({
             ...sub,
             topicName: topic.name,
-            topicId: topic.id
+            topicId: topic.id,
+            assignedStaff: sub.assignedStaff || sub.assigned_staff || topic.assignedStaff || topic.assigned_staff,
+            assignedStaffIds: sub.assignedStaffIds || sub.assigned_staff_ids || topic.assignedStaffIds || topic.assigned_staff_ids
           })
         })
       } else {
@@ -319,8 +377,9 @@ export default function LessonPlanManager() {
           competency: "-",
           outcome: "-",
           lessonPlanNumber: "-",
-          requiredHours: topic.requiredHours,
-          isCompleted: topic.isCompleted
+          requiredHours: topic.requiredHours || topic.required_hours,
+          isCompleted: topic.isCompleted || topic.is_completed,
+          assignedStaffIds: topic.assignedStaffIds || topic.assigned_staff_ids
         })
       }
     })
@@ -347,13 +406,6 @@ export default function LessonPlanManager() {
           >
             <FileText className="h-4 w-4 text-gray-500" />
             {t("export_pdf")}
-          </Button>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 shadow-md gap-2"
-            onClick={handleAddTopic}
-          >
-            <Plus className="h-4 w-4" />
-            {t("add_new_row")}
           </Button>
         </div>
       </div>
@@ -404,9 +456,11 @@ export default function LessonPlanManager() {
                 <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-bold text-blue-900">{t("syllabus_coverage")}</span>
-                    <Badge className="bg-blue-600 text-white border-none">{coverageReport.coverage_percentage}%</Badge>
+                    <Badge className="bg-blue-600 text-white border-none">
+                      {coverageReport.coverage_percentage ?? coverageReport.coveragePercentage ?? 0}%
+                    </Badge>
                   </div>
-                  <Progress value={coverageReport.coverage_percentage} className="h-2 bg-blue-200/50" />
+                  <Progress value={coverageReport.coverage_percentage ?? coverageReport.coveragePercentage ?? 0} className="h-2 bg-blue-200/50" />
                   <div className="mt-3 flex justify-between text-[10px] text-blue-700 font-medium uppercase tracking-tighter">
                     <span>{t("planned")}</span>
                     <span>{t("completed")}</span>
@@ -416,13 +470,17 @@ export default function LessonPlanManager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center">
                     <Clock className="h-4 w-4 text-gray-400 mb-1" />
-                    <p className="text-[10px] text-gray-400 uppercase font-bold">{t("allocated")}</p>
-                    <p className="text-lg font-black text-gray-800">{coverageReport.assigned_hours}h</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">{t("completed")}</p>
+                    <p className="text-lg font-black text-gray-800">
+                      {coverageReport.completed_hours ?? coverageReport.completedHours ?? coverageReport.assigned_hours ?? 0}h
+                    </p>
                   </div>
                   <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center">
                     <AlertCircle className="h-4 w-4 text-gray-400 mb-1" />
                     <p className="text-[10px] text-gray-400 uppercase font-bold">{t("required")}</p>
-                    <p className="text-lg font-black text-gray-800">{coverageReport.required_hours}h</p>
+                    <p className="text-lg font-black text-gray-800">
+                      {coverageReport.required_hours ?? coverageReport.totalHours ?? 0}h
+                    </p>
                   </div>
                 </div>
               </div>
@@ -530,10 +588,6 @@ export default function LessonPlanManager() {
                     </DropdownMenu>
                   )}
 
-                  <Button className="bg-green-600 hover:bg-green-700 shadow-md font-bold text-xs" onClick={handleSave} disabled={isSaving || !lessonPlan}>
-                    <Save className="h-3 w-3 mr-2" />
-                    {t("save_changes")}
-                  </Button>
                 </div>
               </div>
               <CardContent className="p-0">
@@ -547,6 +601,7 @@ export default function LessonPlanManager() {
                         <TableHead className="text-[10px] font-black text-gray-400 uppercase">{t("outcome_subtopic")}</TableHead>
                         <TableHead className="w-[60px] text-[10px] font-black text-gray-400 uppercase text-center">{t("hours")}</TableHead>
                         <TableHead className="w-[80px] text-[10px] font-black text-gray-400 uppercase text-center">{t("lp_no")}</TableHead>
+                        <TableHead className="w-[160px] text-[10px] font-black text-gray-400 uppercase text-center">Assigned Teacher</TableHead>
                         <TableHead className="w-[120px] text-[10px] font-black text-gray-400 uppercase text-center">{t("status")}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -584,6 +639,52 @@ export default function LessonPlanManager() {
                               <FileDown className="h-3 w-3" />
                               {item.lessonPlanNumber || item.lesson_plan_number || "-"}
                             </Button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="h-8 text-[11px] font-medium border-gray-200 w-[150px]">
+                                  {item.assignedStaffIds && item.assignedStaffIds.length > 0
+                                    ? item.assignedStaffIds.length === 1 
+                                      ? teachingStaff?.find((s: any) => s.id === item.assignedStaffIds[0])?.first_name || '1 Teacher'
+                                      : `${item.assignedStaffIds.length} Teachers`
+                                    : "Unassigned"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-56 p-0" align="center">
+                                <ScrollArea className="h-64 p-4">
+                                  <div className="space-y-4">
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox 
+                                        id={`unassigned-${item.id}`}
+                                        checked={!item.assignedStaffIds || item.assignedStaffIds.length === 0}
+                                        onCheckedChange={() => handleAssignTeacher(item, [])}
+                                      />
+                                      <Label htmlFor={`unassigned-${item.id}`} className="text-sm">Unassigned</Label>
+                                    </div>
+                                    {teachingStaff?.map((staff: any) => (
+                                      <div key={staff.id} className="flex items-center space-x-2">
+                                        <Checkbox 
+                                          id={`staff-${item.id}-${staff.id}`}
+                                          checked={item.assignedStaffIds?.includes(staff.id) || false}
+                                          onCheckedChange={(checked) => {
+                                            const current = item.assignedStaffIds || []
+                                            if (checked) {
+                                              handleAssignTeacher(item, [...current, staff.id])
+                                            } else {
+                                              handleAssignTeacher(item, current.filter((id: number) => id !== staff.id))
+                                            }
+                                          }}
+                                        />
+                                        <Label htmlFor={`staff-${item.id}-${staff.id}`} className="text-sm cursor-pointer leading-none">
+                                          {staff.first_name} {staff.last_name || ""}
+                                        </Label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
                           </TableCell>
                            <TableCell className="text-center">
                             <Button 

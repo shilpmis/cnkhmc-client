@@ -85,6 +85,7 @@ export enum Permission {
   MANAGE_ADMISSION = "MANAGE_ADMISSION",
   MANAGE_TIMETABLE = "MANAGE_TIMETABLE",
   MANAGE_LESSON_PLAN = "MANAGE_LESSON_PLAN",
+  MANAGE_HOSTEL = "MANAGE_HOSTEL",
 }
 
 export const RolePermissions: Record<UserRole, Permission[]> = {
@@ -107,6 +108,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MANAGE_ADMISSION,
     Permission.MANAGE_TIMETABLE,
     Permission.MANAGE_LESSON_PLAN,
+    Permission.MANAGE_HOSTEL,
   ],
   [UserRole.ADMIN]: [
     Permission.VIEW_DASHBOARD,
@@ -126,6 +128,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MARK_LEAVES,
     Permission.MANAGE_TIMETABLE,
     Permission.MANAGE_LESSON_PLAN,
+    Permission.MANAGE_HOSTEL,
   ],
   [UserRole.PRINCIPAL]: [
     Permission.VIEW_DASHBOARD,
@@ -139,6 +142,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MANAGE_SUBJECTS,
     Permission.MANAGE_TIMETABLE,
     Permission.MANAGE_LESSON_PLAN,
+    Permission.MANAGE_HOSTEL,
   ],
   [UserRole.HEAD_TEACHER]: [
     Permission.VIEW_DASHBOARD,
@@ -152,7 +156,8 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MANAGE_ADMISSION,
     Permission.MANAGE_LEAVES,
     Permission.PAY_FEES,
-    Permission.MANAGE_SUBJECTS
+    Permission.MANAGE_SUBJECTS,
+    Permission.MANAGE_HOSTEL
   ],
   [UserRole.IT_ADMIN]: [
     Permission.VIEW_DASHBOARD,

@@ -526,30 +526,27 @@ export default function AcademicSettings() {
       setAcademicClasses(academicClassesForSchool)
     }
   }, [academicClassesForSchool])
-
   // useEffect(() => {
   //   console.log("formForDivsion.formState.errors", formForDivsion.formState.errors)
   // }, [formForDivsion.formState.errors])
 
-  // Update the useEffect for setting the active session
   useEffect(() => {
     if (sessionsData && sessionsData.sessions && sessionsData.sessions.length > 0) {
       const session = sessionsData.sessions.find((session: any) => session.is_active)
-      if (session?.is_active) {
+      if (session) {
         setActiveSession(session)
-        // If we have an active session and we're on the sessions tab, auto-switch to classes tab
-        // if (activeTab === "sessions" && !isLoadingClasses) {
-        //   setActiveTab("classes")
-        // }
-      } else {
-        setActiveSession(null)
-        setShowNoActiveSessionAlert(true)
+        setShowNoActiveSessionAlert(false)
+        return
       }
+    }
+    if (currentAcademicSession) {
+      setActiveSession(currentAcademicSession)
+      setShowNoActiveSessionAlert(false)
     } else {
       setActiveSession(null)
       setShowNoActiveSessionAlert(true)
     }
-  }, [sessionsData, activeTab, isLoadingClasses])
+  }, [sessionsData, currentAcademicSession, activeTab, isLoadingClasses])
 
   // Check if there's an active session
   const hasActiveSession = !!activeSession

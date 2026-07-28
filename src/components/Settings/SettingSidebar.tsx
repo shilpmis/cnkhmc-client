@@ -108,6 +108,23 @@ const navigationSections: NavSection[] = [
       //   href: "fees",
       // },
       {
+        title: "exam_management",
+        icon: FileText,
+        href: "exams",
+        children: [
+          {
+            title: "exam_types",
+            icon: Settings,
+            href: "exams/masters",
+          },
+          {
+            title: "exam_schedules",
+            icon: CalendarDays,
+            href: "exams/schedules",
+          },
+        ],
+      },
+      {
         title: "time_table_management",
         icon: Clock,
         href: "timetable",

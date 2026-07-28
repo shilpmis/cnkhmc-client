@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, Fragment } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock } from "lucide-react"
@@ -13,6 +13,7 @@ import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
 import { ClipboardList } from "lucide-react"
+import { TimeTableConfigForSchool, PeriodsConfig } from "@/types/subjects"
 
 interface TimetableWeekViewProps {
   timetableConfig: TimeTableConfigForSchool
@@ -27,7 +28,6 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
   const [getTeachingStaff, { data: staffData }] = useLazyGetTeachingStaffQuery()
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])
   const [staff, setStaff] = useState<StaffType[]>([])
-  const [maxPeriods, setMaxPeriods] = useState<number>(0)
   
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null)
@@ -56,18 +56,20 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
     }
   }, [subjectsData, staffData])
 
-  // Calculate max periods across all days
-  useEffect(() => {
+  // Extract unique time slots across the week for column headers
+  const uniqueTimeSlots = useMemo(() => {
+    const slots = new Map<string, { start: string, end: string, isBreak: boolean }>()
     if (timetableConfig?.class_day_config) {
-      let max = 0
-      timetableConfig.class_day_config.forEach((dayConfig) => {
-        if (dayConfig.period_config) {
-          const dayPeriods = dayConfig.period_config.filter((p) => p.division_id === divisionId)
-          max = Math.max(max, dayPeriods.length)
-        }
+      timetableConfig.class_day_config.forEach(dayConfig => {
+        dayConfig.period_config?.filter(p => p.division_id === divisionId).forEach(p => {
+          const key = `${p.start_time}-${p.end_time}`
+          if (!slots.has(key)) {
+            slots.set(key, { start: p.start_time, end: p.end_time, isBreak: p.is_break })
+          }
+        })
       })
-      setMaxPeriods(max)
     }
+    return Array.from(slots.values()).sort((a, b) => a.start.localeCompare(b.start))
   }, [timetableConfig, divisionId])
 
   // Format time (e.g., "09:30" to "9:30 AM")
@@ -75,15 +77,14 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
     if (!time) return ""
     const [hours, minutes] = time.split(":")
     const hour = Number.parseInt(hours, 10)
-    const ampm = hour >= 12 ? "PM" : "AM"
+    const ampm = hour >= 12 ? "pm" : "am"
     const formattedHour = hour % 12 || 12
-    return `${formattedHour}:${minutes} ${ampm}`
+    return `${formattedHour.toString().padStart(2, '0')}.${minutes}${ampm}`
   }
 
   // Get subject name
   const getSubjectName = (period: PeriodsConfig) => {
     if (!period.subjects_division_masters_id) return t("no_subject")
-
     const subject = subjects.find((s) => s.id === period.subjects_division_masters_id)
     return subject ? subject.subject?.name || t("unknown_subject") : t("unknown_subject")
   }
@@ -91,18 +92,15 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
   // Get subject code
   const getSubjectCode = (period: PeriodsConfig) => {
     if (!period.subjects_division_masters_id) return ""
-
     const subject = subjects.find((s) => s.id === period.subjects_division_masters_id)
     return subject ? subject.code_for_division || subject.subject?.code || "" : ""
   }
 
-  // Get teacher short name for grid display (e.g. "Raj P.")
+  // Get teacher short name for grid display
   const getTeacherName = (period: PeriodsConfig) => {
     if (!period.staff_enrollment_id) return ""
-
     const teacher = staff.find((s) => s.staff_enrollment_id === period.staff_enrollment_id)
     if (!teacher) return ""
-
     const firstName = teacher.first_name || ""
     const lastInitial = teacher.last_name ? teacher.last_name.charAt(0).toUpperCase() + "." : ""
     return lastInitial ? `${firstName} ${lastInitial}` : firstName
@@ -116,141 +114,193 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
     return `${teacher.first_name || ""} ${teacher.last_name || ""}`.trim()
   }
 
-  // Get period icon
-  const getPeriodIcon = (period: PeriodsConfig) => {
-    if (period.is_break) {
-      return <Coffee className="h-4 w-4 text-amber-600" />
-    } else if (period.is_pt) {
-      return <Dumbbell className="h-4 w-4 text-purple-600" />
-    } else if (period.lab_id) {
-      return <Beaker className="h-4 w-4 text-blue-600" />
-    } else if (period.is_free_period) {
-      return <Clock className="h-4 w-4 text-gray-600" />
-    }
-    return <BookOpen className="h-4 w-4 text-green-600" />
-  }
-
-  // Get period background color
-  const getPeriodBgColor = (period: PeriodsConfig) => {
-    if (period.is_break) return "bg-amber-50"
-    if (period.is_pt) return "bg-purple-50"
-    if (period.lab_id) return "bg-blue-50"
-    if (period.is_free_period) return "bg-gray-50"
-    return "bg-green-50"
-  }
-
-  // Get periods for a specific day
-  const getPeriodsForDay = (dayValue: string) => {
-    const dayConfig = timetableConfig?.class_day_config?.find((config) => config.day === dayValue)
-    if (!dayConfig || !dayConfig.period_config) return []
-
-    const periods = dayConfig.period_config.filter((p) => p.division_id === divisionId)
-    return [...periods].sort((a, b) => a.period_order - b.period_order)
-  }
-
-  // Get period cell for a specific day and period order
-  const getPeriodCell = (dayValue: string, periodOrder: number) => {
-    const periods = getPeriodsForDay(dayValue)
-    const period = periods.find((p) => p.period_order === periodOrder)
-
-    if (!period) return <td key={`${dayValue}-${periodOrder}`} className="border p-2 text-center text-muted-foreground text-sm">-</td>
-
-    return (
-      <td key={`${dayValue}-${periodOrder}`} className={`border p-2 ${getPeriodBgColor(period)}`}>
-        <div className="flex flex-col h-full min-h-[80px]">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center space-x-1">
-              {getPeriodIcon(period)}
-              <span className="text-xs font-medium">
-                {formatTime(period.start_time)} - {formatTime(period.end_time)}
-              </span>
-            </div>
-            {period.is_break && (
-              <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 border-amber-200">
-                {t("break")}
-              </Badge>
-            )}
-            {period.is_pt && (
-              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200">
-                {t("pt")}
-              </Badge>
-            )}
-            {period.is_free_period && (
-              <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800 border-gray-200">
-                {t("free")}
-              </Badge>
-            )}
-          </div>
-
-          {!period.is_break && (
-            <>
-              {period.subjects_division_masters_id && !period.is_free_period && (
-                <div className="text-sm font-medium">
-                  {getSubjectName(period)}
-                  {getSubjectCode(period) && (
-                    <span className="text-xs text-muted-foreground ml-1">({getSubjectCode(period)})</span>
-                  )}
-                </div>
-              )}
-
-              {period.staff_enrollment_id && !period.is_free_period && (
-                <div className="flex items-center space-x-1 mt-1" title={getTeacherFullName(period)}>
-                  <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate">{getTeacherName(period)}</span>
-                </div>
-              )}
-
-              {period.lab_id && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <Beaker className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    {timetableConfig.lab_config.find((lab) => lab.id === period.lab_id)?.name || t("unknown_lab")}
-                  </span>
-                </div>
-              )}
-              
-              {!period.is_free_period && period.subjects_division_masters_id && (
-                <button 
-                  onClick={() => {
-                    setSelectedPeriod(period);
-                    setIsLogDialogOpen(true);
-                  }}
-                  className="mt-2 text-[10px] text-blue-600 hover:text-blue-700 flex items-center font-medium"
-                >
-                  <ClipboardList className="h-3 w-3 mr-1" />
-                  {t("log")}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </td>
-    )
-  }
-
-  // Generate period headers (Period 1, Period 2, etc.)
-  const periodHeaders = Array.from({ length: maxPeriods }, (_, i) => (
-    <th key={i} className="border p-2 bg-muted font-medium text-center">
-      {t("period")} {i + 1}
+  // Generate period headers
+  const periodHeaders = uniqueTimeSlots.map((slot, i) => (
+    <th key={i} className="border p-2 bg-muted font-medium text-center min-w-[150px]">
+      <div className="flex flex-col items-center justify-center text-xs">
+        <span>{formatTime(slot.start)} to</span>
+        <span>{formatTime(slot.end)}</span>
+      </div>
     </th>
   ))
 
-  // Generate table rows for each day
-  const dayRows = days
-    .map((day) => {
-      const dayConfig = timetableConfig?.class_day_config?.find((config) => config.day === day.value)
-      if (!dayConfig) return null
-
-      return (
-        <tr key={day.value}>
-          <th className="border p-2 bg-muted font-medium text-left">{day.label}</th>
-          {Array.from({ length: maxPeriods }, (_, i) => getPeriodCell(day.value, i + 1))}
-        </tr>
-      )
+  // Determine if a column is a lecture or non-lecture
+  const isNonLectureSlot = (slot: { start: string, end: string }, dayKey: string) => {
+    let nonLecture = false;
+    const dayConfig = timetableConfig?.class_day_config?.find((config) => config.day === dayKey)
+    if (!dayConfig) return false;
+    const allPeriods = dayConfig.period_config?.filter((p) => p.division_id === divisionId) || []
+    
+    allPeriods.filter(p => p.start_time <= slot.start && p.end_time >= slot.end).forEach(p => {
+      if (p.batch_name || p.lab_id) {
+        nonLecture = true;
+      }
     })
-    .filter(Boolean)
+    return nonLecture;
+  }
 
-  if (dayRows.length === 0) {
+  // Class category row
+  const renderClassCategoryRow = (dayKey: string, dayIndex: number) => (
+    <tr key={`${dayKey}-category`}>
+      <th className="border p-2 bg-muted font-medium text-left">{t("class")}</th>
+      {uniqueTimeSlots.map((slot, i) => {
+        if (slot.isBreak) {
+          if (dayIndex === 0) {
+            const letters = ["R", "E", "C", "E", "S", "S"];
+            return (
+              <td key={`${dayKey}-${i}-break`} rowSpan={validDays.length * 2} className="border p-2 text-center align-middle bg-gray-50 min-w-[50px] z-0 relative">
+                <div className="flex flex-col items-center justify-center h-full space-y-2 font-bold text-gray-500 tracking-widest">
+                  {letters.map((l, idx) => <span key={idx}>{l}</span>)}
+                </div>
+              </td>
+            )
+          }
+          return null;
+        }
+        const nonLecture = isNonLectureSlot(slot, dayKey)
+        return (
+          <th key={i} className="border p-2 font-medium text-center bg-gray-50 text-xs">
+            {nonLecture ? t("non_lecture") : t("lecture")}
+          </th>
+        )
+      })}
+    </tr>
+  )
+
+  const validDays = days.filter(day => {
+    const dayConfig = timetableConfig?.class_day_config?.find((config) => config.day === day.value)
+    return !!dayConfig
+  })
+
+  // Generate table rows for each day
+  const dayRows = validDays.map((day, dayIndex) => {
+    const dayConfig = timetableConfig?.class_day_config?.find((config) => config.day === day.value)
+    if (!dayConfig) return null
+
+    const allPeriods = dayConfig.period_config?.filter((p) => p.division_id === divisionId) || []
+
+    const slotSpans = new Array(uniqueTimeSlots.length).fill(1);
+    const skipSlots = new Set<number>();
+
+    for (let i = 0; i < uniqueTimeSlots.length; i++) {
+      if (skipSlots.has(i)) continue;
+      if (uniqueTimeSlots[i].isBreak) continue;
+
+      const periodsAtI = allPeriods.filter(p => p.start_time === uniqueTimeSlots[i].start && p.end_time === uniqueTimeSlots[i].end).sort((a, b) => (a.batch_name || "").localeCompare(b.batch_name || ""));
+      if (periodsAtI.length === 0) continue;
+
+      let span = 1;
+      for (let j = i + 1; j < uniqueTimeSlots.length; j++) {
+        if (uniqueTimeSlots[j].isBreak) break;
+
+        const periodsAtJ = allPeriods.filter(p => p.start_time === uniqueTimeSlots[j].start && p.end_time === uniqueTimeSlots[j].end).sort((a, b) => (a.batch_name || "").localeCompare(b.batch_name || ""));
+        if (periodsAtI.length !== periodsAtJ.length) break;
+        if (periodsAtJ.length === 0) break;
+
+        let allMatch = true;
+        for (let k = 0; k < periodsAtI.length; k++) {
+           const p1 = periodsAtI[k];
+           const p2 = periodsAtJ[k];
+           if (
+               p1.subjects_division_masters_id !== p2.subjects_division_masters_id ||
+               p1.staff_enrollment_id !== p2.staff_enrollment_id ||
+               p1.lab_id !== p2.lab_id ||
+               p1.is_pt !== p2.is_pt ||
+               p1.is_free_period !== p2.is_free_period ||
+               p1.batch_name !== p2.batch_name
+           ) {
+              allMatch = false;
+              break;
+           }
+        }
+
+        if (allMatch) {
+          span++;
+          skipSlots.add(j);
+        } else {
+          break;
+        }
+      }
+      slotSpans[i] = span;
+    }
+
+    return (
+      <Fragment key={day.value}>
+        {renderClassCategoryRow(day.value, dayIndex)}
+        <tr key={`${day.value}-row`}>
+          <th className="border p-2 bg-muted font-medium text-left">{day.label}</th>
+          {uniqueTimeSlots.map((slot, slotIndex) => {
+            
+            // Recess handling with rowSpan across all valid days
+          if (slot.isBreak) {
+            return null;
+          }
+
+          // Normal period rendering
+          if (skipSlots.has(slotIndex)) return null;
+
+          const periods = allPeriods.filter((p) => p.start_time === slot.start && p.end_time === slot.end)
+
+          if (periods.length === 0) return <td key={`${day.value}-${slotIndex}`} className="border p-1.5 text-center text-muted-foreground text-sm"></td>
+          
+          const span = slotSpans[slotIndex];
+
+          return (
+            <td key={`${day.value}-${slotIndex}`} colSpan={span} className="border p-0 align-top">
+              <div className="flex flex-col h-full w-full">
+                {periods.map((period, index) => (
+                  <div key={index} className={`flex flex-col flex-1 p-2 ${index < periods.length - 1 ? 'border-b' : ''} hover:bg-gray-50 transition-colors`}>
+                    
+                    {!!period.batch_name && (
+                      <span className="font-medium text-[11px] text-gray-700 mb-0.5">
+                        {period.batch_name}
+                      </span>
+                    )}
+                    
+                    <div className="flex flex-col gap-0.5 items-center text-center">
+                      {period.subjects_division_masters_id && !period.is_free_period && (
+                        <span className="text-[11px] font-medium leading-tight text-center">
+                          {getSubjectName(period)}
+                        </span>
+                      )}
+                      
+                      {period.staff_enrollment_id && !period.is_free_period && (
+                        <span className="text-[10px] text-muted-foreground" title={getTeacherFullName(period)}>
+                          Dr. {getTeacherName(period)}
+                        </span>
+                      )}
+                      
+                      {period.lab_id && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {timetableConfig.lab_config.find((lab) => lab.id === period.lab_id)?.name}
+                        </span>
+                      )}
+                      
+                      {!period.is_free_period && period.subjects_division_masters_id && (
+                        <button 
+                          onClick={() => {
+                            setSelectedPeriod(period);
+                            setIsLogDialogOpen(true);
+                          }}
+                          className="mt-1 text-[10px] text-blue-600 hover:text-blue-700 flex items-center justify-center font-medium w-full"
+                        >
+                          <ClipboardList className="h-3 w-3 mr-1" />
+                          {t("log")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              </td>
+            )
+          })}
+        </tr>
+      </Fragment>
+    )
+  }).filter(Boolean)
+
+  if (validDays.length === 0 || uniqueTimeSlots.length === 0) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -262,11 +312,11 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full border-collapse table-fixed min-w-[800px] text-sm">
           <thead>
             <tr>
-              <th className="border p-2 bg-muted font-medium text-left">{t("day")}</th>
+              <th className="border p-2 bg-muted font-medium text-left w-24">{t("time_day")}</th>
               {periodHeaders}
             </tr>
           </thead>

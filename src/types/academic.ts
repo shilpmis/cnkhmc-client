@@ -63,3 +63,14 @@ export interface AssignedClasses {
   status: "Active" | "Inactive";
   class: Division;
 }
+
+export interface AcademicSession {
+  id: number;
+  school_id: number;
+  session_name: string;
+  start_month: string;
+  end_month: string;
+  start_year: string;
+  end_year: string;
+  is_active: boolean;
+}

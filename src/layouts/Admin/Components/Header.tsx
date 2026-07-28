@@ -33,7 +33,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { selectActiveAccademicSessionsForSchool, selectAccademicSessionsForSchool, setCurrentActiveAcademicSession } from "@/redux/slices/authSlice"
 import type { AcademicSession } from "@/types/user"
 import { Search } from "@/components/Dashboard/Search"
 
@@ -50,6 +50,7 @@ export default function Header() {
   const dispatch = useAppDispatch()
   const users = useAppSelector((state) => state.auth.user)
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const allAcademicSessions = useAppSelector(selectAccademicSessionsForSchool)
   const { t } = useTranslation()
 
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
@@ -89,9 +90,15 @@ export default function Header() {
   // Format academic year for display
   const formatAcademicYear = (session: AcademicSession) => {
     if (!session) return "No Session Selected"
-    const startYear = new Date(session.start_year).getFullYear()
-    const endYear = new Date(session.end_year).getFullYear()
-    return `${startYear}-${endYear}`
+    if ((session as any).session_name) return (session as any).session_name
+    if ((session as any).academic_year) return `${(session as any).academic_year}-${Number((session as any).academic_year) + 1}`
+    const startYear = session.start_year ? new Date(session.start_year).getFullYear() : NaN
+    const endYear = session.end_year ? new Date(session.end_year).getFullYear() : NaN
+    if (!isNaN(startYear) && !isNaN(endYear)) {
+      return `${startYear}-${endYear}`
+    }
+    const currentYear = new Date().getFullYear()
+    return `${currentYear}-${currentYear + 1}`
   }
 
   return (
@@ -169,17 +176,34 @@ export default function Header() {
                     <div className="p-2">
                       <h3 className="font-semibold text-sm text-muted-foreground mb-2">{t("academic_sessions")}</h3>
                       <div className="space-y-1">
-                        {currentAcademicSession && (
-                          <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{formatAcademicYear(currentAcademicSession)}</span>
-                              <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
-                                {t("current")}
-                              </Badge>
+                        {allAcademicSessions && allAcademicSessions.length > 0 ? (
+                          allAcademicSessions.map((session) => (
+                            <div
+                              key={session.id}
+                              onClick={() => dispatch(setCurrentActiveAcademicSession(session))}
+                              className={cn(
+                                "p-2 rounded-md cursor-pointer transition-colors border",
+                                currentAcademicSession?.id === session.id
+                                  ? "bg-primary/10 border-primary/20"
+                                  : "bg-transparent border-transparent hover:bg-muted"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">{formatAcademicYear(session)}</span>
+                                {currentAcademicSession?.id === session.id && (
+                                  <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                                    {t("current")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {session.start_month} - {session.end_month}
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {currentAcademicSession.start_month} - {currentAcademicSession.end_month}
-                            </div>
+                          ))
+                        ) : (
+                          <div className="text-sm text-muted-foreground p-2">
+                            {t("no_sessions_available")}
                           </div>
                         )}
                       </div>
@@ -318,18 +342,41 @@ export default function Header() {
                     </div>
 
                     {/* Academic Session in dropdown for mobile */}
-                    <div className="md:hidden mb-2 p-2 rounded-md bg-primary/5 border border-dashed border-primary/30">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">{t("current_session")}</p>
-                          <p className="text-sm font-medium">
-                            {currentAcademicSession
-                              ? formatAcademicYear(currentAcademicSession)
-                              : t("no_session_selected")}
-                          </p>
+                    <div className="md:hidden mb-2 space-y-2">
+                      <p className="px-2 text-xs text-muted-foreground mb-1">{t("academic_sessions")}</p>
+                      {allAcademicSessions && allAcademicSessions.length > 0 ? (
+                        allAcademicSessions.map((session) => (
+                          <div
+                            key={session.id}
+                            onClick={() => dispatch(setCurrentActiveAcademicSession(session))}
+                            className={cn(
+                              "flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors border",
+                              currentAcademicSession?.id === session.id
+                                ? "bg-primary/10 border-primary/20"
+                                : "bg-transparent border-transparent hover:bg-muted"
+                            )}
+                          >
+                            <Calendar className={cn("h-4 w-4", currentAcademicSession?.id === session.id ? "text-primary" : "text-muted-foreground")} />
+                            <div className="flex-1">
+                              <p className={cn("text-sm font-medium", currentAcademicSession?.id === session.id ? "text-primary" : "")}>
+                                {formatAcademicYear(session)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {session.start_month} - {session.end_month}
+                              </p>
+                            </div>
+                            {currentAcademicSession?.id === session.id && (
+                              <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30 text-[10px] h-5">
+                                {t("current")}
+                              </Badge>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-2 rounded-md bg-primary/5 border border-dashed border-primary/30">
+                          <p className="text-xs text-muted-foreground">{t("no_sessions_available")}</p>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <DropdownMenuItem className="cursor-pointer flex items-center gap-2 p-2 rounded-md" asChild>

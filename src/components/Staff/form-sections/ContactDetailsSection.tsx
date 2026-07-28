@@ -9,6 +9,20 @@ import type { StaffFormData } from "@/utils/staff.validation"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { NumberInput } from "../../ui/NumberInput"
 
+const PREDEFINED_QUALIFICATIONS = [
+  "D.Ed", "B.Ed", "M.Ed", "B.A + B.Ed", "B.Sc + B.Ed", "M.A + B.Ed", "M.Sc + B.Ed", "Ph.D",
+  "Diploma", "B.Com", "BBA", "MBA", "M.Com", "ITI", "SSC", "HSC",
+  "BHMS", "MD (Homoeopathy)", "PhD (Homoeopathy)"
+];
+
+const PREDEFINED_SUBJECTS = [
+  "Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Gujarati",
+  "Social Science", "Computer Science", "Commerce", "Economics", "Physical Education",
+  "Arts", "Music", "Anatomy", "Physiology", "Homoeopathic Pharmacy", "Homoeopathic Materia Medica",
+  "Organon of Medicine", "Pathology", "Forensic Medicine and Toxicology", "Surgery",
+  "Obstetrics and Gynaecology", "Practice of Medicine", "Community Medicine", "Repertory"
+];
+
 interface ContactDetailsSectionProps {
   form: UseFormReturn<StaffFormData>
   onNext: () => void
@@ -68,72 +82,80 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
             <FormField
               control={form.control}
               name="qualification"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel required>{t("qualification")}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Qualification" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="D.Ed">D.Ed</SelectItem>
-                      <SelectItem value="B.Ed">B.Ed</SelectItem>
-                      <SelectItem value="M.Ed">M.Ed</SelectItem>
-                      <SelectItem value="B.A + B.Ed">B.A + B.Ed</SelectItem>
-                      <SelectItem value="B.Sc + B.Ed">B.Sc + B.Ed</SelectItem>
-                      <SelectItem value="M.A + B.Ed">M.A + B.Ed</SelectItem>
-                      <SelectItem value="M.Sc + B.Ed"> M.Sc + B.Ed</SelectItem>
-                      <SelectItem value="Ph.D">Ph.D</SelectItem>
-                      <SelectItem value="Diploma">Diploma</SelectItem>
-                      <SelectItem value="B.Com">B.Com</SelectItem>
-                      <SelectItem value="BBA">BBA</SelectItem>
-                      <SelectItem value="MBA">MBA</SelectItem>
-                      <SelectItem value="M.Com">M.Com</SelectItem>
-                      <SelectItem value="ITI">ITI</SelectItem>
-                      <SelectItem value="SSC">SSC</SelectItem>
-                      <SelectItem value="HSC">HSC</SelectItem>
-                      <SelectItem value="Others">Others</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const qualValue = field.value || "";
+                const isQualCustom = qualValue && !PREDEFINED_QUALIFICATIONS.includes(qualValue) && qualValue !== "Others";
+                const qualSelectValue = isQualCustom ? "Others" : qualValue;
+
+                return (
+                  <FormItem>
+                    <FormLabel required>{t("qualification")}</FormLabel>
+                    <Select onValueChange={field.onChange} value={qualSelectValue}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Qualification" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PREDEFINED_QUALIFICATIONS.map((q) => (
+                          <SelectItem key={q} value={q}>{q}</SelectItem>
+                        ))}
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {qualSelectValue === "Others" && (
+                      <FormControl>
+                        <Input
+                          className="mt-2"
+                          placeholder="Enter qualification"
+                          value={qualValue === "Others" ? "" : qualValue}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
             <FormField
               control={form.control}
               name="subject_specialization"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("subject_specialization")}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subject specialization" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Mathematics">Mathematics</SelectItem>
-                      <SelectItem value="Physics">Physics</SelectItem>
-                      <SelectItem value="Chemistry">Chemistry</SelectItem>
-                      <SelectItem value="Biology">Biology</SelectItem>
-                      <SelectItem value="English">English</SelectItem>
-                      <SelectItem value="Hindi">Hindi</SelectItem>
-                      <SelectItem value="Gujarati">Gujarati</SelectItem>
-                      <SelectItem value="Social Science">Social Science</SelectItem>
-                      <SelectItem value="Computer Science">Computer Science</SelectItem>
-                      <SelectItem value="Commerce">Commerce</SelectItem>
-                      <SelectItem value="Economics">Economics</SelectItem>
-                      <SelectItem value="Physical Education">Physical Education</SelectItem>
-                      <SelectItem value="Arts">Arts</SelectItem>
-                      <SelectItem value="Music">Music</SelectItem>
-                      <SelectItem value="Others">Others</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const subjectValue = field.value || "";
+                const isSubjectCustom = subjectValue && !PREDEFINED_SUBJECTS.includes(subjectValue) && subjectValue !== "Others";
+                const subjectSelectValue = isSubjectCustom ? "Others" : subjectValue;
+
+                return (
+                  <FormItem>
+                    <FormLabel>{t("subject_specialization")}</FormLabel>
+                    <Select onValueChange={field.onChange} value={subjectSelectValue}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subject specialization" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PREDEFINED_SUBJECTS.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {subjectSelectValue === "Others" && (
+                      <FormControl>
+                        <Input
+                          className="mt-2"
+                          placeholder="Enter subject specialization"
+                          value={subjectValue === "Others" ? "" : subjectValue}
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
           </>
         )}

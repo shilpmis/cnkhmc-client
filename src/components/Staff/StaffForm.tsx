@@ -123,6 +123,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
       staff_type: null,
       staff_category: null,
       designation: null,
+      department_id: undefined,
     },
   })
 
@@ -184,6 +185,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
     bank_branch_name: "bank",
     pay_scale: "employment",
     retirement_age: "employment",
+    department_id: "employment",
   }
 
   useStaffFormReset(form, formType, initial_data)

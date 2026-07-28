@@ -576,6 +576,7 @@ export const staffSchema = z
     staff_type: z.string().optional().nullable(),
     staff_category: z.string().optional().nullable(),
     designation: z.string().optional().nullable(),
+    department_id: z.number().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     // Conditional validation for teaching staff

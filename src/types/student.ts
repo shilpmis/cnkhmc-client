@@ -28,6 +28,7 @@ export interface StudentEnrollment {
 }
 
 export interface StudentMeta {
+  [key: string]: any;
   aadhar_dise_no: number | null;
   birth_place: string | null;
   birth_place_in_guj: string | null;
@@ -56,6 +57,7 @@ export interface StudentMeta {
 
 export interface Student {
   // enrollment_id: any;
+  roll_number?: number | string | null;
   id: number;
   school_id: number;
   first_name: string;
@@ -74,7 +76,10 @@ export interface Student {
   mother_name: string | null;
   mother_name_in_guj: string | null;
   class_id: number;
-  roll_number: number | null;
+  first_year_roll_number: number | null;
+  second_year_roll_number: number | null;
+  third_year_roll_number: number | null;
+  fourth_year_roll_number: number | null;
   aadhar_no: number | null;
   is_active: boolean;
   student_meta?: StudentMeta;
@@ -96,7 +101,7 @@ export interface PageDetailsForStudents {
 export interface StudentEntry {
   students_data: Omit<
     Student,
-    "id" | "student_meta" | "school_id" | "academic_class" | "enrollment_code"
+    "id" | "student_meta" | "school_id" | "academic_class"
   >;
   student_meta_data: StudentMeta;
 }

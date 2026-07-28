@@ -1526,7 +1526,7 @@ export default function StudentFeesStatus({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("roll_number")}</p>
-              <p className="text-lg font-semibold">{student.roll_number || "N/A"}</p>
+              <p className="text-lg font-semibold">{student.fourth_year_roll_number || student.third_year_roll_number || student.second_year_roll_number || student.first_year_roll_number || "N/A"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("gr_number")}</p>

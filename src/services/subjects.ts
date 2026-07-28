@@ -29,6 +29,7 @@ export const SubjectApi = createApi({
                     name: name,
                     description: description,
                     academic_session_id: academic_session_id,
+                    academic_year: academic_session_id,
                     year: year
                 }
             }),
@@ -73,6 +74,12 @@ export const SubjectApi = createApi({
                     body: payload
                 }),
             }),
+        unassignStaffFromSubject: builder.mutation<{ message: string }, { id: number }>({
+            query: ({ id }) => ({
+                url: `/subject/assign/staffs/${id}`,
+                method: "DELETE",
+            }),
+        }),
     })
 })
 
@@ -85,6 +92,6 @@ export const {
     useGetSubjectsForDivisionQuery,
     useAssignSubjectToDivisionMutation,
     useLazyGetSubjectsForDivisionQuery,
-    useAssignStaffToSubjectsMutation
-
+    useAssignStaffToSubjectsMutation,
+    useUnassignStaffFromSubjectMutation
 } = SubjectApi;

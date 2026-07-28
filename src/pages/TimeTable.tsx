@@ -20,7 +20,6 @@ import {
 import TimetableDisplay from "@/components/TimeTable/TimetableDisplay"
 import TimetableWeekEditor from "@/components/TimeTable/TimetableWeekEditor"
 import TimetableWeekView from "@/components/TimeTable/TimetableWeekView"
-import AutoTimetableGenerator from "@/components/TimeTable/AutoTimetableGenerator"
 import DayConfigurationView from "@/components/TimeTable/DayConfigurationView"
 import {
   Dialog,
@@ -45,7 +44,6 @@ export default function TimetableManagement() {
   const [selectedDivision, setSelectedDivision] = useState<string>("")
   const [activeDay, setActiveDay] = useState<string>("mon")
   const [activeTab, setActiveTab] = useState<string>("day_view")
-  const [isAutoGenerating, setIsAutoGenerating] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -69,15 +67,25 @@ export default function TimetableManagement() {
   // Handle class change
   const handleClassChange = (value: string) => {
     setSelectedClass(value)
-    setSelectedDivision("")
-    setIsAutoGenerating(false)
+    
+    // Auto-select the first division if it exists for this class
+    if (academicClasses) {
+      const classObj = academicClasses.find((cls) => cls.id.toString() === value)
+      if (classObj && classObj.divisions && classObj.divisions.length > 0) {
+        setSelectedDivision(classObj.divisions[0].id.toString())
+      } else {
+        setSelectedDivision("")
+      }
+    } else {
+      setSelectedDivision("")
+    }
+    
     setActiveDay("mon")
   }
 
   // Handle division change
   const handleDivisionChange = (value: string) => {
     setSelectedDivision(value)
-    setIsAutoGenerating(false)
     setActiveDay("mon")
   }
 
@@ -122,9 +130,8 @@ export default function TimetableManagement() {
       link.href = url
       
       const className = academicClasses?.find((cls) => cls.id.toString() === selectedClass)?.class || ''
-      const divisionName = filteredDivisions?.find((div) => div.id.toString() === selectedDivision)?.division || ''
       
-      link.setAttribute('download', `Timetable-Class_${className}-${divisionName}.pdf`)
+      link.setAttribute('download', `Timetable-Class_${className}.pdf`)
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -236,7 +243,7 @@ export default function TimetableManagement() {
 
           {/* Class and Division Selection */}
           <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
               <div className="space-y-2">
                 <Label htmlFor="class-select" className="text-sm font-medium text-gray-700">
                   {t("class")}
@@ -255,27 +262,6 @@ export default function TimetableManagement() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="division-select" className="text-sm font-medium text-gray-700">
-                  {t("division")}
-                </Label>
-                <Select
-                  value={selectedDivision}
-                  onValueChange={handleDivisionChange}
-                  disabled={!selectedClass}
-                >
-                  <SelectTrigger id="division-select">
-                    <SelectValue placeholder={t("select_division")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredDivisions.map((division) => (
-                      <SelectItem key={division.id} value={division.id.toString()}>
-                        {division.division} {division.aliases ? `- ${division.aliases}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             
             <Button 
@@ -365,10 +351,6 @@ export default function TimetableManagement() {
                           <Edit className="h-4 w-4 mr-2" />
                           {t("create_manually")}
                         </Button>
-                        <Button onClick={() => setIsAutoGenerating(true)}>
-                          <Wand2 className="h-4 w-4 mr-2" />
-                          {t("auto_generate")}
-                        </Button>
                       </>
                     ) : (
                       <>
@@ -384,10 +366,6 @@ export default function TimetableManagement() {
                             <FileDown className="h-4 w-4" />
                           )}
                           {t("export_pdf") || "Export PDF"}
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsAutoGenerating(true)}>
-                          <Wand2 className="h-4 w-4 mr-2" />
-                          {t("regenerate")}
                         </Button>
                         <Button
                           variant="outline"
@@ -444,28 +422,8 @@ export default function TimetableManagement() {
                 </DialogContent>
               </Dialog>
 
-              {/* Auto Generation Mode */}
-              {isAutoGenerating ? (
-                <div className="p-6">
-                  <AutoTimetableGenerator
-                    divisionId={Number(selectedDivision)}
-                    timetableConfig={timetableConfig!}
-                    hasExistingTimetable={hasPeriodConfig}
-                    onSave={() => {
-                      setIsAutoGenerating(false)
-                      setActiveTab("day_view")
-                      fetchTimeTableConfig({
-                        academic_session_id: currentAcademicSession.id,
-                        division_id: Number(selectedDivision),
-                      })
-                    }}
-                    onCancel={() => setIsAutoGenerating(false)}
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Navigation Tabs */}
-                  <Tabs value={activeTab} onValueChange={setActiveTab}>
+              {/* Navigation Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <div className="border-b">
                       <TabsList className="h-auto p-0 bg-transparent">
                         <TabsTrigger
@@ -605,8 +563,6 @@ export default function TimetableManagement() {
                       </TabsContent>
                     </div>
                   </Tabs>
-                </>
-              )}
             </div>
           </>
         )}

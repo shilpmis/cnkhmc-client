@@ -88,6 +88,27 @@ export const StudentManagementApi = createApi({
         }),
 
 
+        autoAssignRollNumbers: builder.mutation<
+            any,
+            { division_id: number }
+        >({
+            query: ({ division_id }) => ({
+                url: `management/students/${division_id}/auto-assign-roll-numbers`,
+                method: "POST",
+            }),
+        }),
+
+        manuallyUpdateRollNumber: builder.mutation<
+            any,
+            { student_id: number, payload: { roll_number: number } }
+        >({
+            query: ({ student_id, payload }) => ({
+                url: `management/students/${student_id}/roll-number`,
+                method: "PUT",
+                body: payload,
+            }),
+        }),
+
     }),
 });
 
@@ -97,5 +118,7 @@ export const {
     useSuspensendStudentMutation,
     useUpdaeStudentStatusToCompleteMutation,
     useDropStudentMutation,
-    useMigrateStudentMutation
+    useMigrateStudentMutation,
+    useAutoAssignRollNumbersMutation,
+    useManuallyUpdateRollNumberMutation
 } = StudentManagementApi;

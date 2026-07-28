@@ -27,7 +27,7 @@ import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { selectLeavePolicyForUser } from "@/redux/slices/leaveSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw } from "lucide-react"
+import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw, AlertCircle } from "lucide-react"
 import { Label } from "@radix-ui/react-label"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -731,15 +731,15 @@ const LeaveDashboardForTeachers: React.FC = () => {
                           {/* <p>{formatDate(selectedLeave.updated_at)}</p> */}
                         </div>
                       </div>
-                      {/* {selectedLeave.comments && (
+                      {selectedLeave.remarks && (
                         <div className="flex items-start">
                           <AlertCircle className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
                           <div>
-                            <p className="text-sm text-muted-foreground">{t("comments")}</p>
-                            <p>{selectedLeave.comments}</p>
+                            <p className="text-sm text-muted-foreground">{t("remarks")}</p>
+                            <p>{selectedLeave.remarks}</p>
                           </div>
                         </div>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 )}

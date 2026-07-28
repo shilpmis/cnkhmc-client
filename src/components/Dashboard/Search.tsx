@@ -648,12 +648,7 @@ export function Search() {
             <div className="text-sm text-red-500 mt-1">Failed to search. Please try again.</div>
           )}
 
-          {/* Show message if no active academic session for student search */}
-          {(activePage === "Search for Students" || activePage === "") && !currentAcademicSession?.id && (
-            <div className="text-sm text-amber-500 mt-1">
-              No active academic session found. Please set an active academic session first.
-            </div>
-          )}
+
         </div>
       ) : (
         ""

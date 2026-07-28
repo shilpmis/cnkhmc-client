@@ -178,6 +178,29 @@ export const TimeTableApi = createApi({
                 invalidatesTags: ['PeriodsConfig'],
             }),
 
+        saveTimetableVersion: builder.mutation<any, { payload: { division_id: number, academic_session_id: number, periods_config: any[] } }>({
+            query: ({ payload }) => ({
+                url: `/timetable/version`,
+                method: "POST",
+                body: payload
+            }),
+        }),
+
+        getTimetableVersions: builder.query<any, { division_id: number, academic_session_id: number }>({
+            query: ({ division_id, academic_session_id }) => ({
+                url: `/timetable/version/${division_id}?academic_session=${academic_session_id}`,
+                method: "GET",
+            }),
+        }),
+
+        restoreTimetableVersion: builder.mutation<any, { version_id: number }>({
+            query: ({ version_id }) => ({
+                url: `/timetable/version/restore/${version_id}`,
+                method: "POST",
+            }),
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+        }),
+
     })
 
 })
@@ -199,7 +222,10 @@ export const {
     useUpdateWeekWiseTimeTableForDivisionMutation,
     useDeleteDayWiseTimeTableForDivisonMutation,
     useDeleteDayWiseTimeTableForAllDivisionsMutation,
-    useDeleteDayWiseTimeTableConfigForClassMutation
+    useDeleteDayWiseTimeTableConfigForClassMutation,
+    useSaveTimetableVersionMutation,
+    useLazyGetTimetableVersionsQuery,
+    useRestoreTimetableVersionMutation
 } = TimeTableApi;
 
 export const exportTimetablePDF = async (divisionId: number, academicSessionId: number) => {

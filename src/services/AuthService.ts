@@ -31,7 +31,7 @@ export const Authapi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          console.log("Verification successful:", data)
+          // console.log("Verification successful:", data)
 
           dispatch(setCredentialsForVerificationStatus({
             isVerificationInProgress: false,

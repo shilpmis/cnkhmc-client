@@ -61,6 +61,12 @@ import TeacherDashboard from "@/pages/TeacherDashboard"
 import LessonPlanManager from "@/pages/LessonPlanManager"
 import TeacherLogsReport from "@/pages/TeacherLogsReport"
 import ChatLayout from "@/components/chat/ChatLayout"
+import CertificateTemplates from "@/pages/CertificateTemplates"
+import ExamMasters from "@/pages/ExamMasters"
+import ExamSchedules from "@/pages/ExamSchedules"
+import HostelManagement from "@/pages/HostelManagement"
+import DeadStockRegister from "@/pages/DeadStockRegister"
+import InventoryDepartments from "@/pages/InventoryDepartments"
 
 export default function RootRoute() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
@@ -72,7 +78,7 @@ export default function RootRoute() {
 
   return (
     <SearchProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Login />} />
@@ -225,6 +231,33 @@ export default function RootRoute() {
               element={
                 <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.HEAD_TEACHER]}>
                   <LessonPlanManager />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="hostels"
+              element={
+                <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]}>
+                  <HostelManagement />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="inventory/departments"
+              element={
+                <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]}>
+                  <InventoryDepartments />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="inventory/dead-stock"
+              element={
+                <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]}>
+                  <DeadStockRegister />
                 </PrivateRoute>
               }
             />
@@ -518,6 +551,30 @@ export default function RootRoute() {
                 }
               />
               <Route
+                path="manage/certificates"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN, UserRole.PRINCIPAL]}>
+                    <CertificateTemplates />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="exams/masters"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <ExamMasters />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="exams/schedules"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <ExamSchedules />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="staff"
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
@@ -604,6 +661,8 @@ export default function RootRoute() {
                   </PrivateRoute>
                 }
               />
+
+
 
 
 

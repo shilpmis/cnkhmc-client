@@ -190,9 +190,12 @@ import { SaralPagination } from "../ui/common/SaralPagination"
 import type { StaffType } from "@/types/staff"
 import dynamic from "next/dynamic"
 import StaffPdfDilog from "./StaffPdfDilog"
-import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
+import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Trash2 } from "lucide-react"
 import type { PageMeta } from "@/types/global"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import { useLazyGetStaffByIdQuery } from "@/services/StaffService"
+import * as XLSX from "xlsx"
+import { toast } from "@/hooks/use-toast"
 
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -231,6 +234,7 @@ export default function StaffTable({
   const [selectedStaff, setSelectedStaff] = useState<StaffType | null>(null)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [getStaffById] = useLazyGetStaffByIdQuery()
 
   const handleStaffClick = (staff: StaffType) => {
     setSelectedStaff(staff)
@@ -252,6 +256,46 @@ export default function StaffTable({
       setSortDirection("asc")
     }
   }
+
+  const handleDownloadExperience = async (staff: StaffType) => {
+    try {
+      const response = await getStaffById(staff.id).unwrap()
+      const experiences = (response as any).experiences || response.staff_experiences
+
+      if (!experiences || experiences.length === 0) {
+        toast({
+          title: "No Experience Data",
+          description: "No experience records found for this staff member.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const data = experiences.map((exp: any) => ({
+        "Institute Name": exp.institute_name || "-",
+        "Post Name": exp.post_name || "-",
+        "Department": exp.department || "-",
+        "Appointment Regulation": exp.appointment_regulation || "-",
+        "From Date": exp.from_date ? new Date(exp.from_date).toLocaleDateString("en-GB") : "-",
+        "To Date": exp.to_date ? new Date(exp.to_date).toLocaleDateString("en-GB") : "-",
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(data)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Experience")
+
+      const fileName = `${staff.first_name}_${staff.last_name}_Experience.xlsx`
+      XLSX.writeFile(workbook, fileName)
+    } catch (error) {
+      console.error("Failed to fetch staff experiences:", error)
+      toast({
+        title: "Error",
+        description: "Failed to download experience data.",
+        variant: "destructive"
+      })
+    }
+  }
+
 
   // Add sort icon component
   const SortIcon = ({ field }: { field: string }) => {
@@ -293,13 +337,7 @@ export default function StaffTable({
     })
   }, [filteredStaff, sortField, sortDirection])
 
-  const perPageData = 6
-  const currentPage = staffList.page_meta.current_page ?? staffList.page_meta.currentPage ?? 1
 
-  const paginatedData = (page: number): StaffType[] => {
-    const startIndex = (page - 1) * perPageData
-    return sortedStaff.slice(startIndex, startIndex + perPageData)
-  }
 
   return (
     <div className="w-full overflow-auto">
@@ -366,7 +404,7 @@ export default function StaffTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData(currentPage).map((staff) => (
+              {sortedStaff.map((staff) => (
                 <TableRow key={staff.id}>
                   <TableCell>
                     <button
@@ -396,9 +434,23 @@ export default function StaffTable({
                   <TableCell>{staff.designation || staff.role || "N/A"}</TableCell>
                   <TableCell>{staff.employment_status}</TableCell>
                   <TableCell>
-                    <Button variant="outline" onClick={() => onEdit(staff.id)}>
-                      {t("edit")}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => onEdit(staff.id)}>
+                        {t("edit")}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDownloadExperience(staff)} title="Download Experience">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDelete(staff.id)}
+                        title="Delete Staff"
+                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

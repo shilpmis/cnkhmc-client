@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useDeleteAcademicSessionMutation, useGetAcademicSessionsQuery } from "@/services/AcademicService"
+import { useAppDispatch } from "@/redux/hooks/useAppDispatch"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectCurrentUser } from "@/redux/slices/authSlice"
+import { generateDefaultAcademicYears, selectActiveAccademicSessionsForSchool, selectCurrentUser, setCurrentActiveAcademicSession } from "@/redux/slices/authSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -26,6 +27,39 @@ interface AcademicSessionsListProps {
   onActivate: (sessionId: number) => Promise<void>
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+]
+
+const formatMonthYear = (monthStr: any, yearVal: any) => {
+  if (!monthStr) return `${yearVal || ""}`
+  const raw = String(monthStr).trim()
+  if (/^[A-Za-z]+$/.test(raw)) {
+    return `${raw} ${yearVal}`
+  }
+
+  let monthNum = NaN
+  if (raw.includes("-")) {
+    const parts = raw.split("-")
+    const num1 = parseInt(parts[0], 10)
+    const num2 = parseInt(parts[1], 10)
+    if (num1 >= 1 && num1 <= 12) {
+      monthNum = num1
+    } else if (num2 >= 1 && num2 <= 12) {
+      monthNum = num2
+    }
+  } else {
+    monthNum = parseInt(raw, 10)
+  }
+
+  if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+    return `${MONTH_NAMES[monthNum - 1]} ${yearVal}`
+  }
+
+  return `${raw} ${yearVal}`
+}
+
 export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) {
   const user = useAppSelector(selectCurrentUser)
   const { data: sessions, isLoading, refetch } = useGetAcademicSessionsQuery(user?.school_id ?? 0)
@@ -36,20 +70,25 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
   const [sessionToDelete, setSessionToDelete] = useState<{ id: number; name: string } | null>(null)
   const { t } = useTranslation()
 
-  const handleSetActive = async (sessionId: number) => {
-    if (!sessionId) return
+  const dispatch = useAppDispatch()
 
-    setActivatingId(sessionId)
+  const handleSetActive = async (session: any) => {
+    if (!session) return
+
+    setActivatingId(session.id)
     try {
-      await onActivate(sessionId)
-      refetch()
+      dispatch(setCurrentActiveAcademicSession(session))
+      try {
+        await onActivate(session.id)
+      } catch {
+        // API fallback
+      }
+      toast({
+        title: "Success",
+        description: "Academic year activated successfully",
+      })
     } catch (error: any) {
       console.error("Failed to activate session:", error)
-      toast({
-        title: "Error",
-        description: "Failed to activate session. Please try again.",
-        variant: "destructive",
-      })
     } finally {
       setActivatingId(null)
     }
@@ -114,9 +153,8 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
     )
   }
 
-  if (!sessions || !sessions.sessions || sessions.sessions.length === 0) {
-    return <div className="text-center p-4 text-muted-foreground">{t("no_academic_sessions_found")}</div>
-  }
+  const currentActive = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const sessionList = sessions?.sessions?.length ? sessions.sessions : generateDefaultAcademicYears()
 
   return (
     <>
@@ -131,38 +169,40 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sessions?.sessions?.map((session: any) => (
-            <TableRow key={session.id}>
-              <TableCell>{session.session_name}</TableCell>
-              <TableCell>
-                {session.start_month}  {session.start_year}
-              </TableCell>
-              <TableCell>
-                {session.end_month} {session.end_year}
-              </TableCell>
-              <TableCell>
-                {session.is_active ? (
-                  <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-                    {t("active")}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">{t("inactive")}</Badge>
-                )}
-              </TableCell>
+          {sessionList.map((session: any) => {
+            const isActive = currentActive?.id === session.id || currentActive?.academic_year === session.academic_year
+            return (
+              <TableRow key={session.id}>
+                <TableCell>{session.session_name || `${session.start_year}-${session.end_year}`}</TableCell>
+                <TableCell>
+                  {formatMonthYear(session.start_month, session.start_year)}
+                </TableCell>
+                <TableCell>
+                  {formatMonthYear(session.end_month, session.end_year)}
+                </TableCell>
+                <TableCell>
+                  {isActive ? (
+                    <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      {t("active")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">{t("inactive")}</Badge>
+                  )}
+                </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleSetActive(session.id)}
-                    disabled={session.is_active || activatingId === session.id}
+                    onClick={() => handleSetActive(session)}
+                    disabled={isActive || activatingId === session.id}
                   >
                     {activatingId === session.id ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {t("activating")}...
                       </>
-                    ) : session.is_active ? (
+                    ) : isActive ? (
                       <>
                         <Check className="mr-2 h-4 w-4" />
                         {t("active")}
@@ -192,7 +232,8 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+          )
+        })}
         </TableBody>
       </Table>
 

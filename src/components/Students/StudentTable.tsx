@@ -4,19 +4,21 @@
 
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Edit, FileText, UserRound, X, ChevronUp, ChevronDown, ChevronsUpDown, Download } from 'lucide-react'
+import { Edit, FileText, UserRound, X, ChevronUp, ChevronDown, ChevronsUpDown, Download, School } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SaralPagination } from "../ui/common/SaralPagination"
 import type { PageDetailsForStudents, Student, StudentEnrollment } from "@/types/student"
 import type { Division } from "@/types/academic"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import HostelAllotmentModal from "./HostelAllotmentModal"
+import { useAppSelector } from "@/redux/hooks/useAppSelector"
+import { selectAuthState, selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import dynamic from "next/dynamic"
-import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 import { useLazyFetchSingleStudentDataInDetailQuery } from "@/services/StudentServices"
 import StudentProfileView from "./StudentProfileView"
+import { CertificateDialog } from "./CertificateDialog"
 
 
 interface StudentTableProps {
@@ -53,6 +55,15 @@ export default function StudentTable({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const [pdfKey, setPdfKey] = useState(Date.now())
+  
+  const [certDialogOpen, setCertDialogOpen] = useState(false)
+  const [certStudentId, setCertStudentId] = useState<number | null>(null)
+  
+  const [showHostelModal, setShowHostelModal] = useState(false)
+  const [selectedStudentForHostel, setSelectedStudentForHostel] = useState<Student | null>(null)
+
+  const authState = useAppSelector(selectAuthState)
+  const schoolId = authState.user?.school_id || 0
 
   // Add sorting function
   const handleSort = (field: string) => {
@@ -209,7 +220,7 @@ export default function StudentTable({
                       {student.first_name} {student.middle_name} {student.last_name}
                     </button>
                   </TableCell>
-                  <TableCell>{student.roll_number}</TableCell>
+                  <TableCell>{student.fourth_year_roll_number || student.third_year_roll_number || student.second_year_roll_number || student.first_year_roll_number}</TableCell>
                   <TableCell>{student.gender}</TableCell>
                   <TableCell>{student.father_name}</TableCell>
                   <TableCell>{student.primary_mobile}</TableCell>
@@ -218,14 +229,18 @@ export default function StudentTable({
                     <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(student)}>
                       <Edit className="h-4 w-4 mr-1" /> {t("edit")}
                     </Button>
-                    {/* <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(student.id.toString())}
-                    className="hover:bg-red-600 hover:text-white"
-                  >
-                    <Trash className="h-4 w-4 mr-1" /> Delete
-                  </Button> */}
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setCertStudentId(student.id)
+                      setCertDialogOpen(true)
+                    }}>
+                      <FileText className="h-4 w-4 mr-1" /> Cert
+                    </Button>
+                    <Button variant="outline" size="sm" className="ml-2" onClick={() => {
+                      setSelectedStudentForHostel(student)
+                      setShowHostelModal(true)
+                    }}>
+                      <School className="h-4 w-4 mr-1" /> Hostel
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -305,7 +320,26 @@ export default function StudentTable({
               </div>
             </DialogContent>
           </Dialog>
-        </>
+
+          <CertificateDialog 
+            open={certDialogOpen} 
+            onOpenChange={setCertDialogOpen} 
+            studentId={certStudentId} 
+          />
+
+      {showHostelModal && selectedStudentForHostel && (
+        <HostelAllotmentModal
+          isOpen={showHostelModal}
+          onClose={() => {
+            setShowHostelModal(false)
+            setSelectedStudentForHostel(null)
+          }}
+          studentId={selectedStudentForHostel.id}
+          schoolId={schoolId}
+          studentGender={selectedStudentForHostel.gender}
+        />
+      )}
+    </>
 
 
       )}

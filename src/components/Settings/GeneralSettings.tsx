@@ -26,6 +26,7 @@ interface TypeForUpdateSchoolData {
   established_year?: string
   school_type?: string
   address?: string
+  enrollment_number_format?: string
 }
 
 const basicSchoolDataSchema = z.object({
@@ -41,6 +42,7 @@ const basicSchoolDataSchema = z.object({
     message: "School name must be at least 2 characters.",
   }),
   branch_code: z.string(),
+  enrollment_number_format: z.string().optional().nullable(),
   established_year: z.string().regex(/^\d{4}$/, {
     message: "Please enter a valid year (YYYY).",
   }),
@@ -102,6 +104,7 @@ export default function GeneralSettings() {
       },
       name: "",
       branch_code: "",
+      enrollment_number_format: "",
       established_year: "",
       school_type: " ",
     },
@@ -135,6 +138,8 @@ export default function GeneralSettings() {
     if (data?.school_type !== values.school_type.trim()) payload.school_type = values.school_type.trim()
     if (data?.established_year !== values.established_year.trim())
       payload.established_year = values.established_year.trim()
+    if (data?.enrollment_number_format !== values.enrollment_number_format?.trim())
+      payload.enrollment_number_format = values.enrollment_number_format?.trim()
 
     const updated_school = await dispatch(updateSchoolDetails({ id: user!.school_id, schoolData: payload }))
     if (updated_school?.meta.requestStatus === "rejected") {
@@ -214,21 +219,31 @@ export default function GeneralSettings() {
    *
    */
   useEffect(() => {
+    if (!data) return;
     basicSchoolDataForm.reset({
-      organization: data?.organization,
-      name: data?.name,
-      branch_code: data?.branch_code,
-      established_year: data?.established_year,
-      school_type: data?.school_type === "Private" ? "Private" : data?.school_type == "Public" ? "Public" : "Charter",
+      organization: {
+        name: data.organization?.name || "",
+        head_contact_number: data.organization?.head_contact_number || 0,
+        head_name: data.organization?.head_name || "",
+        pincode: data.organization?.pincode || null,
+        address: data.organization?.address || "",
+        subscription_type: data.organization?.subscription_type || "",
+      },
+      name: data.name || "",
+      branch_code: data.branch_code || "",
+      enrollment_number_format: data.enrollment_number_format || "",
+      established_year: data.established_year || "",
+      school_type: data.school_type === "Private" ? "Private" : data.school_type === "Public" ? "Public" : "Charter",
     })
     console.log(basicSchoolDataForm.getValues("organization.subscription_type"))
   }, [data])
 
   useEffect(() => {
+    if (!data) return;
     contactInformationForm.reset({
-      email: data?.email,
-      address: data?.address,
-      phone: data?.contact_number?.toString(),
+      email: data.email || "",
+      address: data.address || "",
+      phone: data.contact_number?.toString() || "",
     })
   }, [data])
 
@@ -427,6 +442,23 @@ export default function GeneralSettings() {
                             <SelectItem value="Charter">{t("charter")}</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={basicSchoolDataForm.control}
+                    name="enrollment_number_format"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Enrollment Number Format</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. STU-{YYYY}-{SEQ}" {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <p className="text-[0.8rem] text-muted-foreground mt-1">
+                          Use dynamic placeholders: <code className="bg-muted px-1 rounded">{"{YYYY}"}</code> for 4-digit year, <code className="bg-muted px-1 rounded">{"{YY}"}</code> for 2-digit year, and <code className="bg-muted px-1 rounded">{"{SEQ}"}</code> for auto-incrementing sequence.
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -16,7 +16,10 @@ import { useNavigate } from "react-router-dom"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import TeacherService from "@/services/TeacherService"
+import LessonPlanService from "@/services/LessonPlanService"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
+import { AlertTriangle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function TeacherDashboard() {
   const { t } = useTranslation()
@@ -31,6 +34,9 @@ export default function TeacherDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null)
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  const [availability, setAvailability] = useState<any>(null)
+  const [coverageReports, setCoverageReports] = useState<any[]>([])
 
   // Support / Contact Leadership state
   const [isContactSupportOpen, setIsContactSupportOpen] = useState(false)
@@ -111,8 +117,14 @@ export default function TeacherDashboard() {
   const fetchTimetable = async () => {
     try {
       setIsLoading(true)
-      const response = await TeacherService.getMyTimetable(currentAcademicSession!.id)
-      setTimetable(response.data)
+      const [timetableResponse, availabilityResponse, coverageResponse] = await Promise.all([
+        TeacherService.getMyTimetable(currentAcademicSession!.id),
+        TeacherService.getMyAvailability(currentAcademicSession!.id),
+        LessonPlanService.getAllCoverageReports(currentAcademicSession!.id)
+      ])
+      setTimetable(timetableResponse.data)
+      setAvailability(availabilityResponse.data)
+      setCoverageReports(coverageResponse.data || [])
     } catch (error) {
       console.error("Error fetching teacher timetable:", error)
       toast({
@@ -143,8 +155,42 @@ export default function TeacherDashboard() {
     )
   }
 
+  const warnings: Array<{ subjectName: string; required: number; projected: number }> = []
+  if (availability?.projectedAvailablePeriods && coverageReports.length > 0) {
+    const uniqueSubjects = Array.from(new Set(timetable.map(p => p.period_config_subject?.subject_id).filter(Boolean)))
+    
+    uniqueSubjects.forEach(subjectId => {
+      const coverage = coverageReports.find(c => c.subjectId === subjectId || c.subject_id === subjectId)
+      const projected = availability.projectedAvailablePeriods[subjectId] || 0
+      
+      if (coverage && coverage.totalHours > projected) {
+        warnings.push({
+          subjectName: coverage.subjectName,
+          required: coverage.totalHours,
+          projected: projected
+        })
+      }
+    })
+  }
+
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto pb-24">
+      {warnings.length > 0 && (
+        <Alert variant="destructive" className="bg-red-50 text-red-900 border-red-200">
+          <AlertTriangle className="h-5 w-5 text-red-600" />
+          <AlertTitle className="font-semibold text-red-800">Available Hours Warning</AlertTitle>
+          <AlertDescription>
+            Due to holidays and exams in the academic calendar, you may not have enough periods to cover the required syllabus for:
+            <ul className="list-disc pl-5 mt-2">
+              {warnings.map((w, idx) => (
+                <li key={idx}>
+                  <strong>{w.subjectName}</strong>: Required {w.required} hrs, but only {w.projected} periods are available.
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{t("teacher_dashboard")}</h1>
@@ -200,7 +246,15 @@ export default function TeacherDashboard() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {getDayPeriods(activeDay).length > 0 ? (
+            {activeDay === format(new Date(), 'eee').toLowerCase().substring(0, 3) && availability?.todayIsHoliday ? (
+              <div className="col-span-full py-12 text-center">
+                <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="h-8 w-8 text-blue-400" />
+                </div>
+                <h3 className="text-lg font-medium text-blue-900">{t("Holiday / Exam - No Classes")}</h3>
+                <p className="text-blue-600">{t("Enjoy your day off! The academic calendar marks today as a non-working day.")}</p>
+              </div>
+            ) : getDayPeriods(activeDay).length > 0 ? (
               getDayPeriods(activeDay).map((period) => (
                 <Card key={period.id} className="relative group hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500">
                   <CardHeader className="pb-2">

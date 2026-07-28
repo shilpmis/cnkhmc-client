@@ -41,6 +41,7 @@ import {
   useAddStaffMutation,
   useUpdateStaffMutation,
   useBulkUploadStaffMutation,
+  useDeleteStaffMutation,
 } from "@/services/StaffService"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,6 +49,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { downloadCSVTemplate } from "@/utils/CSVTemplateForStaff"
 import ExcelDownloadModalForStaff from "@/components/Staff/ExcelDownloadModalForStaff"
+import ExperienceUploadModal from "@/components/Staff/ExperienceUploadModal"
 import type { PageMeta } from "@/types/global"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { toast } from "@/hooks/use-toast"
@@ -296,8 +298,12 @@ export const Staff: React.FC = () => {
   const [otherInitialData, setOtherInitialData] = useState<StaffType | null>(null)
 
   const [openDialogForStaffBulkUpload, setOpenDialogForStaffBulkUpload] = useState(false)
-  const [dialogOpenForDownLoadExcel, setDialogOpenForDownLoadExcel] = useState(false)
+  const [openDialogForDownloadExcel, setOpenDialogForDownloadExcel] = useState(false)
+  const [openDialogForExperienceUpload, setOpenDialogForExperienceUpload] = useState(false)
+  const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([])
   const [isdelete, setIsDelete] = useState(false)
+  const [staffToDeleteId, setStaffToDeleteId] = useState<number | null>(null)
+  const [deleteStaff, { isLoading: isDeleting }] = useDeleteStaffMutation()
 
   // CSV upload states
   const [fileName, setFileName] = useState<string | null>(null)
@@ -841,7 +847,7 @@ export const Staff: React.FC = () => {
 
   const handleEditStaff = useCallback(
     (staff_id: number) => {
-      const teacher = currentDisplayDataForTeachers?.satff.find((t) => t.id === staff_id)
+      const teacher = currentDisplayDataForTeachers?.satff?.find((t) => t.id === staff_id)
       if (teacher) {
         setOpenDialogForStaffForm({
           isOpen: true,
@@ -856,7 +862,7 @@ export const Staff: React.FC = () => {
 
   const handleEditOtherStaff = useCallback(
     (staff_id: number) => {
-      const other = currentDisplayDataForOtherStaff?.satff.find((t) => t.id === staff_id)
+      const other = currentDisplayDataForOtherStaff?.satff?.find((t) => t.id === staff_id)
       if (other) {
         setOpenDialogForStaffForm({
           isOpen: true,
@@ -973,8 +979,8 @@ export const Staff: React.FC = () => {
     }
   }
 
-  const handleDelete = async () => {
-    // Just opens confirmation dialog; you can wire actual delete API to the "Delete" button below.
+  const handleDelete = async (staff_id: number) => {
+    setStaffToDeleteId(staff_id)
     setIsDelete(true)
   }
 
@@ -1034,11 +1040,27 @@ export const Staff: React.FC = () => {
               <Plus className="mr-2 h-4 w-4" /> {t("add_staff")}
             </Button>
 
+            {/* Upload Experience */}
+            <Dialog open={openDialogForExperienceUpload} onOpenChange={setOpenDialogForExperienceUpload}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}>
+                  <Upload className="h-4 w-4 ms-2 mr-2" />
+                  <span>Upload Experience</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Upload Staff Experience</DialogTitle>
+                </DialogHeader>
+                <ExperienceUploadModal onClose={() => setOpenDialogForExperienceUpload(false)} />
+              </DialogContent>
+            </Dialog>
+
             {/* Bulk Upload */}
             <Dialog open={openDialogForStaffBulkUpload} onOpenChange={setOpenDialogForStaffBulkUpload}>
               <DialogTrigger asChild>
                 <Button variant="outline" disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}>
-                  <Upload className="h-4 w-4 ms-2" />
+                  <Upload className="h-4 w-4 ms-2 mr-2" />
                   <span>{t("upload_csv")}</span>
                 </Button>
               </DialogTrigger>
@@ -1196,7 +1218,7 @@ export const Staff: React.FC = () => {
             {/* Download Excel */}
             <Button
               variant="outline"
-              onClick={() => setDialogOpenForDownLoadExcel(true)}
+              onClick={() => setOpenDialogForDownloadExcel(true)}
               disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}
             >
               <FileDown className="h-4 w-4 mr-2" />
@@ -1257,7 +1279,7 @@ export const Staff: React.FC = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <span className="ml-2">Loading teaching staff...</span>
               </div>
-            ) : currentDisplayDataForTeachers && currentDisplayDataForTeachers.satff.length > 0 ? (
+            ) : currentDisplayDataForTeachers && (currentDisplayDataForTeachers.satff?.length ?? 0) > 0 ? (
               <StaffTable
                 staffList={{
                   staff: currentDisplayDataForTeachers.satff,
@@ -1302,7 +1324,7 @@ export const Staff: React.FC = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <span className="ml-2">Loading non-teaching staff...</span>
               </div>
-            ) : currentDisplayDataForOtherStaff && currentDisplayDataForOtherStaff.satff.length > 0 ? (
+            ) : currentDisplayDataForOtherStaff && (currentDisplayDataForOtherStaff.satff?.length ?? 0) > 0 ? (
               <StaffTable
                 staffList={{
                   staff: currentDisplayDataForOtherStaff.satff,
@@ -1400,9 +1422,37 @@ export const Staff: React.FC = () => {
               type="button"
               variant="destructive"
               className="px-6 py-2 rounded-lg bg-red-600 text-white"
-              // TODO: call delete API here, then refresh list & close
+              disabled={isDeleting}
+              onClick={async () => {
+                if (!staffToDeleteId) return
+                try {
+                  await deleteStaff(staffToDeleteId).unwrap()
+                  toast({ title: "Staff Deleted", description: "Staff member removed successfully." })
+                  setIsDelete(false)
+                  setStaffToDeleteId(null)
+                  // Refresh both lists with current filters
+                  if (CurrentAcademicSessionForSchool) {
+                    getTeachingStaff({
+                      academic_sessions: CurrentAcademicSessionForSchool.id,
+                      page: 1,
+                      status_filter: staffStatusFilter,
+                    }).then((res) => {
+                      if (res.data) setCurrentDisplayDataForTeachers({ satff: res.data.data, meta: res.data.meta })
+                    })
+                    getOtherStaff({
+                      academic_sessions: CurrentAcademicSessionForSchool.id,
+                      page: 1,
+                      status_filter: staffStatusFilter,
+                    }).then((res) => {
+                      if (res.data) setCurrentDisplayDataForOtherStaff({ satff: res.data.data, meta: res.data.meta })
+                    })
+                  }
+                } catch {
+                  toast({ title: "Error", description: "Failed to delete staff member.", variant: "destructive" })
+                }
+              }}
             >
-              {t("delete")}
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1410,10 +1460,10 @@ export const Staff: React.FC = () => {
 
       {/* Download Excel dialog */}
       <Dialog
-        open={dialogOpenForDownLoadExcel}
+        open={openDialogForDownloadExcel}
         onOpenChange={(open) => {
           if (!open) {
-            setDialogOpenForDownLoadExcel(false)
+            setOpenDialogForDownloadExcel(false)
           }
         }}
       >
@@ -1421,7 +1471,7 @@ export const Staff: React.FC = () => {
           <DialogHeader>
             <DialogTitle>{t("download_staff_data")}</DialogTitle>
           </DialogHeader>
-          <ExcelDownloadModalForStaff onClose={() => setDialogOpenForDownLoadExcel(false)} />
+          <ExcelDownloadModalForStaff onClose={() => setOpenDialogForDownloadExcel(false)} />
         </DialogContent>
       </Dialog>
 

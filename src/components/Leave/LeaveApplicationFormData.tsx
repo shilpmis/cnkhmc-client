@@ -145,6 +145,7 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                 const response = await applyLeaveForTeacher({
                     staff_id: user.staff_id,
                     academic_session_id : CurrentAcademicSessionForSchool.id,
+                    school_id: CurrentAcademicSessionForSchool.school_id,
                     leave_type_id: Number(data.leave_type),
                     from_date: data.from_date,
                     to_date: data.to_date,

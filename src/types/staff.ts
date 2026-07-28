@@ -120,6 +120,20 @@ export interface StaffType {
   staff_type?: string | null;
   staff_category?: string | null;
   designation?: string | null;
+  staff_experiences?: StaffExperience[];
+}
+
+export interface StaffExperience {
+  id: number;
+  staff_id: number;
+  post_name: string;
+  from_date: Date | string | null;
+  to_date: Date | string | null;
+  department: string | null;
+  institute_name: string | null;
+  appointment_regulation: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
 }
 
 export type CategoryType = "ST" | "SC" | "OBC" | "OPEN";

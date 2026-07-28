@@ -5,7 +5,7 @@ import { z } from "zod";
 
 // Define the schema for student data
 export const studentSchema = z.object({
-  // enrollment_id : z.string().min(5, 'Enrollment ID is required').nullable(),
+  enrollment_code: z.string().nullable().optional().or(z.literal("")),
   // Personal Details
   first_name: z
     .string()
@@ -174,11 +174,7 @@ export const studentSchema = z.object({
   caste: z.string().nullable().optional().or(z.literal("")),
   caste_in_guj: z.string().nullable().optional().or(z.literal("")),
 
-  category: z
-    .enum(["ST", "SC", "OBC", "OPEN"], {
-      errorMap: () => ({ message: "Category must be ST, SC, OBC, or OPEN" }),
-    })
-    .nullable(),
+  category: z.string().nullable().optional().or(z.literal("")),
 
   // Address Details
   address: z.string().nullable().optional().or(z.literal("")),
@@ -403,11 +399,7 @@ export const StudentSchemaForUploadData = z.object({
     .string()
     .min(2, "Caste in Gujarati is required")
     .nullable(),
-  Category: z
-    .enum(["ST", "SC", "OBC", "OPEN"], {
-      errorMap: () => ({ message: "Category must be ST, SC, OBC, or OPEN" }),
-    })
-    .nullable(),
+  Category: z.string().nullable().optional().or(z.literal("")),
   Address: z.string().min(5, "Address is required").nullable(),
   District: z
     .string()

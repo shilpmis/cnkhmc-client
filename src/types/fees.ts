@@ -175,7 +175,10 @@ export interface StudentWithFeeStatus {
   middle_name: string;
   last_name: string;
   gr_no: number;
-  roll_number: number;
+  first_year_roll_number: number | null;
+  second_year_roll_number: number | null;
+  third_year_roll_number: number | null;
+  fourth_year_roll_number: number | null;
   fees_status: FeeStatus;
 }
 
@@ -286,7 +289,10 @@ export interface StudentFeeDetails {
     middle_name: string;
     last_name: string;
     gr_no: number;
-    roll_number: number;
+    first_year_roll_number: number | null;
+    second_year_roll_number: number | null;
+    third_year_roll_number: number | null;
+    fourth_year_roll_number: number | null;
     class_id: number;
     fees_status: FeeStatus & { id: number };
     provided_concession: AppliedConcessioinToStudent[];

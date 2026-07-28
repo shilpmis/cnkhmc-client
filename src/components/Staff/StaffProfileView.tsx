@@ -165,6 +165,7 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
           <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
           <TabsTrigger value="professional">{t("professional")}</TabsTrigger>
           <TabsTrigger value="personal">{t("personal_details")}</TabsTrigger>
+          <TabsTrigger value="experience">Experience</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -491,6 +492,51 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        {/* Experience Tab */}
+        <TabsContent value="experience" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="pb-4 border-b">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-primary" />
+                Experience History
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {staff.staff_experiences && staff.staff_experiences.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 font-medium rounded-tl-md">Post Held</th>
+                        <th className="px-4 py-3 font-medium">From</th>
+                        <th className="px-4 py-3 font-medium">To</th>
+                        <th className="px-4 py-3 font-medium">Department</th>
+                        <th className="px-4 py-3 font-medium">Institute Name</th>
+                        <th className="px-4 py-3 font-medium rounded-tr-md">Appointment Regulation</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {staff.staff_experiences.map((exp) => (
+                        <tr key={exp.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3 font-medium text-foreground">{exp.post_name}</td>
+                          <td className="px-4 py-3">{formatDate(exp.from_date as string)}</td>
+                          <td className="px-4 py-3">{formatDate(exp.to_date as string)}</td>
+                          <td className="px-4 py-3">{exp.department}</td>
+                          <td className="px-4 py-3">{exp.institute_name}</td>
+                          <td className="px-4 py-3">{exp.appointment_regulation}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No experience history available.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

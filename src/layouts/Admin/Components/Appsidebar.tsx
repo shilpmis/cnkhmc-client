@@ -31,6 +31,7 @@ import {
   Building2,
   LayoutDashboard,
   MessageSquare,
+  Package,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { Permission, UserRole } from "@/types/user"
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectAuthState, selectCurrentSchool } from "@/redux/slices/authSlice"
+import { Can } from "@/contexts/AbilityContext"
 
 interface SidebarItem {
   title: string
@@ -86,6 +88,7 @@ const SideBarItems: SidebarItem[] = [
   { title: "payments", url: "/d/pay-fees", icon: IndianRupee, requiredPermission: Permission.PAY_FEES },
   { title: "manage_fees", url: "/d/fee", icon: IndianRupee, requiredPermission: Permission.MANAGE_FEES },
   { title: "admissions", url: "/d/admissions", icon: ClipboardList, requiredPermission: Permission.MANAGE_ADMISSION },
+  { title: "hostel_management", url: "/d/hostels", icon: Building2, requiredPermission: Permission.MANAGE_HOSTEL },
   { title: "timetable", url: "/d/timetable", icon: Calendar, requiredPermission: Permission.MANAGE_TIMETABLE },
   { title: "lesson_plans", url: "/d/curriculum", icon: FileText, requiredPermission: Permission.MANAGE_LESSON_PLAN },
 ]
@@ -101,6 +104,15 @@ const PayrollItems = {
     { title: "pay_run", url: "/d/payroll/payrun", icon: Calendar },
     // { title: "salary_components", url: "/d/payroll/salary-components", icon: FileText },
     // { title: "salary_templates", url: "/d/payroll/salary-templates", icon: CreditCard },
+  ],
+}
+
+const InventoryItems = {
+  title: "Inventory (Dead Stock)",
+  icon: Package,
+  subItems: [
+    { title: "Dead Stock Register", url: "/d/inventory/dead-stock", icon: ClipboardList },
+    { title: "Departments", url: "/d/inventory/departments", icon: Building2 },
   ],
 }
 
@@ -276,6 +288,47 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
                   )}
                 </SidebarMenuItem>
               )}
+
+              {/* Inventory Accordion */}
+              <Can I="read" a="DeadStock">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => {}} // Could add state for expanded/collapsed
+                    className={cn(
+                      (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "bg-orange-100 text-orange-700 font-medium",
+                      (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "hover:bg-orange-200 hover:text-orange-800",
+                    )}
+                    isActive={(isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url))}
+                  >
+                    <InventoryItems.icon className={cn("mr-2", (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "text-orange-700")} />
+                    <span>{t(InventoryItems.title)}</span>
+                    <ChevronDown className={cn("ml-auto h-4 w-4", (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "text-orange-700")} />
+                  </SidebarMenuButton>
+
+                  <SidebarMenuSub>
+                    {InventoryItems.subItems.map((subItem) => {
+                      const subActive = isActive(subItem.url)
+                      return (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={subActive}
+                            className={cn(
+                              subActive && "bg-orange-100 text-orange-700 font-medium",
+                              subActive && "hover:bg-orange-200 hover:text-orange-800",
+                            )}
+                          >
+                            <Link to={subItem.url}>
+                              <subItem.icon className={cn("mr-2", subActive && "text-orange-700")} />
+                              <span>{t(subItem.title)}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
+                    })}
+                  </SidebarMenuSub>
+                </SidebarMenuItem>
+              </Can>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -287,18 +340,8 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {SideBarFooter.map((item: SidebarItem) => {
-                  if (hasRole(UserRole.SUPER_ADMIN) || hasRole(UserRole.DEVELOPER)) {
-                    // Show all footer items to super admin
-                  } else {
-                    if (item.requiredPermission && !hasPermission(item.requiredPermission)) {
-                      return null
-                    }
-                    if (item.requiredRole && !hasRole(item.requiredRole)) {
-                      return null
-                    }
-                  }
                   const active = isActive(item.url)
-                  return (
+                  const content = (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
@@ -315,6 +358,20 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
+                  if (item.title === "settings") {
+                    return <Can I="read" a="SystemSettings" key={item.title}>{content}</Can>
+                  }
+                  if (hasRole(UserRole.SUPER_ADMIN) || hasRole(UserRole.DEVELOPER)) {
+                    // Show all footer items to super admin
+                  } else {
+                    if (item.requiredPermission && !hasPermission(item.requiredPermission)) {
+                      return null
+                    }
+                    if (item.requiredRole && !hasRole(item.requiredRole)) {
+                      return null
+                    }
+                  }
+                  return content
                 })}
               </SidebarMenu>
             </SidebarGroupContent>

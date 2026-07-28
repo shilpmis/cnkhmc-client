@@ -1339,8 +1339,8 @@ const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ classId }
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredStudents.map((student) => (
-                          <TableRow key={student.student_id}>
+                        {filteredStudents.map((student, index) => (
+                          <TableRow key={`${student.student_id}-${index}`}>
                             {/* {isUpdateMode && (
                               <TableCell>
                                 <Checkbox
@@ -1383,9 +1383,9 @@ const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ classId }
                   {/* Card View */}
                   <TabsContent value="cards">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredStudents.map((student) => (
+                      {filteredStudents.map((student, index) => (
                         <Card
-                          key={student.student_id}
+                          key={`${student.student_id}-${index}`}
                           className={`
                           border-l-4 
                           ${student.status === "present" ? "border-l-green-500" : ""} 

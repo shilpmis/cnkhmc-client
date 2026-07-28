@@ -15,7 +15,7 @@ import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 
 interface LogLectureDialogProps {
   isOpen: boolean
@@ -30,6 +30,7 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
   const { t } = useTranslation()
   const { toast } = useToast()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentUser = useAppSelector(selectCurrentUser)
   
   const [logData, setLogData] = useState({
     topicCovered: "",
@@ -55,7 +56,8 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
           flat.push({
             ...sub,
             topicName: topic.name,
-            topicId: topic.id
+            topicId: topic.id,
+            assignedStaffIds: sub.assignedStaffIds || sub.assigned_staff_ids || topic.assignedStaffIds || topic.assigned_staff_ids
           })
         })
       } else {
@@ -69,12 +71,24 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
           competency: "-",
           outcome: "-",
           lessonPlanNumber: topic.lessonPlanNumber || topic.lesson_plan_number || "-",
-          requiredHours: topic.requiredHours || topic.required_hours || 0
+          requiredHours: topic.requiredHours || topic.required_hours || 0,
+          assignedStaffIds: topic.assignedStaffIds || topic.assigned_staff_ids
         })
       }
     })
+
+    const teacherStaffId = currentUser?.staff?.id || (currentUser as any)?.staff_id
+    if (teacherStaffId) {
+      const teacherAssignedTopics = flat.filter((item: any) => 
+        item.assignedStaffIds && Array.isArray(item.assignedStaffIds) && item.assignedStaffIds.map(Number).includes(Number(teacherStaffId))
+      )
+      if (teacherAssignedTopics.length > 0) {
+        return teacherAssignedTopics.sort((a, b) => (a.order || 0) - (b.order || 0))
+      }
+    }
+
     return flat.sort((a, b) => (a.order || 0) - (b.order || 0))
-  }, [lessonPlan])
+  }, [lessonPlan, currentUser])
 
   useEffect(() => {
     if (isOpen && period) {

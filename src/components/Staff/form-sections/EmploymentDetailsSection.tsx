@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react"
 import type { UseFormReturn } from "react-hook-form"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import { useGetDepartmentsQuery } from "@/services/DepartmentService"
+import { useAppSelector } from "@/redux/hooks/useAppSelector"
 
 interface EmploymentDetailsSectionProps {
   form: UseFormReturn<StaffFormData>
@@ -23,6 +25,8 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
   formType,
 }) => {
   const { t } = useTranslation()
+  const school_id = useAppSelector((state) => state.auth.user?.school_id)
+  const { data: departments, isLoading: isDepartmentsLoading } = useGetDepartmentsQuery({ school_id: school_id! }, { skip: !school_id })
 
   return (
     <Card>
@@ -30,6 +34,33 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
         <CardTitle>{t("employee_details")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <FormField
+          control={form.control}
+          name="department_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Department</FormLabel>
+              <Select 
+                onValueChange={(val) => field.onChange(val ? Number(val) : null)} 
+                value={field.value?.toString() || ""}
+              >
+                <FormControl>
+                  <SelectTrigger disabled={isDepartmentsLoading}>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {departments?.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="joining_date"

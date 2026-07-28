@@ -11,7 +11,7 @@ interface Organization {
     pincode: number,
     username: string,
     head_contact_number: number,
-    heade_name: string,
+    head_name: string,
     address: string,
     subscription_type: string,
 }
@@ -29,6 +29,7 @@ interface School {
     address: string,
     branch_code:string,
     city: string,
+    enrollment_number_format: string,
     created_at: Date,
     organization: Organization,
     academicSessions: any[]
@@ -40,7 +41,8 @@ interface TypeForUpdateSchoolData {
     subscription_type?: string,
     established_year?: string,
     school_type?: string,
-    address?: string
+    address?: string,
+    enrollment_number_format?: string
 }
 
 

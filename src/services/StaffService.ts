@@ -109,6 +109,13 @@ export const StaffApi = createApi({
       }),
     }),
 
+    deleteStaff: builder.mutation<{ message: string }, number>({
+      query: (staff_id) => ({
+        url: `staff/${staff_id}`,
+        method: "DELETE",
+      }),
+    }),
+
     bulkUploadStaff: builder.mutation<
       { message: string; totalInserted: number },
       { academic_session: number; type: "teaching" | "non-teaching"; file: File }
@@ -118,6 +125,20 @@ export const StaffApi = createApi({
         formData.append("file", file)
         return {
           url: `staff/bulk-upload?academic_sessions=${academic_session}&staff-type=${type}`,
+          method: "POST",
+          body: formData,
+        }
+      },
+    }),
+    uploadStaffExperience: builder.mutation<
+      { message: string; processed_count: number; unmatched_staff: string[] },
+      { file: File }
+    >({
+      query: ({ file }) => {
+        const formData = new FormData()
+        formData.append("file", file)
+        return {
+          url: `staff/experience/upload`,
           method: "POST",
           body: formData,
         }
@@ -176,12 +197,15 @@ export const {
   useLazySearchStaffQuery,
   useGetStaffByIdQuery,
   useLazyGetStaffByIdQuery,
+  useGetAllTeachingStaffQuery,
   useLazyGetAllTeachingStaffQuery,
   useGetStaffConfigurationsQuery,
   useLazyGetStaffConfigurationsQuery,
   useCreateStaffConfigurationMutation,
   useUpdateStaffConfigurationMutation,
   useDeleteStaffConfigurationMutation,
+  useUploadStaffExperienceMutation,
+  useDeleteStaffMutation,
 } = StaffApi
 
 export const createStaffRole = createAsyncThunk(

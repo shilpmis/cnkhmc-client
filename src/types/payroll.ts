@@ -177,3 +177,17 @@ export interface TypeForUpdateStaffPayRun {
     | "cancelled"
     | "on_hold";
 }
+
+export interface PayrollSettings {
+  id: number;
+  school_id: number;
+  lop_calculation_base: "Gross Salary" | "Basic Salary";
+  lop_days_denominator: "Actual Days in Month" | "Fixed 30 Days";
+  epf_employee_percentage: number;
+  epf_employer_percentage: number;
+  esi_employee_percentage: number;
+  esi_employer_percentage: number;
+  tax_slabs: any;
+  created_at: string;
+  updated_at: string;
+}

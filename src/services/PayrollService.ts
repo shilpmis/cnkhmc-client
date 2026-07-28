@@ -10,6 +10,7 @@ import {
   StaffSalaryTemplate,
   TypeForCreateSalaryTemplateForrStaff,
   TypeForUpdateStaffPayRun,
+  PayrollSettings,
 } from "@/types/payroll";
 import { PageMeta } from "@/types/global";
 
@@ -194,10 +195,10 @@ export const PayrollApi = createApi({
 
     indexStaffWithPayroll: builder.query<
       { data: StaffEnrollmentForPayroll[]; meta: PageMeta },
-      { month: string; year: string }
+      { month: string; year: string; page?: number; limit?: number }
     >({
-      query: ({ month, year }) => ({
-        url: `/payroll/staff?period=${year}-${month}`,
+      query: ({ month, year, page = 1, limit = 1000 }) => ({
+        url: `/payroll/staff?period=${year}-${month}&page=${page}&limit=${limit}`,
         method: "GET",
       }),
     }),
@@ -225,6 +226,24 @@ export const PayrollApi = createApi({
     >({
       query: ({ payload, staff_id, payrun_template_id }) => ({
         url: `/payroll/payrun/${staff_id}/${payrun_template_id}`,
+        method: "PUT",
+        body: payload,
+      }),
+    }),
+
+    fetchPayrollSettings: builder.query<PayrollSettings, void>({
+      query: () => ({
+        url: `/payroll/settings`,
+        method: "GET",
+      }),
+    }),
+
+    updatePayrollSettings: builder.mutation<
+      PayrollSettings,
+      Partial<PayrollSettings>
+    >({
+      query: (payload) => ({
+        url: `/payroll/settings`,
         method: "PUT",
         body: payload,
       }),
@@ -259,4 +278,7 @@ export const {
 
   useCreateDraftForStaffPayrollMutation,
   useUpdateDraftForStaffPayrollMutation,
+  
+  useFetchPayrollSettingsQuery,
+  useUpdatePayrollSettingsMutation,
 } = PayrollApi;

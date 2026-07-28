@@ -25,6 +25,7 @@ import {
   Building,
   Users,
 } from "lucide-react"
+import { useIndexStaffWithPayrollQuery } from "@/services/PayrollService"
 
 // Mock data types
 interface Employee {
@@ -33,131 +34,10 @@ interface Employee {
   code: string
   role: string
   department: string
-  payrollStatus: "Active" | "Inactive" | "Pending"
+  payrollStatus: string
   joiningDate: string
   salary: number
 }
-
-// Mock data for employees
-const mockEmployees: Employee[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    code: "EMP001",
-    role: "Teacher",
-    department: "Science",
-    payrollStatus: "Active",
-    joiningDate: "2022-06-15",
-    salary: 45000,
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    code: "EMP002",
-    role: "Head Teacher",
-    department: "Mathematics",
-    payrollStatus: "Active",
-    joiningDate: "2021-08-10",
-    salary: 65000,
-  },
-  {
-    id: 3,
-    name: "Robert Johnson",
-    code: "EMP003",
-    role: "Administrator",
-    department: "Administration",
-    payrollStatus: "Active",
-    joiningDate: "2020-03-22",
-    salary: 75000,
-  },
-  {
-    id: 4,
-    name: "Emily Davis",
-    code: "EMP004",
-    role: "Teacher",
-    department: "English",
-    payrollStatus: "Inactive",
-    joiningDate: "2022-01-05",
-    salary: 42000,
-  },
-  {
-    id: 5,
-    name: "Michael Wilson",
-    code: "EMP005",
-    role: "Librarian",
-    department: "Library",
-    payrollStatus: "Active",
-    joiningDate: "2021-11-18",
-    salary: 38000,
-  },
-  {
-    id: 6,
-    name: "Sarah Brown",
-    code: "EMP006",
-    role: "Teacher",
-    department: "Arts",
-    payrollStatus: "Pending",
-    joiningDate: "2023-01-10",
-    salary: 41000,
-  },
-  {
-    id: 7,
-    name: "David Miller",
-    code: "EMP007",
-    role: "Peon",
-    department: "Maintenance",
-    payrollStatus: "Active",
-    joiningDate: "2022-09-01",
-    salary: 22000,
-  },
-  {
-    id: 8,
-    name: "Jennifer Taylor",
-    code: "EMP008",
-    role: "Teacher",
-    department: "Physical Education",
-    payrollStatus: "Active",
-    joiningDate: "2021-07-15",
-    salary: 43000,
-  },
-  {
-    id: 9,
-    name: "James Anderson",
-    code: "EMP009",
-    role: "Accountant",
-    department: "Finance",
-    payrollStatus: "Active",
-    joiningDate: "2020-12-01",
-    salary: 58000,
-  },
-  {
-    id: 10,
-    name: "Patricia Thomas",
-    code: "EMP010",
-    role: "Counselor",
-    department: "Student Affairs",
-    payrollStatus: "Inactive",
-    joiningDate: "2022-04-20",
-    salary: 48000,
-  },
-]
-
-// Mock data for departments and roles
-const departments = [
-  "All Departments",
-  "Science",
-  "Mathematics",
-  "English",
-  "Arts",
-  "Physical Education",
-  "Administration",
-  "Finance",
-  "Library",
-  "Maintenance",
-  "Student Affairs",
-]
-const roles = ["All Roles", "Teacher", "Head Teacher", "Administrator", "Librarian", "Peon", "Accountant", "Counselor"]
-const statuses = ["All Statuses", "Active", "Inactive", "Pending"]
 
 const EmployeePayrollDashboard = () => {
   const { t } = useTranslation()
@@ -169,9 +49,43 @@ const EmployeePayrollDashboard = () => {
   const [selectedRole, setSelectedRole] = useState("All Roles")
   const [selectedStatus, setSelectedStatus] = useState("All Statuses")
   const [currentPage, setCurrentPage] = useState(1)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
+
+  const currentDate = new Date()
+  const month = (currentDate.getMonth() + 1).toString().padStart(2, "0")
+  const year = currentDate.getFullYear().toString()
+
+  const { data: payrollData, isLoading, isFetching, refetch } = useIndexStaffWithPayrollQuery({
+    month,
+    year,
+  })
+
+  const staffData = payrollData?.data || []
+
+  const mockEmployees: Employee[] = staffData.map((enrollment) => {
+    const staff = enrollment.staff || {}
+    const fullName = `${staff.first_name || ""} ${staff.middle_name || ""} ${staff.last_name || ""}`.trim()
+    const payRun = enrollment.pay_runs?.[0]
+    
+    return {
+      id: enrollment.staff_id,
+      name: fullName || "N/A",
+      code: staff.employee_code || "N/A",
+      role: staff.role || "N/A",
+      department: "General", // Placeholder if department is not available
+      payrollStatus: payRun?.status ? (payRun.status.charAt(0).toUpperCase() + payRun.status.slice(1)) : "Pending",
+      joiningDate: staff.joining_date ? staff.joining_date.toString() : new Date().toISOString(),
+      salary: enrollment.staff_salary_templates?.annual_ctc ? Number(enrollment.staff_salary_templates.annual_ctc) : 0,
+    } as Employee
+  })
+
+  const departments = ["All Departments", ...Array.from(new Set(mockEmployees.map((e) => e.department)))].filter(Boolean)
+  const roles = ["All Roles", ...Array.from(new Set(mockEmployees.map((e) => e.role)))].filter(Boolean)
+  const statuses = ["All Statuses", ...Array.from(new Set(mockEmployees.map((e) => e.payrollStatus)))].filter(Boolean)
+  
+  const totalPayroll = mockEmployees.reduce((sum, emp) => sum + (emp.salary || 0), 0)
+
+  const isRefreshing = isFetching
 
   // State for sorting
   const [sortConfig, setSortConfig] = useState<{
@@ -186,25 +100,13 @@ const EmployeePayrollDashboard = () => {
   const itemsPerPage = 8
   const totalPages = Math.ceil(mockEmployees.length / itemsPerPage)
 
-  // Load data with simulated delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   // Handle refresh
   const handleRefresh = () => {
-    setIsRefreshing(true)
-    setTimeout(() => {
-      setIsRefreshing(false)
-      toast({
-        title: "Data refreshed",
-        description: "Employee payroll data has been updated",
-      })
-    }, 1000)
+    refetch()
+    toast({
+      title: "Data refreshed",
+      description: "Employee payroll data has been updated",
+    })
   }
 
   // Handle sorting
@@ -313,7 +215,7 @@ const EmployeePayrollDashboard = () => {
             <Download className="mr-2 h-4 w-4" />
             {t("export")}
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => navigate("/d/staff")}>
             <UserPlus className="mr-2 h-4 w-4" />
             {t("add_employee")}
           </Button>
@@ -339,7 +241,7 @@ const EmployeePayrollDashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹4,77,000</div>
+            <div className="text-2xl font-bold">₹{totalPayroll.toLocaleString("en-IN")}</div>
             <p className="text-xs text-muted-foreground">{t("for_current_month")}</p>
           </CardContent>
         </Card>

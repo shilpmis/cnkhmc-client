@@ -128,11 +128,14 @@ export default function Header() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Left Section - Logo and School Name */}
-            <div className="flex items-center gap-3">
-              <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
-              <div className="hidden md:flex items-center">
+            <div className="flex items-center gap-3 min-w-0">
+              <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors shrink-0" />
+              <div className="hidden md:flex items-center min-w-0">
                 {/* <School className="h-5 w-5 text-primary mr-2" /> */}
-                <h1 className="text-lg font-medium">
+                <h1 
+                  className="text-lg font-medium truncate max-w-[150px] lg:max-w-[250px] xl:max-w-[400px]"
+                  title={users?.school?.name || "Saral School Management"}
+                >
                   {users?.school?.name || "Saral School Management"}
                 </h1>
               </div>

@@ -177,26 +177,20 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
             <img
               src="/melzo_logo.png"
               alt="Product logo"
-              width={70}
-              height={70}
-              className="rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500"
+              className="w-[70px] h-[70px] rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500 object-contain bg-white"
             />
           ) : (
             <>
               <img
                 src="/melzo_logo.png"
                 alt="Product logo"
-                width={70}
-                height={60}
-                className="rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500"
+                className="w-[70px] h-[70px] rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500 object-contain bg-white"
               />
               <div className="h-16 w-[2px] bg-black mx-2"></div>
               <img
-                src={schoolState?.school_logo || "/default_school_logo.png"}
+                src={schoolState?.school_logo || "/college-logo.jpeg"}
                 alt="School Logo"
-                width={70}
-                height={60}
-                className="rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500"
+                className="w-[70px] h-[70px] rounded-full border-2 border-black p-1 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:ring-2 hover:ring-orange-500 object-contain bg-white"
               />
             </>
           )}

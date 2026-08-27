@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { RotateCcw, Save, Trash2, Plus, Loader2, AlertCircle, Beaker, Dumbbell, Calendar, Info } from "lucide-react"
+import { RotateCcw, Save, Trash2, Plus, Loader2, AlertCircle, Beaker, Dumbbell, Calendar, Info, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { parseBackendError } from "@/lib/errorParser"
@@ -883,7 +883,7 @@ export default function TimetableGenerator({
                                           <Beaker className="h-3 w-3" />
                                           {labField.value && (
                                             <span className="truncate max-w-[80px]">
-                                              {getLabOptions().find(o => o.value === labField.value.toString())?.label}
+                                              {getLabOptions().find(o => o.value === labField.value?.toString())?.label}
                                             </span>
                                           )}
                                         </div>

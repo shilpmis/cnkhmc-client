@@ -9,10 +9,16 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Tag } from "lucide-react"
-import { concessionSchema, type ConcessionFormData } from "@/utils/fees.validation"
-// import { useApplyFeeConcessionMutation } from "@/services/FeesService"
+import * as z from "zod"
 import { toast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+
+const applyConcessionSchema = z.object({
+  amount: z.number().min(1, "Amount must be at least 1"),
+  reason: z.string().min(5, "Reason must be at least 5 characters"),
+})
+
+type ApplyConcessionFormData = z.infer<typeof applyConcessionSchema>
 
 interface ConcessionDialogProps {
   isOpen: boolean
@@ -26,8 +32,8 @@ const ConcessionDialog: React.FC<ConcessionDialogProps> = ({ isOpen, onClose, st
 
   const {t} = useTranslation()
 
-  const form = useForm<ConcessionFormData>({
-    resolver: zodResolver(concessionSchema),
+  const form = useForm<ApplyConcessionFormData>({
+    resolver: zodResolver(applyConcessionSchema),
     defaultValues: {
       amount: 0,
       reason: "",
@@ -43,7 +49,7 @@ const ConcessionDialog: React.FC<ConcessionDialogProps> = ({ isOpen, onClose, st
   }
 
   // Handle form submission
-  const handleSubmit = async (values: ConcessionFormData) => {
+  const handleSubmit = async (values: ApplyConcessionFormData) => {
     if (values.amount > maxAmount) {
       toast({
         variant: "destructive",

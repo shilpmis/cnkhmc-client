@@ -2,8 +2,6 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { PageMeta } from "@/types/global";
 import baseUrl from "@/utils/base-urls";
 import { ReqBodyForOnBoardingStudent, StudentEnrollment, StudentEntry } from "@/types/student";
-import { E } from "framer-motion/dist/types.d-DDSxwf0n";
-import { number } from "framer-motion";
 
 // Define the Inquiry type based on the API response
 export interface Inquiry {

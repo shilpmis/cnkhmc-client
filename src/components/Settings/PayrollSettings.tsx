@@ -56,20 +56,29 @@ export default function PayrollSettings() {
   useEffect(() => {
     if (settings) {
       form.reset({
-        lopCalculationBase: settings.lopCalculationBase || 'Gross Salary',
-        lopDaysDenominator: settings.lopDaysDenominator || 'Actual Days in Month',
-        epfEmployeePercentage: settings.epfEmployeePercentage || 12.0,
-        epfEmployerPercentage: settings.epfEmployerPercentage || 12.0,
-        esiEmployeePercentage: settings.esiEmployeePercentage || 0.75,
-        esiEmployerPercentage: settings.esiEmployerPercentage || 3.25,
-        taxSlabs: settings.taxSlabs || [],
+        lopCalculationBase: settings.lop_calculation_base || 'Gross Salary',
+        lopDaysDenominator: settings.lop_days_denominator || 'Actual Days in Month',
+        epfEmployeePercentage: settings.epf_employee_percentage || 12.0,
+        epfEmployerPercentage: settings.epf_employer_percentage || 12.0,
+        esiEmployeePercentage: settings.esi_employee_percentage || 0.75,
+        esiEmployerPercentage: settings.esi_employer_percentage || 3.25,
+        taxSlabs: settings.tax_slabs || [],
       });
     }
   }, [settings, form]);
 
   const onSubmit = async (values: PayrollSettingsFormValues) => {
     try {
-      await updateSettings(values).unwrap();
+      const payload: any = {
+        lop_calculation_base: values.lopCalculationBase,
+        lop_days_denominator: values.lopDaysDenominator,
+        epf_employee_percentage: values.epfEmployeePercentage,
+        epf_employer_percentage: values.epfEmployerPercentage,
+        esi_employee_percentage: values.esiEmployeePercentage,
+        esi_employer_percentage: values.esiEmployerPercentage,
+        tax_slabs: values.taxSlabs,
+      };
+      await updateSettings(payload).unwrap();
       toast({
         title: t('success'),
         description: t('payroll_settings_updated_successfully'),

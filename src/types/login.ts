@@ -2,7 +2,8 @@ import { StaffType } from "./staff";
 import { School } from "./user";
 
 export interface LoginCredentials {
-  username: string;
+  username?: string;
+  email?: string;
   password: string;
 }
 

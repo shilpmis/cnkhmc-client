@@ -1,4 +1,3 @@
-import { S } from "framer-motion/dist/types.d-DDSxwf0n";
 import { AcademicClasses } from "./academic";
 import { Student } from "./student";
 

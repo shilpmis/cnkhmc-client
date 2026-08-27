@@ -92,7 +92,7 @@ export interface PeriodsConfig {
     lab_id : number | null
     is_pt : boolean
     is_free_period : boolean
-    batch_name: string | null;
+    batch_name?: string | null;
 }
 
 
@@ -109,7 +109,7 @@ export interface TypeForCretePeriodsConfigForADay {
         lab_id : number | null
         is_pt : boolean
         is_free_period : boolean
-        batch_name: string | null;
+        batch_name?: string | null;
     }[]
 }
 

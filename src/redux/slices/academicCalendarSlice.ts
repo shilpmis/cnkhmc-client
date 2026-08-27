@@ -25,9 +25,10 @@ function safeParseState(raw: string | null): AcademicCalendarState | null {
     // Support database representations like 1, 0, "true", "false", or boolean true/false
     let isSaturdayWorking = true
     if (parsed.isSaturdayWorking !== undefined && parsed.isSaturdayWorking !== null) {
-      isSaturdayWorking = parsed.isSaturdayWorking === true || 
-                          parsed.isSaturdayWorking === 1 || 
-                          parsed.isSaturdayWorking === "true"
+      const rawVal: any = parsed.isSaturdayWorking
+      isSaturdayWorking = rawVal === true || 
+                          rawVal === 1 || 
+                          rawVal === "true"
     }
     
     return { nonWorkingDates, isSaturdayWorking }

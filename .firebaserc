@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "mlz-saral"
-  }
+  },
+  "targets": {
+    "mlz-saral": {
+      "hosting": {
+        "test": [
+          "test-saral-university"
+        ],
+        "prod": [
+          "saral-university"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

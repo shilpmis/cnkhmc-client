@@ -1,87 +1,80 @@
 export function generateTeachingStaffCSV(): string {
-  // Define the CSV header row
   const headers = [
-    "first_name",
-    "middle_name",
-    "last_name",
-    "gender",
-    "phone_number",
-    "role",
-    "employment_status",
+    "Sr.","Employee ID","Title","Name","Short Name","DOB","Current Address","Permenant Address",
+    "District","State","Pin code No.","Mobile No.","Category","Religion","Minority","Nationality",
+    "Gender","Maritial Status","Child","E-Mail","Designation","Type Of Staff","Staff Category",
+    "Department","Nature of appointment","Designation on the DOA","Date Of Appointment","DOJ",
+    "Date Of Promotion","Experience till Date","Blood Group","Qualification","Registration Authority",
+    "Registration Number","Registration Date","Name Of Council","Ayush Teachers Code","MD Subject Name",
+    "Qulification College","Qulification University","Date of Passing","Bank Account No.","Bank IFSC Code",
+    "Bank Name","Branch Address/Number/email","Aadhar Card","Pan Card","Voter Id Number",
+    "Uni. Approval Date","Uni. Approval Number","Driving Licence","Driving license expiry date",
+    "EPF A/C No.","UAN No.","Employee Status"
   ].join(",")
 
-  // Add a sample row with example data
   const sampleRow = [
-    "John",
-    "Monk",
-    "Doe",
-    "Male",
-    "9876543210",
-    "Principal",
-    "Permanent",
+    "1", "EMP001", "Mr.", "John M Doe", "JD", "1985-06-15", "123 Main Street", "123 Main Street",
+    "Ahmedabad", "Gujarat", "380001", "9876543210", "OPEN", "Hindu", "No", "Indian",
+    "Male", "Married", "2", "john.doe@example.com", "Principal", "Teaching", "Full Time",
+    "Mathematics", "Permanent", "Teacher", "2020-05-01", "2020-06-01",
+    "", "10", "O+", "B.Ed", "State Council",
+    "REG123", "2010-01-01", "Medical Council", "AYUSH123", "Anatomy",
+    "ABC College", "XYZ University", "2010-05-01", "12345678901234", "SBIN0001234",
+    "State Bank of India", "Main Branch", "123456789012", "ABCDE1234F", "VOT1234567",
+    "2020-04-15", "UNI123", "DL123456", "2030-01-01",
+    "EPF123", "UAN123", "Permanent"
   ].join(",")
 
-  // Add an empty row for the user to fill
   const emptyRow = Array(headers.split(",").length).fill("").join(",")
-
-  // Combine all rows
-  return `${headers}\n${sampleRow}`
+  return `${headers}\n${sampleRow}\n${emptyRow}`
 }
 
 export function generateNonTeachingStaffCSV(): string {
-  // Define the CSV header row
   const headers = [
-    "first_name",
-    "middle_name",
-    "last_name",
-    "gender",
-    "phone_number",
-    "role",
-    "employment_status",
+    "Sr.","Employee ID","Title","Name","Short Name","DOB","Current Address","Permenant Address",
+    "District","State","Pin code No.","Mobile No.","Category","Religion","Minority","Nationality",
+    "Gender","Maritial Status","Child","E-Mail","Designation","Type Of Staff","Staff Category",
+    "Department","Nature of appointment","Designation on the DOA","Date Of Appointment","DOJ",
+    "Date Of Promotion","Experience till Date","Blood Group","Qualification","Registration Authority",
+    "Registration Number","Registration Date","Name Of Council","Ayush Teachers Code","MD Subject Name",
+    "Qulification College","Qulification University","Date of Passing","Bank Account No.","Bank IFSC Code",
+    "Bank Name","Branch Address/Number/email","Aadhar Card","Pan Card","Voter Id Number",
+    "Uni. Approval Date","Uni. Approval Number","Driving Licence","Driving license expiry date",
+    "EPF A/C No.","UAN No.","Employee Status"
   ].join(",")
 
-  // Add a sample row with example data
   const sampleRow = [
-    "Jane",
-    "Allu",
-    "Smith",
-    "Female",
-    "9876543210",
-    "Clerk",
-    "Permanent",
+    "2", "EMP002", "Mrs.", "Jane A Smith", "JS", "1990-03-25", "456 Park Avenue", "456 Park Avenue",
+    "Ahmedabad", "Gujarat", "380001", "9876543210", "OPEN", "Hindu", "No", "Indian",
+    "Female", "Married", "1", "jane.smith@example.com", "Clerk", "Non-Teaching", "Full Time",
+    "Administration", "Permanent", "Clerk", "2019-07-01", "2019-08-15",
+    "", "5", "A+", "B.Com", "",
+    "", "", "", "", "",
+    "", "", "", "98765432109876", "BARB0AHMEDX",
+    "Bank of Baroda", "City Branch", "123456789012", "ABCDE1234F", "VOT1234567",
+    "", "", "", "",
+    "", "", "Permanent"
   ].join(",")
 
-  // Add an empty row for the user to fill
   const emptyRow = Array(headers.split(",").length).fill("").join(",")
-
-  // Combine all rows
-  return `${headers}\n${sampleRow}`
+  return `${headers}\n${sampleRow}\n${emptyRow}`
 }
 
 export function downloadCSVTemplate(staffType: "teaching" | "non-teaching") {
-  // Generate the appropriate CSV content
   const csvContent = staffType === "teaching" ? generateTeachingStaffCSV() : generateNonTeachingStaffCSV()
 
-
   try {
-      // Create a Blob with the CSV content
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    
-      // Create a download link
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", `${staffType}-staff-template.csv`)
-    
-      // Append to the document, click, and clean up
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `${staffType}-staff-template.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   } catch (error) {
     console.error("Error downloading CSV template For Staff:", error);
     alert("Failed to download the CSV template. Please try again later.");
   }
 }
-

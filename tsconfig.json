@@ -9,11 +9,10 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "baseUrl": ".", // Sets the base directory for module resolution
         "paths": {
             "@/*": ["./src/*"] // Configures import alias for the src directory
         },
-        "types": ["node"],
+        "types": ["node", "vitest/globals"],
         "lib": ["dom", "esnext"]
     },
     "include": ["src/**/*"], // Includes all files in the src directory

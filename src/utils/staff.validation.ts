@@ -614,7 +614,7 @@ export const staffSchema = z
       }
     }
   })
-
-
-
 export type StaffFormData = z.infer<typeof staffSchema>;
+
+export const personalDetailsSchema = z.any();
+export const bankDetailsSchema = z.any();

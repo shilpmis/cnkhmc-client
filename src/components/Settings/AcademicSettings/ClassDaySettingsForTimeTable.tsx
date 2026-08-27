@@ -440,6 +440,7 @@ export default function ClassDaySettingsForTimeTable({
             break_durations: sourceConfig.break_durations,
             day_start_time: sourceConfig.day_start_time,
             day_end_time: sourceConfig.day_end_time,
+            is_working_day: sourceConfig.is_working_day,
           }
 
           if (targetConfig) {
@@ -554,6 +555,7 @@ export default function ClassDaySettingsForTimeTable({
             break_durations: sourceConfig.break_durations,
             day_start_time: sourceConfig.day_start_time,
             day_end_time: sourceConfig.day_end_time,
+            is_working_day: sourceConfig.is_working_day,
           }
 
           if (targetConfig) {

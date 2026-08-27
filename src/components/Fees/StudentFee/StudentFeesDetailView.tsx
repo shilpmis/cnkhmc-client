@@ -654,7 +654,7 @@ const StudentFeesDetailView: React.FC<StudentFeesPanelProps> = ({
             </div>
             <div class="summary-item">
               <span class="summary-label">${t("roll_number")}:</span>
-              <span class="summary-value">${studentData.roll_number}</span>
+              <span class="summary-value">${(studentData as any).roll_number}</span>
             </div>
             <div class="summary-item">
               <span class="summary-label">${t("fee_plan")}:</span>
@@ -1073,7 +1073,7 @@ const StudentFeesDetailView: React.FC<StudentFeesPanelProps> = ({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("roll_number")}</p>
-              <p className="text-lg font-semibold">{studentData.roll_number}</p>
+              <p className="text-lg font-semibold">{(studentData as any).roll_number}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">{t("fee_plan")}</p>

@@ -12,6 +12,7 @@ class DailyDiaryService {
     attendance?: string;
     topicIds?: number[];
     subtopicIds?: number[];
+    topicDurations?: Record<number, number>;
   }) {
     return ApiService.post('daily-diaries', data);
   }

@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { type User, UserStatus } from "@/types/user"
 
 interface OnboardUserFormProps {
-  onSubmit: (data: User) => void
-  initialData?: User
+  onSubmit: (data: any) => void
+  initialData?: any
 }
 
-const defaultUser: Omit<User, "id"> = {
+const defaultUser: any = {
   school_id: 0,
   name: "",
   username: "",
@@ -22,7 +22,7 @@ const defaultUser: Omit<User, "id"> = {
 }
 
 export const OnboardUserForm: React.FC<OnboardUserFormProps> = ({ onSubmit, initialData }) => {
-  const { register, handleSubmit, control } = useForm<User>({
+  const { register, handleSubmit, control } = useForm<any>({
     defaultValues: initialData || defaultUser,
   })
 

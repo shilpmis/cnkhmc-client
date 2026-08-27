@@ -11,8 +11,8 @@ const translations: Record<string, any> = {
 export const useTranslation = () => {
   const language = useSelector((state: RootState) => state.language.language);
 
-  const t = (key: string): string => {
-    return translations[language][key] || key;
+  const t = (key: string, defaultValue?: string): string => {
+    return translations[language][key] || defaultValue || key;
   };
 
   return { t };

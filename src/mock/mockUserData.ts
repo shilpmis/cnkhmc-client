@@ -1,6 +1,6 @@
 import type { User } from "../types/user"
 
-export const mockUsers: User[] = Array.from({ length: 20 }, (_, i) => ({
+export const mockUsers: any[] = Array.from({ length: 20 }, (_, i) => ({
   id: (i + 1).toString(),
   image: `/placeholder.svg?height=40&width=40`,
   name: `User ${i + 1}`,

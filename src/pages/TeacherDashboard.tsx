@@ -13,7 +13,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { useNavigate } from "react-router-dom"
-import { format } from "date-fns"
+import { format, startOfWeek, addDays } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import TeacherService from "@/services/TeacherService"
 import LessonPlanService from "@/services/LessonPlanService"
@@ -107,6 +107,25 @@ export default function TeacherDashboard() {
     { value: "fri", label: t("friday") },
     { value: "sat", label: t("saturday") },
   ]
+
+  const getActiveDateObj = () => {
+    const dayIndex = days.findIndex(d => d.value === activeDay)
+    const index = dayIndex !== -1 ? dayIndex : 0
+    const monday = startOfWeek(new Date(), { weekStartsOn: 1 })
+    return addDays(monday, index)
+  }
+
+  const getActiveDate = () => {
+    return format(getActiveDateObj(), 'EEEE, MMMM do')
+  }
+
+  const isFutureActiveDate = () => {
+    const activeDateObj = getActiveDateObj()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    activeDateObj.setHours(0, 0, 0, 0)
+    return activeDateObj.getTime() > today.getTime()
+  }
 
   useEffect(() => {
     if (currentAcademicSession) {
@@ -217,7 +236,7 @@ export default function TeacherDashboard() {
             {currentAcademicSession?.session_name}
           </Badge>
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 uppercase py-1.5 px-3">
-            {format(new Date(), 'EEEE, MMMM do')}
+            {getActiveDate()}
           </Badge>
         </div>
       </div>
@@ -281,11 +300,12 @@ export default function TeacherDashboard() {
                       {period.lab?.name || t("regular_classroom")}
                     </div>
                     <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                      className={`w-full text-white shadow-sm ${isFutureActiveDate() ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                       onClick={() => handleOpenLogDialog(period)}
+                      disabled={isFutureActiveDate()}
                     >
                       <ClipboardList className="h-4 w-4 mr-2" />
-                      {t("log_activity")}
+                      {isFutureActiveDate() ? t("Future Date") : t("log_activity")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -309,6 +329,7 @@ export default function TeacherDashboard() {
         period={selectedPeriod}
         subjectId={selectedPeriod?.period_config_subject?.subject_id}
         subjectName={selectedPeriod?.period_config_subject?.subject?.name}
+        date={format(getActiveDateObj(), 'yyyy-MM-dd')}
       />
 
       <Dialog open={isContactSupportOpen} onOpenChange={setIsContactSupportOpen}>

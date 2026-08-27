@@ -590,7 +590,7 @@ export default function StaffSettings() {
             </DialogHeader>
             <form onSubmit={handleConfigSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="config-name" required>Name</Label>
+                <Label htmlFor="config-name">Name <span className="text-red-500">*</span></Label>
                 <Input 
                   id="config-name" 
                   type="text" 
@@ -602,7 +602,7 @@ export default function StaffSettings() {
 
               {configDialogType === 'STAFF_CATEGORY' && (
                 <div className="space-y-2">
-                  <Label htmlFor="parent-type" required>Parent Staff Type</Label>
+                  <Label htmlFor="parent-type">Parent Staff Type <span className="text-red-500">*</span></Label>
                   <Select value={configParentId} onValueChange={setConfigParentId} required>
                     <SelectTrigger id="parent-type">
                       <SelectValue placeholder="Select Parent Staff Type" />
@@ -620,7 +620,7 @@ export default function StaffSettings() {
 
               {configDialogType === 'DESIGNATION' && (
                 <div className="space-y-2">
-                  <Label htmlFor="parent-category" required>Parent Category</Label>
+                  <Label htmlFor="parent-category">Parent Category <span className="text-red-500">*</span></Label>
                   <Select value={configParentId} onValueChange={setConfigParentId} required>
                     <SelectTrigger id="parent-category">
                       <SelectValue placeholder="Select Parent Category" />

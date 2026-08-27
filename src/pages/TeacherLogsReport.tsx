@@ -31,6 +31,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import DiaryLogPermissionsTab from "./DiaryLogPermissionsTab"
 
 export default function TeacherLogsReport() {
   const { t } = useTranslation()
@@ -265,8 +267,10 @@ export default function TeacherLogsReport() {
     }
   }
 
-  return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+  const isTeacher = user?.system_role === 'SCHOOL_TEACHER' || user?.system_role === 'HEAD_TEACHER'
+
+  const ReportContent = (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600 shadow-sm">
@@ -504,6 +508,27 @@ export default function TeacherLogsReport() {
           </ScrollArea>
         </CardContent>
       </Card>
+    </div>
+  )
+
+  if (isTeacher) {
+    return <div className="p-6 space-y-6 max-w-[1600px] mx-auto">{ReportContent}</div>
+  }
+
+  return (
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <Tabs defaultValue="report" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="report">{t("teacher_logs_report")}</TabsTrigger>
+          <TabsTrigger value="permissions">{t("log_permissions")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="report">
+          {ReportContent}
+        </TabsContent>
+        <TabsContent value="permissions">
+          <DiaryLogPermissionsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

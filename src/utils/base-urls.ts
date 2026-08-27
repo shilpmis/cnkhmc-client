@@ -7,7 +7,7 @@ const mode = __Mode__ || 'development';
 
 switch (mode) {
   case 'production':
-    serverBaseUrl = "http://localhost:3334/" // Replace with real production URL if needed
+    serverBaseUrl = "https://saral-university-server.melzo.com/" // Replace with real production URL if needed
     break;
 
   case 'development':

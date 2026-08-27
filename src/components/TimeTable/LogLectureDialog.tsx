@@ -23,10 +23,11 @@ interface LogLectureDialogProps {
   period: any
   subjectId?: number
   subjectName?: string
+  date?: string
   onSuccess?: () => void
 }
 
-export default function LogLectureDialog({ isOpen, onOpenChange, period, subjectId: propSubjectId, subjectName: propSubjectName, onSuccess }: LogLectureDialogProps) {
+export default function LogLectureDialog({ isOpen, onOpenChange, period, subjectId: propSubjectId, subjectName: propSubjectName, date, onSuccess }: LogLectureDialogProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -40,7 +41,8 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
     referenceBook: "",
     attendance: "",
     topicIds: [] as number[],
-    subtopicIds: [] as number[]
+    subtopicIds: [] as number[],
+    topicDurations: {} as Record<number, number | string>
   })
   const [lessonPlan, setLessonPlan] = useState<any>(null)
   const [isLoadingLessonPlan, setIsLoadingLessonPlan] = useState(false)
@@ -100,7 +102,8 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
         referenceBook: "",
         attendance: "",
         topicIds: [],
-        subtopicIds: []
+        subtopicIds: [],
+        topicDurations: {}
       })
       
       const sId = propSubjectId || period.period_config_subject?.subject_id || period.subjects_division_masters_id
@@ -171,10 +174,20 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
 
     try {
       setIsSubmitting(true)
+      const cleanDurations: Record<number, number> = {}
+      Object.entries(logData.topicDurations).forEach(([key, val]) => {
+        const numKey = Number(key)
+        const numVal = typeof val === "string" ? parseFloat(val) : val
+        if (!isNaN(numVal)) {
+          cleanDurations[numKey] = numVal
+        }
+      })
+
       await DailyDiaryService.logActivity({
         periodsConfigId: period.id,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        ...logData
+        date: date || format(new Date(), 'yyyy-MM-dd'),
+        ...logData,
+        topicDurations: cleanDurations
       })
       
       toast({
@@ -324,6 +337,52 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
               />
             </div>
             
+            {logData.topicIds.length > 0 && (
+              <div className="space-y-3 p-3 bg-blue-50/50 border border-blue-100 rounded-md">
+                <Label className="font-semibold text-sm text-blue-800">{t("hours_taught_per_topic")}</Label>
+                {logData.topicIds.map(topicId => {
+                  const topic = lessonPlan?.topics?.find((t: any) => t.id === topicId);
+                  const required = topic?.requiredHours || topic?.required_hours || 0;
+                  const completed = topic?.completedHours || topic?.completed_hours || 0;
+                  const maxAllowed = Math.max(0, required - completed);
+                  
+                  return (
+                    <div key={topicId} className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-700 truncate" title={topic?.name}>
+                          {topic?.name || `Topic ${topicId}`}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          {completed}h completed of {required}h
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max={maxAllowed}
+                          placeholder="Hrs"
+                          className="w-20 h-8 text-sm text-right"
+                          value={logData.topicDurations[topicId] || ""}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            setLogData({
+                              ...logData,
+                              topicDurations: {
+                                ...logData.topicDurations,
+                                [topicId]: isNaN(val) ? "" : val
+                              }
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="attendance" className="font-semibold text-sm">{t("attendance")}</Label>
               <Input

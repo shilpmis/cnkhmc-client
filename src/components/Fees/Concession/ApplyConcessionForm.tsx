@@ -1958,7 +1958,7 @@ export const ApplyConcessionForm: React.FC<ApplyConcessionFormProps> = ({
                                 </div>
                               </TableCell>
                               <TableCell>{student.gr_no}</TableCell>
-                              <TableCell>{student.roll_number}</TableCell>
+                              <TableCell>{(student as any).roll_number}</TableCell>
                               <TableCell>
                                 <Badge
                                   variant={

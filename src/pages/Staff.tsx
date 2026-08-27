@@ -332,23 +332,68 @@ export const Staff: React.FC = () => {
   const staffSchemaFoeBulkUpload = useMemo(() => {
     return z.object({
       first_name: z.string().min(1, "First Name is required"),
-      middle_name: z.string().min(3, "Middle Name is required").nullable().or(z.literal("")),
+      middle_name: z.string().min(1, "Middle Name is required").nullable().optional().or(z.literal("")),
       last_name: z.string().min(1, "Last Name is required"),
-      phone_number: z
-        .string()
-        .regex(/^\d{10}$/, "Phone number must be 10 digits")
-        .optional()
-        .or(z.literal("")),
-      gender: z
-        .enum(["Male", "Female", "Other"], {
-          errorMap: () => ({
-            message: "Gender must be Male, Female, or Other",
-          }),
-        })
-        .optional()
-        .or(z.literal("")),
-      employment_status: z.enum(["Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"]),
+      first_name_in_guj: z.string().nullable().optional().or(z.literal("")),
+      middle_name_in_guj: z.string().nullable().optional().or(z.literal("")),
+      last_name_in_guj: z.string().nullable().optional().or(z.literal("")),
+      employee_code: z.string().nullable().optional().or(z.literal("")),
+      short_name: z.string().nullable().optional().or(z.literal("")),
+      title: z.string().nullable().optional().or(z.literal("")),
+      gender: z.enum(["Male", "Female", "Other"]).optional().or(z.literal("")),
+      birth_date: z.string().nullable().optional().or(z.literal("")),
+      aadhar_no: z.string().regex(/^\d{12}$/, "Aadhar number must be 12 digits").optional().or(z.literal("")),
+      pan_card_no: z.string().nullable().optional().or(z.literal("")),
+      voter_id: z.string().nullable().optional().or(z.literal("")),
+      mobile_number: z.string().regex(/^\d{10}$/, "Mobile number must be 10 digits").optional().or(z.literal("")),
+      email: z.string().email("Invalid email").optional().or(z.literal("")),
       role: z.string().min(1, "Role is required"),
+      qualification: z.string().nullable().optional().or(z.literal("")),
+      subject_specialization: z.string().nullable().optional().or(z.literal("")),
+      department: z.string().nullable().optional().or(z.literal("")),
+      religion: z.string().nullable().optional().or(z.literal("")),
+      caste: z.string().nullable().optional().or(z.literal("")),
+      minority: z.string().nullable().optional().or(z.literal("")),
+      nationality: z.string().nullable().optional().or(z.literal("")),
+      category: z.string().nullable().optional().or(z.literal("")),
+      marital_status: z.string().nullable().optional().or(z.literal("")),
+      child_count: z.union([z.string(), z.number()]).nullable().optional().or(z.literal("")),
+      blood_group: z.string().nullable().optional().or(z.literal("")),
+      address: z.string().nullable().optional().or(z.literal("")),
+      permanent_address: z.string().nullable().optional().or(z.literal("")),
+      district: z.string().nullable().optional().or(z.literal("")),
+      city: z.string().nullable().optional().or(z.literal("")),
+      state: z.string().nullable().optional().or(z.literal("")),
+      postal_code: z.string().nullable().optional().or(z.literal("")),
+      bank_name: z.string().nullable().optional().or(z.literal("")),
+      account_no: z.string().nullable().optional().or(z.literal("")),
+      IFSC_code: z.string().nullable().optional().or(z.literal("")),
+      branch_details: z.string().nullable().optional().or(z.literal("")),
+      designation: z.string().nullable().optional().or(z.literal("")),
+      staff_type: z.string().nullable().optional().or(z.literal("")),
+      staff_category: z.string().nullable().optional().or(z.literal("")),
+      nature_of_appointment: z.string().nullable().optional().or(z.literal("")),
+      designation_on_doa: z.string().nullable().optional().or(z.literal("")),
+      appointment_date: z.string().nullable().optional().or(z.literal("")),
+      joining_date: z.string().nullable().optional().or(z.literal("")),
+      promotion_date: z.string().nullable().optional().or(z.literal("")),
+      total_experience: z.union([z.string(), z.number()]).nullable().optional().or(z.literal("")),
+      employment_status: z.enum(["Active", "Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"]).optional().or(z.literal("")),
+      registration_authority: z.string().nullable().optional().or(z.literal("")),
+      registration_number: z.string().nullable().optional().or(z.literal("")),
+      registration_date: z.string().nullable().optional().or(z.literal("")),
+      council_name: z.string().nullable().optional().or(z.literal("")),
+      ayush_teacher_code: z.string().nullable().optional().or(z.literal("")),
+      md_subject: z.string().nullable().optional().or(z.literal("")),
+      qualification_college: z.string().nullable().optional().or(z.literal("")),
+      qualification_university: z.string().nullable().optional().or(z.literal("")),
+      passing_date: z.string().nullable().optional().or(z.literal("")),
+      uni_approval_date: z.string().nullable().optional().or(z.literal("")),
+      uni_approval_number: z.string().nullable().optional().or(z.literal("")),
+      driving_licence: z.string().nullable().optional().or(z.literal("")),
+      driving_licence_expiry: z.string().nullable().optional().or(z.literal("")),
+      epf_no: z.string().nullable().optional().or(z.literal("")),
+      epf_uan_no: z.string().nullable().optional().or(z.literal("")),
     })
   }, [])
 
@@ -618,15 +663,16 @@ export const Staff: React.FC = () => {
             setParsedData(parsed)
 
             const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls")
+            const headers = Object.keys(parsed[0] || {})
+            const hasFriendlyHeaders = headers.includes("Name") || headers.includes("Employee ID")
 
-            if (isExcel) {
-              // For Excel, we trust the server's mapping logic for headers like "Mobile No."
+            if (isExcel || hasFriendlyHeaders) {
+              // For Excel and CSV with friendly headers, we trust the server's mapping logic
               setValidationPassed(true)
               setIsValidating(false)
               return
             }
 
-            const headers = Object.keys(parsed[0])
             const requiredHeaders = staffSchemaFoeBulkUpload.shape
             const missingHeaders = Object.keys(requiredHeaders).filter((header) => !headers.includes(header))
 

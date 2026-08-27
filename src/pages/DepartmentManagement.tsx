@@ -124,7 +124,7 @@ export default function DepartmentManagement() {
         toast({ title: "Department updated safely in Database" });
       } else {
         await createDepartment({
-          school_id: Number(schoolData.id),
+          school_id: Number(schoolData?.id || 0),
           name: form.name,
           code: form.code.toUpperCase(),
           head_name: form.head_name,

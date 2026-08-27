@@ -54,7 +54,7 @@ export function transformInquiryToStudent(
       caste_in_guj: null,
       category: null,
       admission_date: new Date().toISOString().split("T")[0],
-      admission_class_id: classApplying,
+      admission_class_id: classApplying ?? null,
       secondary_mobile: null,
       privious_school: inquiry.previous_school || null,
       privious_school_in_guj: null,

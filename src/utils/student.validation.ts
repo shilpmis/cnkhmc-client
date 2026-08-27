@@ -579,6 +579,6 @@ export const addressSchema = z.object({
 export type StudentFormData = z.infer<typeof studentSchema>;
 export type StudentUploadData = z.infer<typeof StudentSchemaForUploadData>;
 
-
-
-
+export const personalDetailsSchema = z.any();
+export const bankDetailsSchema = z.any();
+export const admissionDetailsSchema = z.any();

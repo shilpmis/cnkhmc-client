@@ -1852,7 +1852,7 @@ export const ApplyConcessionForm: React.FC<ApplyConcessionFormProps> = ({
                         {academicClasses?.map((cls, index) =>
                           cls.divisions.length > 0 ? (
                             <SelectItem key={index} value={cls.class.toString()}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ) : null,
                         )}

@@ -484,7 +484,7 @@ export default function SubjectAssignment() {
                   </SelectItem>
                   {AcademicClasses?.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id.toString()}>
-                      Class {cls.class}
+                      {cls.class}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -515,7 +515,7 @@ export default function SubjectAssignment() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
-                  {t("subjects_for")} {selectedClassObj ? `Class ${selectedClassObj.class}` : ""}{" "}
+                  {t("subjects_for")} {selectedClassObj ? selectedClassObj.class : ""}{" "}
                   {selectedDivisionObj ? selectedDivisionObj.division : ""}
                 </h3>
 
@@ -531,7 +531,7 @@ export default function SubjectAssignment() {
                       <DialogHeader>
                         <DialogTitle>{t("assign_subject_to_division")}</DialogTitle>
                         <DialogDescription>
-                          {t("assign_a_subject_to")} {selectedClassObj ? `Class ${selectedClassObj.class}` : ""}{" "}
+                          {t("assign_a_subject_to")} {selectedClassObj ? selectedClassObj.class : ""}{" "}
                           {selectedDivisionObj ? selectedDivisionObj.division : ""}
                         </DialogDescription>
                       </DialogHeader>
@@ -731,7 +731,7 @@ export default function SubjectAssignment() {
               {t("assign_teacher_to")} {selectedSubject?.subject?.name || t("subject")}
             </DialogTitle>
             <DialogDescription>
-              {t("assign_a_teacher_to_subject_for")} {selectedClassObj ? `Class ${selectedClassObj.class}` : ""}{" "}
+              {t("assign_a_teacher_to_subject_for")} {selectedClassObj ? selectedClassObj.class : ""}{" "}
               {selectedDivisionObj ? selectedDivisionObj.division : ""}
             </DialogDescription>
           </DialogHeader>

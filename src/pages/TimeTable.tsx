@@ -255,7 +255,7 @@ export default function TimetableManagement() {
                   <SelectContent>
                     {academicClasses?.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id.toString()}>
-                        Class {cls.class}
+                        {cls.class}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -335,7 +335,7 @@ export default function TimetableManagement() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">
-                      {t("timetable_for")} Class{" "}
+                      {t("timetable_for")}{" "}
                       {academicClasses.find((cls) => cls.id.toString() === selectedClass)?.class}{" "}
                       {filteredDivisions.find((div) => div.id.toString() === selectedDivision)?.division}
                     </h2>

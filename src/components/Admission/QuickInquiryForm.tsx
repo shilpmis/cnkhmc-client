@@ -266,7 +266,7 @@ export const QuickInquiryForm: React.FC<QuickInquiryFormProps> = ({ isOpen, onCl
                       ) : classSeats && classSeats.length > 0 ? (
                         classSeats.map((seat) => (
                           <SelectItem key={seat.class_id} value={seat.class_id.toString()}>
-                            Class {seat.class.class} {seat.class.division}
+                            {seat.class.class} {seat.class.division}
                           </SelectItem>
                         ))
                       ) : (

@@ -749,7 +749,7 @@ const FeePlanDetailsDialog: React.FC<FeePlanDetailsDialogProps> = ({ isOpen, onC
                         Class: {feePlanDetails.fees_plan.class_id ? (
                           (() => {
                             const clas = AcademicClasses?.find((cls) => cls.id === feePlanDetails.fees_plan.class_id)
-                            return clas ? `Class ${clas.class}` : "N/A"
+                            return clas ? `${clas.class}` : "N/A"
                           })()
                         ) : (
                           <Badge variant="outline" className="text-amber-600 border-amber-300 ml-1">

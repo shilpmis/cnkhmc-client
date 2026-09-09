@@ -913,9 +913,9 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
                             <SelectContent>
                               {ClassesWithOutFeesPlan &&
                                 ClassesWithOutFeesPlan.map((cls) => (
-                                  <SelectItem key={cls.id} value={cls.id.toString()} className="hover:bg-slate-50">
-                                    Class {cls.class}
-                                  </SelectItem>
+                                   <SelectItem key={cls.id} value={cls.id.toString()} className="hover:bg-slate-50">
+                                     {cls.class}
+                                   </SelectItem>
                                 ))}
                               {(isClassWithOutFeesPlanLoading || !ClassesWithOutFeesPlan) && (
                                 <SelectItem value="loading" disabled>

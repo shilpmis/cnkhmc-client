@@ -38,6 +38,7 @@ import {
   useLazyGetOtherStaffQuery,
   useLazyGetTeachingStaffQuery,
   useLazyGetSchoolStaffRoleQuery,
+  useLazyGetHospitalStaffQuery,
   useAddStaffMutation,
   useUpdateStaffMutation,
   useBulkUploadStaffMutation,
@@ -256,6 +257,7 @@ export const Staff: React.FC = () => {
 
   const [getTeachingStaff, { data: teachingStaff, isLoading: isTeachingStaffLoading }] = useLazyGetTeachingStaffQuery()
   const [getOtherStaff, { data: otherStaff, isLoading: isTeachingOtherLoading }] = useLazyGetOtherStaffQuery()
+  const [getHospitalStaff, { data: hospitalStaff, isLoading: isHospitalStaffLoading }] = useLazyGetHospitalStaffQuery()
   const [AddNewStaff, { isLoading: isNewStaffCreating }] = useAddStaffMutation()
   const [updateStaff, { isLoading: isStaffGettingUpdate }] = useUpdateStaffMutation()
   const [getStaffRoles] = useLazyGetSchoolStaffRoleQuery()
@@ -273,7 +275,7 @@ export const Staff: React.FC = () => {
   // Retirement warnings: list of staff who've reached their configured retirement age
   const [retirementWarnings, setRetirementWarnings] = useState<{ id: number; name: string; age: number; threshold: number }[]>([])
 
-  const [staffTypeForUpload, setStaffTypeForUpload] = useState<"teaching" | "non-teaching" | null>(null)
+  const [staffTypeForUpload, setStaffTypeForUpload] = useState<"teaching" | "non-teaching" | "hospital" | null>(null)
 
   const [currentDisplayDataForTeachers, setCurrentDisplayDataForTeachers] = useState<{
     satff: StaffType[]
@@ -284,6 +286,13 @@ export const Staff: React.FC = () => {
     satff: StaffType[]
     meta: PageMeta
   } | null>(null)
+
+  const [currentDisplayDataForHospitalStaff, setCurrentDisplayDataForHospitalStaff] = useState<{
+    satff: StaffType[]
+    meta: PageMeta
+  } | null>(null)
+
+  const [hospitalInitialData, setHospitalInitialData] = useState<StaffType | null>(null)
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -323,9 +332,11 @@ export const Staff: React.FC = () => {
   const [AllRolesForSchoolStaff, setAllRolesForSchoolStaff] = useState<{
     teachingStaff: string[]
     nonTeachingStaff: string[]
+    hospitalStaff: string[]
   }>({
     teachingStaff: [],
     nonTeachingStaff: [],
+    hospitalStaff: [],
   })
 
   // Schema for bulk upload validation
@@ -425,6 +436,19 @@ export const Staff: React.FC = () => {
           })
         }
       })
+    } else if (activeTab === "hospital") {
+      getHospitalStaff({
+        academic_sessions: CurrentAcademicSessionForSchool!.id,
+        page: 1,
+        status_filter: staffStatusFilter,
+      }).then((response) => {
+        if (response.data) {
+          setCurrentDisplayDataForHospitalStaff({
+            satff: response.data.data,
+            meta: response.data.meta,
+          })
+        }
+      })
     } else {
       getOtherStaff({
         academic_sessions: CurrentAcademicSessionForSchool!.id,
@@ -460,6 +484,15 @@ export const Staff: React.FC = () => {
   }, [otherStaff])
 
   useEffect(() => {
+    if (hospitalStaff) {
+      setCurrentDisplayDataForHospitalStaff({
+        satff: hospitalStaff.data,
+        meta: hospitalStaff.meta,
+      })
+    }
+  }, [hospitalStaff])
+
+  useEffect(() => {
     if (!StaffRolesForSchool) {
       getStaffRoles(authState.user!.school_id)
     }
@@ -468,11 +501,13 @@ export const Staff: React.FC = () => {
   useEffect(() => {
     if (StaffRolesForSchool) {
       const teachingStaff = StaffRolesForSchool.filter((role) => role.is_teaching_role).map((role) => role.role)
-      const nonTeachingStaff = StaffRolesForSchool.filter((role) => !role.is_teaching_role).map((role) => role.role)
+      const nonTeachingStaff = StaffRolesForSchool.filter((role) => !role.is_teaching_role && role.role !== "Hospital Staff").map((role) => role.role)
+      const hospitalStaff = StaffRolesForSchool.filter((role) => role.role === "Hospital Staff").map((role) => role.role)
 
       setAllRolesForSchoolStaff({
         nonTeachingStaff,
         teachingStaff,
+        hospitalStaff,
       })
     }
   }, [StaffRolesForSchool])
@@ -482,6 +517,7 @@ export const Staff: React.FC = () => {
     const allStaff = [
       ...(currentDisplayDataForTeachers?.satff ?? []),
       ...(currentDisplayDataForOtherStaff?.satff ?? []),
+      ...(currentDisplayDataForHospitalStaff?.satff ?? []),
     ]
     const today = new Date()
 
@@ -512,7 +548,7 @@ export const Staff: React.FC = () => {
       }))
 
     setRetirementWarnings(warnings)
-  }, [currentDisplayDataForTeachers, currentDisplayDataForOtherStaff])
+  }, [currentDisplayDataForTeachers, currentDisplayDataForOtherStaff, currentDisplayDataForHospitalStaff])
 
   // ------------------------
   // Filtering Logic
@@ -521,6 +557,7 @@ export const Staff: React.FC = () => {
   const availableDesignations = useMemo(() => {
     if (activeTab === "teaching") return AllRolesForSchoolStaff.teachingStaff
     if (activeTab === "non-teaching") return AllRolesForSchoolStaff.nonTeachingStaff
+    if (activeTab === "hospital") return AllRolesForSchoolStaff.hospitalStaff
     return []
   }, [activeTab, AllRolesForSchoolStaff])
 
@@ -528,7 +565,9 @@ export const Staff: React.FC = () => {
     const list =
       activeTab === "teaching"
         ? currentDisplayDataForTeachers?.satff ?? []
-        : currentDisplayDataForOtherStaff?.satff ?? []
+        : activeTab === "hospital"
+          ? currentDisplayDataForHospitalStaff?.satff ?? []
+          : currentDisplayDataForOtherStaff?.satff ?? []
 
     return list.filter((staff) => {
       const fullName = `${staff.first_name ?? ""} ${staff.last_name ?? ""}`.toLowerCase()
@@ -553,6 +592,7 @@ export const Staff: React.FC = () => {
     activeTab,
     currentDisplayDataForTeachers,
     currentDisplayDataForOtherStaff,
+    currentDisplayDataForHospitalStaff,
     searchValue,
     statusValue,
     genderValue,
@@ -580,7 +620,9 @@ export const Staff: React.FC = () => {
           const validRoles =
             staffTypeForUpload === "teaching"
               ? AllRolesForSchoolStaff.teachingStaff
-              : AllRolesForSchoolStaff.nonTeachingStaff
+              : staffTypeForUpload === "hospital"
+                ? AllRolesForSchoolStaff.hospitalStaff
+                : AllRolesForSchoolStaff.nonTeachingStaff
 
           if (!validRoles.includes(row.role)) {
             results.push({
@@ -704,7 +746,7 @@ export const Staff: React.FC = () => {
     [validateCsvData, staffSchemaFoeBulkUpload],
   )
 
-  const handleStaffTypeChange = (value: "teaching" | "non-teaching") => {
+  const handleStaffTypeChange = (value: "teaching" | "non-teaching" | "hospital") => {
     setStaffTypeForUpload(value)
     setFileName(null)
     setSelectedFile(null)
@@ -731,14 +773,16 @@ export const Staff: React.FC = () => {
         staff_role_id:
           staffTypeForUpload === "teaching"
             ? StaffRolesForSchool.find((role: StaffRole) => role.is_teaching_role && role.role === row.role)?.id
-            : StaffRolesForSchool.find((role: StaffRole) => !role.is_teaching_role && role.role === row.role)?.id,
+            : staffTypeForUpload === "hospital"
+              ? StaffRolesForSchool.find((role: StaffRole) => role.role === "Hospital Staff")?.id
+              : StaffRolesForSchool.find((role: StaffRole) => !role.is_teaching_role && role.role === row.role && role.role !== "Hospital Staff")?.id,
       }))
       void staffData // to avoid TS "unused" warning if you like
 
       const response = await bulkUploadstaff({
         academic_session: CurrentAcademicSessionForSchool!.id,
         file: file,
-        type: staffTypeForUpload as "teaching" | "non-teaching",
+        type: staffTypeForUpload as "teaching" | "non-teaching" | "hospital",
       })
 
       if (response.data) {
@@ -760,7 +804,7 @@ export const Staff: React.FC = () => {
             fileInputRef.current.value = ""
           }
 
-          staffTypeForUpload && fetchDataForActiveTab(staffTypeForUpload as "teaching" | "non-teaching", 1)
+          staffTypeForUpload && fetchDataForActiveTab(staffTypeForUpload as "teaching" | "non-teaching" | "hospital", 1)
           setFileName(null)
           setStaffTypeForUpload(null)
           if (fileInputRef.current) fileInputRef.current.value = ""
@@ -800,7 +844,7 @@ export const Staff: React.FC = () => {
   // General helpers
   // ------------------------
 
-  async function fetchDataForActiveTab(type: "teaching" | "non-teaching", page = 1) {
+  async function fetchDataForActiveTab(type: "teaching" | "non-teaching" | "hospital", page = 1) {
     try {
       setIsLoading(true)
       setError(null)
@@ -813,6 +857,18 @@ export const Staff: React.FC = () => {
         })
         if (response.data) {
           setCurrentDisplayDataForTeachers({
+            satff: response.data.data,
+            meta: response.data.meta,
+          })
+        }
+      } else if (type === "hospital") {
+        const response = await getHospitalStaff({
+          academic_sessions: CurrentAcademicSessionForSchool!.id,
+          page,
+          status_filter: staffStatusFilter,
+        })
+        if (response.data) {
+          setCurrentDisplayDataForHospitalStaff({
             satff: response.data.data,
             meta: response.data.meta,
           })
@@ -839,7 +895,7 @@ export const Staff: React.FC = () => {
 
   function onPageChange(page: number) {
     setCurrentPage(page)
-    fetchDataForActiveTab(activeTab as "teaching" | "non-teaching", page)
+    fetchDataForActiveTab(activeTab as "teaching" | "non-teaching" | "hospital", page)
   }
 
   const getUniqueFields = useMemo(() => {
@@ -869,7 +925,7 @@ export const Staff: React.FC = () => {
     fileInputRef.current?.click()
   }
 
-  const handleDownloadDemo = (staffType: "teaching" | "non-teaching") => {
+  const handleDownloadDemo = (staffType: "teaching" | "non-teaching" | "hospital") => {
     downloadCSVTemplate(staffType)
   }
 
@@ -921,6 +977,21 @@ export const Staff: React.FC = () => {
     [currentDisplayDataForOtherStaff],
   )
 
+  const handleEditHospitalStaff = useCallback(
+    (staff_id: number) => {
+      const hospital = currentDisplayDataForHospitalStaff?.satff?.find((t) => t.id === staff_id)
+      if (hospital) {
+        setOpenDialogForStaffForm({
+          isOpen: true,
+          type: "edit",
+          selectedStaff: hospital,
+        })
+        setHospitalInitialData(hospital)
+      }
+    },
+    [currentDisplayDataForHospitalStaff],
+  )
+
   const handleAddStaffSubmit = async (data: StaffFormData) => {
     try {
       const new_staff = await AddNewStaff({
@@ -940,11 +1011,21 @@ export const Staff: React.FC = () => {
           selectedStaff: null,
         })
 
-        const staffType = Boolean(Number(new_staff.data.is_teching_staff)) ? "teaching" : "non-teaching"
+        let staffType: "teaching" | "non-teaching" | "hospital" = "non-teaching"
+        if (new_staff.data.staff_type === "Hospital Staff") {
+          staffType = "hospital"
+        } else if (Boolean(Number(new_staff.data.is_teching_staff))) {
+          staffType = "teaching"
+        }
 
         setTimeout(() => {
           if (staffType === "teaching") {
             getTeachingStaff({
+              academic_sessions: CurrentAcademicSessionForSchool!.id,
+              page: 1,
+            })
+          } else if (staffType === "hospital") {
+            getHospitalStaff({
               academic_sessions: CurrentAcademicSessionForSchool!.id,
               page: 1,
             })
@@ -992,13 +1073,23 @@ export const Staff: React.FC = () => {
           selectedStaff: null,
         })
 
-        const staffType = Boolean(Number(updated_staff.data.is_teching_staff)) ? "teaching" : "non-teaching"
+        let staffType: "teaching" | "non-teaching" | "hospital" = "non-teaching"
+        if (updated_staff.data.staff_type === "Hospital Staff") {
+          staffType = "hospital"
+        } else if (Boolean(Number(updated_staff.data.is_teching_staff))) {
+          staffType = "teaching"
+        }
 
         setActiveTab(staffType)
 
         setTimeout(() => {
           if (staffType === "teaching") {
             getTeachingStaff({
+              academic_sessions: CurrentAcademicSessionForSchool!.id,
+              page: 1,
+            })
+          } else if (staffType === "hospital") {
+            getHospitalStaff({
               academic_sessions: CurrentAcademicSessionForSchool!.id,
               page: 1,
             })
@@ -1125,7 +1216,7 @@ export const Staff: React.FC = () => {
                       <RadioGroup
                         value={staffTypeForUpload || ""}
                         onValueChange={handleStaffTypeChange}
-                        className="flex space-x-4"
+                        className="flex flex-wrap gap-4"
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="teaching" id="upload-teaching" />
@@ -1134,6 +1225,10 @@ export const Staff: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="non-teaching" id="upload-non-teaching" />
                           <Label htmlFor="upload-non-teaching">{t("non_teaching_staff")}</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="hospital" id="upload-hospital" />
+                          <Label htmlFor="upload-hospital">{t("hospital_staff") || "Hospital Staff"}</Label>
                         </div>
                       </RadioGroup>
                     </CardContent>
@@ -1313,9 +1408,10 @@ export const Staff: React.FC = () => {
 
         {/* Tabs + Staff table */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="teaching">{t("teaching_staff")}</TabsTrigger>
             <TabsTrigger value="non-teaching">{t("non_teaching_staff")}</TabsTrigger>
+            <TabsTrigger value="hospital">{t("hospital_staff") || "Hospital Staff"}</TabsTrigger>
           </TabsList>
 
           {/* Teaching */}
@@ -1401,6 +1497,51 @@ export const Staff: React.FC = () => {
                       }
                     >
                       <Plus className="mr-2 h-4 w-4" /> Add non-teaching staff
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </TabsContent>
+
+          {/* Hospital */}
+          <TabsContent value="hospital">
+            {isHospitalStaffLoading || isLoading ? (
+              <div className="flex justify-center items-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Loading hospital staff...</span>
+              </div>
+            ) : currentDisplayDataForHospitalStaff && (currentDisplayDataForHospitalStaff.satff?.length ?? 0) > 0 ? (
+              <StaffTable
+                staffList={{
+                  staff: currentDisplayDataForHospitalStaff.satff,
+                  page_meta: currentDisplayDataForHospitalStaff.meta,
+                }}
+                filteredStaff={filteredStaff}
+                onEdit={handleEditHospitalStaff}
+                onDelete={handleDelete}
+                type="non-teaching"
+                onPageChange={onPageChange}
+              />
+            ) : (
+              <Alert className="my-6">
+                <AlertCircle className="h-5 w-5" />
+                <AlertTitle>No hospital staff found</AlertTitle>
+                <AlertDescription>
+                  There are no hospital staff records available.
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setOpenDialogForStaffForm({
+                          isOpen: true,
+                          type: "add",
+                          selectedStaff: null,
+                        })
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Add hospital staff
                     </Button>
                   </div>
                 </AlertDescription>

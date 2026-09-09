@@ -549,6 +549,8 @@ export const staffSchema = z
       .nullable(),
 
     // New Fields
+    nch_registration_no: z.string().optional().nullable(),
+    nch_registration_date: z.string().optional().nullable(),
     marital_status: z.enum(["Single", "Married", "Divorced", "Widowed"]).optional().nullable(),
     pan_card_no: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN Card format").optional().nullable(),
     ayush_id_no: z.string().optional().nullable(),
@@ -596,6 +598,23 @@ export const staffSchema = z
           code: z.ZodIssueCode.custom,
           message: "Subject specialization is required for teaching staff",
           path: ["subject_specialization"],
+        })
+      }
+
+      // Validate NCH registration for teaching staff
+      if (!data.nch_registration_no || data.nch_registration_no.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "NCH Registration No. is required for teaching staff",
+          path: ["nch_registration_no"],
+        })
+      }
+
+      if (!data.nch_registration_date || data.nch_registration_date.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "NCH Registration Date is required for teaching staff",
+          path: ["nch_registration_date"],
         })
       }
     }

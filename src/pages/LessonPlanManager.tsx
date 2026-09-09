@@ -357,14 +357,21 @@ export default function LessonPlanManager() {
     const flat: any[] = []
     topics.forEach((topic: any) => {
       const subtopics = topic.subtopics || topic.lesson_plan_subtopics || []
+      const topicStaffIds = topic.assignedStaffIds ?? topic.assigned_staff_ids
+
       if (subtopics && subtopics.length > 0) {
         subtopics.forEach((sub: any) => {
+          const subStaffIds = sub.assignedStaffIds ?? sub.assigned_staff_ids
+          const effectiveStaffIds = (Array.isArray(subStaffIds) && subStaffIds.length > 0)
+            ? subStaffIds
+            : (Array.isArray(topicStaffIds) && topicStaffIds.length > 0 ? topicStaffIds : (Array.isArray(subStaffIds) ? subStaffIds : topicStaffIds))
+
           flat.push({
             ...sub,
             topicName: topic.name,
             topicId: topic.id,
             assignedStaff: sub.assignedStaff || sub.assigned_staff || topic.assignedStaff || topic.assigned_staff,
-            assignedStaffIds: sub.assignedStaffIds || sub.assigned_staff_ids || topic.assignedStaffIds || topic.assigned_staff_ids
+            assignedStaffIds: effectiveStaffIds
           })
         })
       } else {
@@ -379,7 +386,7 @@ export default function LessonPlanManager() {
           lessonPlanNumber: "-",
           requiredHours: topic.requiredHours || topic.required_hours,
           isCompleted: topic.isCompleted || topic.is_completed,
-          assignedStaffIds: topic.assignedStaffIds || topic.assigned_staff_ids
+          assignedStaffIds: Array.isArray(topicStaffIds) ? topicStaffIds : null
         })
       }
     })

@@ -39,11 +39,12 @@ export default function HostelManagement() {
   const [deleteHostel] = useDeleteHostelMutation();
 
   const [isHostelDialogOpen, setIsHostelDialogOpen] = useState(false);
-  const [newHostel, setNewHostel] = useState({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, beds_per_room: 0 });
+  const [newHostel, setNewHostel] = useState({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, number_of_floors: 1, beds_per_room: 0 });
 
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
-  const [newRoom, setNewRoom] = useState({ room_number: "", floor: "", capacity: 0 });
+  const [newRoom, setNewRoom] = useState({ room_number: "", floor: "Ground Floor", capacity: 0 });
+  const [selectedFloors, setSelectedFloors] = useState<Record<number, string>>({});
 
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [isRoomDetailsOpen, setIsRoomDetailsOpen] = useState(false);
@@ -55,7 +56,7 @@ export default function HostelManagement() {
       await createHostel({ ...newHostel, school_id: schoolId }).unwrap();
       toast({ title: "Success", description: "Hostel created successfully" });
       setIsHostelDialogOpen(false);
-      setNewHostel({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, beds_per_room: 0 });
+      setNewHostel({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, number_of_floors: 1, beds_per_room: 0 });
     } catch (error) {
       toast({ title: "Error", description: "Failed to create hostel", variant: "destructive" });
     }
@@ -69,7 +70,7 @@ export default function HostelManagement() {
       await createRoom({ hostel_id: selectedHostelId, data: newRoom }).unwrap();
       toast({ title: "Success", description: "Room created successfully" });
       setIsRoomDialogOpen(false);
-      setNewRoom({ room_number: "", floor: "", capacity: 0 });
+      setNewRoom({ room_number: "", floor: "Ground Floor", capacity: 0 });
     } catch (error) {
       toast({ title: "Error", description: "Failed to create room", variant: "destructive" });
     }
@@ -88,6 +89,8 @@ export default function HostelManagement() {
   if (isLoading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
+
+  const FLOOR_OPTIONS = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor"];
 
   return (
     <div className="p-6 space-y-6">
@@ -124,13 +127,17 @@ export default function HostelManagement() {
                 <label className="text-sm font-medium">{t("total_capacity")} (Optional)</label>
                 <Input type="number" value={newHostel.capacity} onChange={(e) => setNewHostel({ ...newHostel, capacity: parseInt(e.target.value) || 0 })} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t("number_of_rooms")} (Auto-generate)</label>
+                  <label className="text-xs font-medium">{t("number_of_rooms")} (Auto)</label>
                   <Input type="number" value={newHostel.number_of_rooms} onChange={(e) => setNewHostel({ ...newHostel, number_of_rooms: parseInt(e.target.value) || 0 })} placeholder="e.g. 10" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">{t("beds_per_room")}</label>
+                  <label className="text-xs font-medium">Floors</label>
+                  <Input type="number" min={1} value={newHostel.number_of_floors} onChange={(e) => setNewHostel({ ...newHostel, number_of_floors: parseInt(e.target.value) || 1 })} placeholder="e.g. 2" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">{t("beds_per_room")}</label>
                   <Input type="number" value={newHostel.beds_per_room} onChange={(e) => setNewHostel({ ...newHostel, beds_per_room: parseInt(e.target.value) || 0 })} placeholder="e.g. 4" />
                 </div>
               </div>
@@ -159,8 +166,16 @@ export default function HostelManagement() {
           const totalRooms = hostel.rooms?.length || 0;
           const totalBeds = hostel.rooms?.reduce((acc: number, r: any) => acc + (r.beds?.length || 0), 0) || 0;
           const emptyBeds = hostel.rooms?.reduce((acc: number, r: any) => acc + (r.beds?.filter((b: any) => b.status === 'Available').length || 0), 0) || 0;
-          // An empty room is one where all beds are available, or it has no occupied beds
           const emptyRooms = hostel.rooms?.filter((r: any) => !r.beds?.some((b: any) => b.status === 'Occupied')).length || 0;
+
+          // Unique floors for floor filter tabs
+          const uniqueFloors = Array.from(new Set(hostel.rooms?.map((r: any) => r.floor || 'Ground Floor') as string[])).sort();
+          const activeFloor = selectedFloors[hostel.id] || "all";
+
+          const filteredRooms = hostel.rooms?.filter((r: any) => {
+            if (activeFloor === "all") return true;
+            return (r.floor || "Ground Floor") === activeFloor;
+          }) || [];
 
           return (
           <Card key={hostel.id} className="flex flex-col h-full overflow-hidden shadow-sm border-muted/60 hover:shadow-md transition-shadow">
@@ -199,7 +214,14 @@ export default function HostelManagement() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Floor</label>
-                        <Input value={newRoom.floor} onChange={(e) => setNewRoom({ ...newRoom, floor: e.target.value })} placeholder="e.g. Ground Floor" />
+                        <Select value={newRoom.floor} onValueChange={(val) => setNewRoom({ ...newRoom, floor: val })}>
+                          <SelectTrigger><SelectValue placeholder="Select floor" /></SelectTrigger>
+                          <SelectContent>
+                            {FLOOR_OPTIONS.map((f) => (
+                              <SelectItem key={f} value={f}>{f}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Capacity (Beds to auto-generate)</label>
@@ -216,14 +238,43 @@ export default function HostelManagement() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 p-5 bg-background">
+            <CardContent className="flex-1 p-5 bg-background space-y-4">
+              {/* Floor Filter Bar */}
+              {uniqueFloors.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-border/40">
+                  <span className="text-xs font-semibold text-muted-foreground mr-1">Floor:</span>
+                  <Button
+                    variant={activeFloor === "all" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-2.5 rounded-full"
+                    onClick={() => setSelectedFloors({ ...selectedFloors, [hostel.id]: "all" })}
+                  >
+                    All ({totalRooms})
+                  </Button>
+                  {uniqueFloors.map((floor) => {
+                    const countOnFloor = hostel.rooms?.filter((r: any) => (r.floor || "Ground Floor") === floor).length || 0;
+                    return (
+                      <Button
+                        key={floor}
+                        variant={activeFloor === floor ? "default" : "outline"}
+                        size="sm"
+                        className="h-7 text-xs px-2.5 rounded-full"
+                        onClick={() => setSelectedFloors({ ...selectedFloors, [hostel.id]: floor })}
+                      >
+                        {floor} ({countOnFloor})
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+
               {hostel.rooms?.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <p className="text-sm text-muted-foreground">No rooms added to this hostel yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 grid-flow-dense">
-                  {hostel.rooms?.map((room: any) => (
+                  {filteredRooms.map((room: any) => (
                     <div 
                       key={room.id} 
                       className="border border-border/60 rounded-xl p-4 bg-card/50 shadow-sm flex flex-col hover:border-primary/30 transition-colors cursor-pointer hover:bg-muted/30"

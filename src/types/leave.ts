@@ -100,3 +100,49 @@ export interface LeaveApplication {
 //   leave_type: LeaveType;
 //   staff: StaffType;
 // }
+
+export interface CompOffRequest {
+  id: number
+  uuid: string
+  staff_id: number
+  school_id: number
+  academic_year: number | null
+  worked_date: string
+  day_type: "full_day" | "half_day"
+  credited_days: number
+  reason: string
+  description: string | null
+  status: "pending" | "approved" | "rejected" | "cancelled"
+  approved_by: number | null
+  admin_remarks: string | null
+  created_at: string
+  updated_at: string
+  staff?: {
+    id: number
+    first_name: string
+    middle_name: string | null
+    last_name: string
+    employee_id?: string
+  }
+  approved_by_user?: {
+    id: number
+    first_name: string
+    last_name: string
+  }
+}
+
+export interface CreateCompOffPayload {
+  worked_date: string
+  day_type: "full_day" | "half_day"
+  reason: string
+  description?: string
+  staff_id?: number
+  academic_year?: number
+}
+
+export interface ProcessCompOffPayload {
+  uuid: string
+  status: "approved" | "rejected"
+  admin_remarks?: string
+}
+

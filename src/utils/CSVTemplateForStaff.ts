@@ -60,8 +60,44 @@ export function generateNonTeachingStaffCSV(): string {
   return `${headers}\n${sampleRow}\n${emptyRow}`
 }
 
-export function downloadCSVTemplate(staffType: "teaching" | "non-teaching") {
-  const csvContent = staffType === "teaching" ? generateTeachingStaffCSV() : generateNonTeachingStaffCSV()
+export function generateHospitalStaffCSV(): string {
+  const headers = [
+    "Sr.","Employee ID","Title","Name","Short Name","DOB","Current Address","Permenant Address",
+    "District","State","Pin code No.","Mobile No.","Category","Religion","Minority","Nationality",
+    "Gender","Maritial Status","Child","E-Mail","Designation","Type Of Staff","Staff Category",
+    "Department","Nature of appointment","Designation on the DOA","Date Of Appointment","DOJ",
+    "Date Of Promotion","Experience till Date","Blood Group","Qualification","Registration Authority",
+    "Registration Number","Registration Date","Name Of Council","Ayush Teachers Code","MD Subject Name",
+    "Qulification College","Qulification University","Date of Passing","Bank Account No.","Bank IFSC Code",
+    "Bank Name","Branch Address/Number/email","Aadhar Card","Pan Card","Voter Id Number",
+    "Uni. Approval Date","Uni. Approval Number","Driving Licence","Driving license expiry date",
+    "EPF A/C No.","UAN No.","Employee Status"
+  ].join(",")
+
+  const sampleRow = [
+    "3", "EMP003", "Dr.", "Sarah K Patel", "SP", "1988-11-20", "789 Clinic Road", "789 Clinic Road",
+    "Ahmedabad", "Gujarat", "380001", "9876543210", "OPEN", "Hindu", "No", "Indian",
+    "Female", "Single", "0", "sarah.patel@example.com", "Hospital Staff", "Hospital Staff", "Hospital Staff",
+    "Hospital", "Permanent", "Hospital Staff", "2021-02-01", "2021-02-15",
+    "", "8", "B+", "Others", "State Council",
+    "REG789", "2012-05-10", "Homoeopathic Council", "", "",
+    "Medical College", "State University", "2012-04-15", "11223344556677", "ICIC0007890",
+    "ICICI Bank", "Hospital Branch", "123456789012", "ABCDE1234F", "VOT1234567",
+    "", "", "", "",
+    "", "", "Permanent"
+  ].join(",")
+
+  const emptyRow = Array(headers.split(",").length).fill("").join(",")
+  return `${headers}\n${sampleRow}\n${emptyRow}`
+}
+
+export function downloadCSVTemplate(staffType: "teaching" | "non-teaching" | "hospital") {
+  const csvContent =
+    staffType === "teaching"
+      ? generateTeachingStaffCSV()
+      : staffType === "hospital"
+        ? generateHospitalStaffCSV()
+        : generateNonTeachingStaffCSV()
 
   try {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })

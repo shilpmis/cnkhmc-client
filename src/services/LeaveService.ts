@@ -6,8 +6,10 @@ import type {
   LeavePolicy,
   LeaveRequest,
   LeaveType,
+  CompOffRequest,
+  CreateCompOffPayload,
+  ProcessCompOffPayload,
 } from "@/types/leave";
-import { url } from "inspector";
 import { PageMeta } from "@/types/global";
 import { setLeavePolicy, setLeave } from "@/redux/slices/leaveSlice";
 import baseUrl from "@/utils/base-urls";
@@ -74,7 +76,10 @@ interface ApiErrorResponse {
  */
 export const LeaveApi = createApi({
   reducerPath: "leaveApi",
+  tagTypes: ["LeaveBalances", "CompOff", "LeaveReports"],
   baseQuery: fetchBaseQuery({
+
+
     baseUrl: `${baseUrl.serverUrl}api/v1/`,
     prepareHeaders: (headers, { getState }) => {
       headers.set(
@@ -322,6 +327,7 @@ export const LeaveApi = createApi({
         url: `/leave-balances/${staff_id}/?academic_year=${academic_session_id}`,
         method: "GET",
       }),
+      providesTags: ["LeaveBalances"],
     }),
 
     withdrawLeaveApplication: builder.mutation<
@@ -336,6 +342,65 @@ export const LeaveApi = createApi({
         method: "PUT",
         body: { remarks },
       }),
+      invalidatesTags: ["LeaveBalances"],
+    }),
+
+    getStaffCompOffRequests: builder.query<{ data: CompOffRequest[] }, { staff_id: number }>({
+      query: ({ staff_id }) => ({
+        url: `/comp-off/requests/${staff_id}`,
+        method: "GET",
+      }),
+      providesTags: ["CompOff"],
+    }),
+
+    submitCompOffRequest: builder.mutation<{ message: string; data: CompOffRequest }, CreateCompOffPayload>({
+      query: (body) => ({
+        url: `/comp-off/request`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["CompOff", "LeaveBalances"],
+    }),
+
+    getAdminCompOffRequests: builder.query<{ data: CompOffRequest[] }, { status?: string }>({
+      query: ({ status = "all" }) => ({
+        url: `/comp-off/admin/requests?status=${status}`,
+        method: "GET",
+      }),
+      providesTags: ["CompOff"],
+    }),
+
+    processCompOffRequest: builder.mutation<{ message: string; data: CompOffRequest }, ProcessCompOffPayload>({
+      query: ({ uuid, status, admin_remarks }) => ({
+        url: `/comp-off/request/status/${uuid}`,
+        method: "PUT",
+        body: { status, admin_remarks },
+      }),
+      invalidatesTags: ["CompOff", "LeaveBalances", "LeaveReports"],
+    }),
+
+    getTeachersLeaveSummaryReport: builder.query<
+      { leave_types: { id: number; name: string }[]; data: any[] },
+      { academic_session_id?: number }
+    >({
+      query: ({ academic_session_id } = {}) => ({
+        url: academic_session_id
+          ? `/leave-reports/summary?academic_year=${academic_session_id}`
+          : `/leave-reports/summary`,
+        method: "GET",
+      }),
+      providesTags: ["LeaveReports"],
+    }),
+
+    getIndividualTeacherLeaveReport: builder.query<
+      { staff: any; balances: any[]; applications: LeaveApplication[]; comp_off_requests: CompOffRequest[] },
+      { staff_id: number }
+    >({
+      query: ({ staff_id }) => ({
+        url: `/leave-reports/individual/${staff_id}`,
+        method: "GET",
+      }),
+      providesTags: ["LeaveReports"],
     }),
   }),
 });
@@ -360,4 +425,15 @@ export const {
   useUpdateStatusForStaffLeaveApplicationMutation,
   useGetLeaveBalancesQuery,
   useWithdrawLeaveApplicationMutation,
+
+  useGetStaffCompOffRequestsQuery,
+  useSubmitCompOffRequestMutation,
+  useGetAdminCompOffRequestsQuery,
+  useProcessCompOffRequestMutation,
+
+  useGetTeachersLeaveSummaryReportQuery,
+  useLazyGetIndividualTeacherLeaveReportQuery,
+  useGetIndividualTeacherLeaveReportQuery,
 } = LeaveApi;
+
+

@@ -276,6 +276,7 @@ export const studentSchema = z.object({
   quota_fees: z.string().nullable().optional(),
   activity_house: z.string().nullable().optional(),
   bank_branch_name: z.string().nullable().optional(),
+  practical_batch: z.string().nullable().optional(),
 });
 
 // Define Zod schema for student data validation

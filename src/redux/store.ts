@@ -35,6 +35,7 @@ import { CertificateTemplateApi } from "@/services/CertificateTemplateService";
 import { ExamApi } from "@/services/ExamService";
 import { HostelApi } from "@/services/HostelService";
 import { DeadStockApi } from "@/services/DeadStockService";
+import { LectureAttendanceApi } from "@/services/LectureAttendanceService";
 
 const store = configureStore({
   reducer: {
@@ -71,7 +72,8 @@ const store = configureStore({
     [CertificateTemplateApi.reducerPath]: CertificateTemplateApi.reducer,
     [ExamApi.reducerPath]: ExamApi.reducer,
     [HostelApi.reducerPath]: HostelApi.reducer,
-    [DeadStockApi.reducerPath]: DeadStockApi.reducer
+    [DeadStockApi.reducerPath]: DeadStockApi.reducer,
+    [LectureAttendanceApi.reducerPath]: LectureAttendanceApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -100,7 +102,8 @@ const store = configureStore({
       CertificateTemplateApi.middleware,
       ExamApi.middleware,
       HostelApi.middleware,
-      DeadStockApi.middleware
+      DeadStockApi.middleware,
+      LectureAttendanceApi.middleware
     ),
 });
 

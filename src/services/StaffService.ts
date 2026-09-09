@@ -84,6 +84,13 @@ export const StaffApi = createApi({
         return { url, method: "GET" }
       },
     }),
+    getHospitalStaff: builder.query<{ data: StaffType[]; meta: PageMeta }, { academic_sessions: number; page?: number; status_filter?: string }>({
+      query: ({ academic_sessions, page = 1, status_filter }) => {
+        let url = `staff?page=${page}&type=${"hospital"}&academic_sessions=${academic_sessions}`
+        if (status_filter) url += `&status_filter=${status_filter}`
+        return { url, method: "GET" }
+      },
+    }),
 
     // Get staff by ID
     getStaffById: builder.query<StaffType, number>({
@@ -118,7 +125,7 @@ export const StaffApi = createApi({
 
     bulkUploadStaff: builder.mutation<
       { message: string; totalInserted: number },
-      { academic_session: number; type: "teaching" | "non-teaching"; file: File }
+      { academic_session: number; type: "teaching" | "non-teaching" | "hospital"; file: File }
     >({
       query: ({ academic_session, type, file }) => {
         const formData = new FormData()
@@ -144,7 +151,7 @@ export const StaffApi = createApi({
         }
       },
     }),
-    downloadExcelTemplate: builder.mutation<any, { type: "teaching" | "non-teaching" , school_id : number, academic_session : number,  fields: string[] }>({
+    downloadExcelTemplate: builder.mutation<any, { type: "teaching" | "non-teaching" | "hospital" , school_id : number, academic_session : number,  fields: string[] }>({
       query: ({ school_id ,academic_session , fields , type }) => ({
         url: `staff/export/${school_id}/${academic_session}`,
         method: "POST",
@@ -189,6 +196,8 @@ export const {
   useLazyGetSchoolStaffRoleQuery,
   useLazyGetTeachingStaffQuery,
   useLazyGetOtherStaffQuery,
+  useGetHospitalStaffQuery,
+  useLazyGetHospitalStaffQuery,
   useBulkUploadStaffMutation,
   useAddStaffMutation,
   useUpdateStaffMutation,

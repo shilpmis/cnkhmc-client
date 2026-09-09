@@ -33,6 +33,8 @@ import { StudentSchemaForUploadData, CollegeStudentSchemaForUploadData } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useNavigate, useNavigation } from "react-router-dom" 
 import HostelAllotmentModal from "@/components/Students/HostelAllotmentModal"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import StudentBatchAllocation from "@/components/Students/StudentBatchAllocation"
 // Type for validation results
 type ValidationResult = {
   row: number
@@ -740,7 +742,7 @@ export const Students: React.FC = () => {
                           </SelectItem>
                           {AcademicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id.toString()}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1100,7 +1102,7 @@ export const Students: React.FC = () => {
                     </SelectItem>
                     {AcademicClasses?.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id.toString()}>
-                        Class {cls.class}
+                        {cls.class}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1160,42 +1162,86 @@ export const Students: React.FC = () => {
       )}
 
       {selectedClass && selectedDivision && (
-          isStudentsLoading ? (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>{t("students")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* Improved Skeleton */}
-                <div className="space-y-3">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="flex items-center space-x-4 animate-pulse">
-                      <div className="rounded-full bg-gray-200 h-8 w-8" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <Tabs defaultValue="directory" className="w-full mt-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-6">
+            <TabsTrigger value="directory">{t("student_directory") || "Student Directory"}</TabsTrigger>
+            <TabsTrigger value="batches">{t("practical_batch_allocation") || "Practical Batch Allocation"}</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="directory" className="space-y-4">
+            {isStudentsLoading ? (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>{t("students")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Improved Skeleton */}
+                  <div className="space-y-3">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-4 animate-pulse">
+                        <div className="rounded-full bg-gray-200 h-8 w-8" />
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-gray-100 rounded w-1/2" />
+                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-16" />
+                        <div className="h-4 bg-gray-200 rounded w-20" />
                       </div>
-                      <div className="h-4 bg-gray-200 rounded w-16" />
-                      <div className="h-4 bg-gray-200 rounded w-20" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            studentDataForSelectedClass && listedStudentForSelectedClass && (
-              <StudentTable
-                selectd_academic_session={SelectedSession!}
-                selectedClass={selectedClass}
-                selectedDivision={selectedDivision}
-                PageDetailsForStudents={paginationDataForSelectedClass}
-                filteredStudents={filteredStudents}
-                onPageChange={handlePageChange}
-                onEdit={handleAddEditStudent}
-              />
-            )
-          )
-        )}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              studentDataForSelectedClass && listedStudentForSelectedClass && (
+                <StudentTable
+                  selectd_academic_session={SelectedSession!}
+                  selectedClass={selectedClass}
+                  selectedDivision={selectedDivision}
+                  PageDetailsForStudents={paginationDataForSelectedClass}
+                  filteredStudents={filteredStudents}
+                  onPageChange={handlePageChange}
+                  onEdit={handleAddEditStudent}
+                />
+              )
+            )}
+          </TabsContent>
+
+          <TabsContent value="batches" className="space-y-4">
+            {isStudentsLoading ? (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Practical Batch Allocation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Improved Skeleton */}
+                  <div className="space-y-3">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-4 animate-pulse">
+                        <div className="rounded-full bg-gray-200 h-8 w-8" />
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-gray-100 rounded w-1/2" />
+                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-16" />
+                        <div className="h-4 bg-gray-200 rounded w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              studentDataForSelectedClass && listedStudentForSelectedClass && (
+                <StudentBatchAllocation
+                  filteredStudents={filteredStudents}
+                  PageDetailsForStudents={paginationDataForSelectedClass}
+                  onPageChange={handlePageChange}
+                  isCollege={isCollege}
+                />
+              )
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
       </div>
 
       <Dialog

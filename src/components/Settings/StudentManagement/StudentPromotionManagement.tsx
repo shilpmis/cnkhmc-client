@@ -397,9 +397,10 @@ export function StudentPromotionManagement() {
 
   // Helper function to check if student can be promoted based on fee status
   const canPromoteBasedOnFeeStatus = (student: Student) => {
-    if (!student.student.fees_status) return false
+    // If fee status is not available / missing, do not block promotion
+    if (!student.student?.fees_status) return true
 
-    const restrictedStatuses = ["Pending", "Partially Paid", "Overdue", null]
+    const restrictedStatuses = ["Pending", "Overdue"]
     return !restrictedStatuses.includes(student.student.fees_status.status)
   }
 
@@ -846,19 +847,12 @@ export function StudentPromotionManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {academicSessions && academicSessions.length > 0 ? (
-                        academicSessions
-                          .filter((session: any, index: number) => {
-                            // Show only current active session and one previous session
-                            const isActive = session.is_active === true || session.is_active === 1
-                            const isFirstOrSecond = index < 2 // First two sessions after sorting
-                            return isActive || isFirstOrSecond
-                          })
-                          .map((session: any) => (
-                            <SelectItem key={session.id} value={session.id.toString()}>
-                              {session.session_name || `${session.start_year}-${session.end_year}`}{" "}
-                              {session.is_active ? "(Current)" : ""}
-                            </SelectItem>
-                          ))
+                        academicSessions.map((session: any) => (
+                          <SelectItem key={session.id} value={session.id.toString()}>
+                            {session.session_name || `${session.start_year}-${session.end_year}`}{" "}
+                            {session.is_active ? "(Current)" : ""}
+                          </SelectItem>
+                        ))
                       ) : (
                         <SelectItem value="no-sessions" disabled>
                           {t("no_academic_sessions_available")}
@@ -876,39 +870,16 @@ export function StudentPromotionManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {academicSessions && academicSessions.length > 0 ? (
-                        academicSessions
-                          .filter((session: any) => {
-                            if (!sourceAcademicSession) return false
-
-                            // Find the source session
-                            const sourceSession = academicSessions.find(
-                              (s: any) => s.id.toString() === sourceAcademicSession,
-                            )
-                            if (!sourceSession) return false
-
-                            // Get the source session year
-                            const sourceYear = Number.parseInt(
-                              sourceSession.start_year || sourceSession.session_name?.split("-")[0] || "0",
-                            )
-
-                            // Get current session's year
-                            const sessionYear = Number.parseInt(
-                              session.start_year || session.session_name?.split("-")[0] || "0",
-                            )
-
-                            // Show only current or next academic year relative to source
-                            return sessionYear >= sourceYear && sessionYear <= sourceYear + 1
-                          })
-                          .map((session: any) => (
-                            <SelectItem
-                              key={session.id}
-                              value={session.id.toString()}
-                              disabled={Number(session.id) === Number(sourceAcademicSession)}
-                            >
-                              {session.session_name || `${session.start_year}-${session.end_year}`}{" "}
-                              {session.is_active ? "(Current)" : ""}
-                            </SelectItem>
-                          ))
+                        academicSessions.map((session: any) => (
+                          <SelectItem
+                            key={session.id}
+                            value={session.id.toString()}
+                            disabled={Number(session.id) === Number(sourceAcademicSession)}
+                          >
+                            {session.session_name || `${session.start_year}-${session.end_year}`}{" "}
+                            {session.is_active ? "(Current)" : ""}
+                          </SelectItem>
+                        ))
                       ) : (
                         <SelectItem value="no-sessions" disabled>
                           {t("no_academic_sessions_available")}
@@ -933,7 +904,7 @@ export function StudentPromotionManagement() {
                         <SelectContent>
                           {academicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.class}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -971,7 +942,7 @@ export function StudentPromotionManagement() {
                         <SelectContent>
                           {academicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.class}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>

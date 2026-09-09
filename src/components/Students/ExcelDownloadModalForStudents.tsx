@@ -422,7 +422,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
                   {academicClasses?.map((cls) =>
                     cls.divisions.length > 0 ? (
                       <SelectItem key={cls.class} value={cls.id.toString()}>
-                        Class {cls.class}
+                        {cls.class}
                       </SelectItem>
                     ) : null
                   )}

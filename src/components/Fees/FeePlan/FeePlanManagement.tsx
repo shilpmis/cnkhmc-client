@@ -1673,7 +1673,7 @@ export const FeePlanManagement: React.FC = () => {
                             {classesWithoutFeesPlan &&
                               classesWithoutFeesPlan.map((cls: AcademicClasses) => (
                                 <SelectItem key={cls.id} value={cls.id.toString()} className="hover:bg-slate-50">
-                                  Class {cls.class}
+                                  {cls.class}
                                 </SelectItem>
                               ))}
                             {isLoadingClasses && (

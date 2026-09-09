@@ -275,7 +275,7 @@ export default function ClassDaySettingsForTimeTable({
   const getClassName = (classId: number) => {
     if (!academicClasses) return t("unknown_class")
     const cls = academicClasses.find((c) => c.id === classId)
-    return cls ? `Class ${cls.class}` : t("unknown_class")
+    return cls ? `${cls.class}` : t("unknown_class")
   }
 
   // Handle form submission
@@ -800,7 +800,7 @@ export default function ClassDaySettingsForTimeTable({
             <SelectContent>
               {academicClasses.map((cls) => (
                 <SelectItem key={cls.id} value={cls.id.toString()}>
-                  Class {cls.class}
+                  {cls.class}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1355,7 +1355,7 @@ export default function ClassDaySettingsForTimeTable({
                         <SelectContent>
                           {classesWithConfig.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id.toString()}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>

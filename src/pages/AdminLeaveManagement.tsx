@@ -10,23 +10,29 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { SaralDatePicker } from "@/components/ui/common/SaralDatePicker"
-import type { LeaveApplication } from "@/types/leave"
+import type { LeaveApplication, CompOffRequest } from "@/types/leave"
 import type { PageMeta } from "@/types/global"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import {
   useLazyFetchLeaveApplicationOfOtherStaffForAdminQuery,
   useLazyFetchLeaveApplicationOfTeachingStaffForAdminQuery,
   useUpdateStatusForStaffLeaveApplicationMutation,
+  useGetAdminCompOffRequestsQuery,
+  useProcessCompOffRequestMutation,
 } from "@/services/LeaveService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Calendar, Filter, RefreshCw, X } from "lucide-react"
+import { AlertCircle, Calendar, Filter, RefreshCw, X, Award, CheckCircle2, XCircle, FileSpreadsheet } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import LeaveRequestsTable from "@/components/Leave/LeaveRequestsTable"
+import LeaveReportsPanel from "@/components/Leave/LeaveReportsPanel"
+
 
 const AdminLeaveManagement: React.FC = () => {
+
   const { t } = useTranslation()
   const [getLeaveApplicationsForTeachingStaff, { data: leaveRequestsForTeacher, isLoading: loadingForTeachersLeave }] =
     useLazyFetchLeaveApplicationOfTeachingStaffForAdminQuery()
@@ -62,9 +68,52 @@ const AdminLeaveManagement: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "cancelled" | "all">("pending")
 
+  // Comp Off Admin State & Hooks
+  const {
+    data: adminCompOffData,
+    isLoading: isCompOffAdminLoading,
+    refetch: refetchCompOffAdmin,
+  } = useGetAdminCompOffRequestsQuery({ status: statusFilter })
+
+  const [processCompOff, { isLoading: isProcessingCompOff }] = useProcessCompOffRequestMutation()
+
+  const [compOffDialog, setCompOffDialog] = useState<{
+    isOpen: boolean
+    item: CompOffRequest | null
+    action: "approve" | "reject" | null
+  }>({ isOpen: false, item: null, action: null })
+  const [compOffRemarks, setCompOffRemarks] = useState("")
+
+  const handleCompOffAction = async () => {
+    if (!compOffDialog.item || !compOffDialog.action) return
+
+    try {
+      await processCompOff({
+        uuid: compOffDialog.item.uuid,
+        status: compOffDialog.action === "approve" ? "approved" : "rejected",
+        admin_remarks: compOffRemarks.trim() || undefined,
+      }).unwrap()
+
+      toast({
+        title: `Comp Off Request ${compOffDialog.action === "approve" ? "Approved" : "Rejected"}`,
+        description: `The Comp Off claim has been ${compOffDialog.action === "approve" ? "approved and credited to staff balance" : "rejected"}.`,
+      })
+
+      setCompOffDialog({ isOpen: false, item: null, action: null })
+      setCompOffRemarks("")
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Action Failed",
+        description: err?.data?.message || err?.message || "Failed to process Comp Off request.",
+      })
+    }
+  }
+
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
 
   const { toast } = useToast()
+
 
   const refreshData = async () => {
     setIsRefreshing(true)
@@ -359,81 +408,89 @@ const AdminLeaveManagement: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-4 mb-4">
               <TabsTrigger value="teacher">{t("teacher_leave_requests")}</TabsTrigger>
               <TabsTrigger value="other">{t("other_staff_leave_requests")}</TabsTrigger>
+              <TabsTrigger value="compoff" className="flex items-center gap-1.5">
+                <Award className="h-4 w-4 text-amber-500" /> Comp Off Approvals
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="flex items-center gap-1.5">
+                <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Leave Reports & Exports
+              </TabsTrigger>
             </TabsList>
 
-            {/* Filter Controls */}
-            <div className="space-y-4 bg-muted/50 p-4 rounded-md">
-              <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <SaralDatePicker date={selectedDate} onDateChange={(date) => setSelectedDate(date)} />
-                  {selectedDate && (
-                    <Button variant="ghost" size="sm" className="h-8 px-2" onClick={clearDateFilter}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+            {/* Filter Controls - only for request tabs */}
+            {activeTab !== "reports" && (
+              <div className="space-y-4 bg-muted/50 p-4 rounded-md">
+                <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <SaralDatePicker date={selectedDate} onDateChange={(date) => setSelectedDate(date)} />
+                    {selectedDate && (
+                      <Button variant="ghost" size="sm" className="h-8 px-2" onClick={clearDateFilter}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <Select
+                      value={statusFilter}
+                      onValueChange={(value: "pending" | "approved" | "rejected" | "cancelled" | "all") =>
+                        setStatusFilter(value)
+                      }
+                    >
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t("all")}</SelectItem>
+                        <SelectItem value="pending">{t("pending")}</SelectItem>
+                        <SelectItem value="approved">{t("approved")}</SelectItem>
+                        <SelectItem value="rejected">{t("rejected")}</SelectItem>
+                        <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(value: "pending" | "approved" | "rejected" | "cancelled" | "all") =>
-                      setStatusFilter(value)
-                    }
-                  >
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("all")}</SelectItem>
-                      <SelectItem value="pending">{t("pending")}</SelectItem>
-                      <SelectItem value="approved">{t("approved")}</SelectItem>
-                      <SelectItem value="rejected">{t("rejected")}</SelectItem>
-                      <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Active Filters Display */}
+                {(statusFilter !== "all" || selectedDate) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{t("active_filters")}:</span>
+
+                    {statusFilter !== "all" && (
+                      <Badge className={`${getStatusBadgeColor(statusFilter)} flex items-center space-x-1`}>
+                        <span>{statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
+                        <button
+                          onClick={clearStatusFilter}
+                          className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                          aria-label="Clear status filter"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+
+                    {selectedDate && (
+                      <Badge variant="outline" className="flex items-center space-x-1">
+                        <span>{new Date(selectedDate).toLocaleDateString()}</span>
+                        <button
+                          onClick={clearDateFilter}
+                          className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                          aria-label="Clear date filter"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Active Filters Display */}
-              {(statusFilter !== "all" || selectedDate) && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{t("active_filters")}:</span>
-
-                  {statusFilter !== "all" && (
-                    <Badge className={`${getStatusBadgeColor(statusFilter)} flex items-center space-x-1`}>
-                      <span>{statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
-                      <button
-                        onClick={clearStatusFilter}
-                        className="ml-1 hover:bg-black/10 rounded-full p-0.5"
-                        aria-label="Clear status filter"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  )}
-
-                  {selectedDate && (
-                    <Badge variant="outline" className="flex items-center space-x-1">
-                      <span>{new Date(selectedDate).toLocaleDateString()}</span>
-                      <button
-                        onClick={clearDateFilter}
-                        className="ml-1 hover:bg-black/10 rounded-full p-0.5"
-                        aria-label="Clear date filter"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {renderEmptyState()}
+            {activeTab !== "compoff" && activeTab !== "reports" && renderEmptyState()}
 
             <TabsContent value="teacher" className="mt-0">
               {LeaveRequestsForTeachingStaff && LeaveRequestsForTeachingStaff.applications.length > 0 && (
@@ -468,12 +525,190 @@ const AdminLeaveManagement: React.FC = () => {
                 />
               )}
             </TabsContent>
+
+            <TabsContent value="compoff" className="mt-0">
+              {isCompOffAdminLoading ? (
+                renderSkeletonLoader()
+              ) : adminCompOffData && adminCompOffData.data && adminCompOffData.data.length > 0 ? (
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Member</TableHead>
+                        <TableHead>Worked Date</TableHead>
+                        <TableHead>Day Type</TableHead>
+                        <TableHead>Credit</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {adminCompOffData.data.map((req: CompOffRequest) => (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-medium">
+                            {req.staff
+                              ? `${req.staff.first_name} ${req.staff.last_name}`
+                              : `Staff #${req.staff_id}`}
+                          </TableCell>
+                          <TableCell>{new Date(req.worked_date).toLocaleDateString()}</TableCell>
+                          <TableCell className="capitalize">
+                            <Badge variant="outline">{req.day_type === "half_day" ? "Half Day" : "Full Day"}</Badge>
+                          </TableCell>
+                          <TableCell className="font-semibold text-amber-600">+{req.credited_days} Day(s)</TableCell>
+                          <TableCell className="font-medium">{req.reason}</TableCell>
+                          <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                            {req.description || "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                req.status === "approved"
+                                  ? "default"
+                                  : req.status === "rejected"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="capitalize"
+                            >
+                              {req.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {req.status === "pending" ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white h-8 px-2"
+                                  onClick={() => setCompOffDialog({ isOpen: true, item: req, action: "approve" })}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-8 px-2"
+                                  onClick={() => setCompOffDialog({ isOpen: true, item: req, action: "reject" })}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                {req.admin_remarks ? `Note: ${req.admin_remarks}` : "Completed"}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <Alert className="my-6">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertTitle>No Comp Off Claims Found</AlertTitle>
+                  <AlertDescription>
+                    There are currently no Comp Off requests matching the selected filter.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </TabsContent>
+
+            <TabsContent value="reports" className="mt-0 pt-2">
+              <LeaveReportsPanel />
+            </TabsContent>
+
           </Tabs>
         </CardContent>
       </Card>
 
+      {/* Comp Off Action Confirmation Dialog */}
+      <Dialog
+        open={compOffDialog.isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCompOffDialog({ isOpen: false, item: null, action: null })
+            setCompOffRemarks("")
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <span>{compOffDialog.action === "approve" ? "Approve Comp Off Claim" : "Reject Comp Off Claim"}</span>
+              <Badge className={compOffDialog.action === "approve" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                {compOffDialog.action}
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+
+          {compOffDialog.item && (
+            <div className="bg-muted/50 p-3 rounded-md mb-2 text-sm space-y-1">
+              <p>
+                <span className="font-semibold">Staff:</span>{" "}
+                {compOffDialog.item.staff
+                  ? `${compOffDialog.item.staff.first_name} ${compOffDialog.item.staff.last_name}`
+                  : `Staff #${compOffDialog.item.staff_id}`}
+              </p>
+              <p>
+                <span className="font-semibold">Worked Date:</span>{" "}
+                {new Date(compOffDialog.item.worked_date).toLocaleDateString()}
+              </p>
+              <p>
+                <span className="font-semibold">Credit:</span> +{compOffDialog.item.credited_days} Day(s) (
+                {compOffDialog.item.day_type === "half_day" ? "Half Day" : "Full Day"})
+              </p>
+              <p>
+                <span className="font-semibold">Reason:</span> {compOffDialog.item.reason}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2 py-2">
+            <Label htmlFor="compoff_remarks">
+              Admin Remarks {compOffDialog.action === "reject" ? "(Required)" : "(Optional)"}
+            </Label>
+            <Textarea
+              id="compoff_remarks"
+              value={compOffRemarks}
+              onChange={(e) => setCompOffRemarks(e.target.value)}
+              placeholder={
+                compOffDialog.action === "approve"
+                  ? "Approved. Credit added to teacher leave balance."
+                  : "State reason for rejection..."
+              }
+              className="min-h-[90px]"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompOffDialog({ isOpen: false, item: null, action: null })}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCompOffAction}
+              disabled={isProcessingCompOff || (compOffDialog.action === "reject" && !compOffRemarks.trim())}
+              className={
+                compOffDialog.action === "approve"
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-destructive hover:bg-destructive/90 text-white"
+              }
+            >
+              {isProcessingCompOff
+                ? "Processing..."
+                : compOffDialog.action === "approve"
+                ? "Approve & Credit Balance"
+                : "Reject Claim"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={DialogForApplication.isOpen}
+
         onOpenChange={(value) => {
           if (!value) {
             setDialogForApplication({

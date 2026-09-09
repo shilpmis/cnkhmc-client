@@ -303,7 +303,7 @@ export default function TimeTableManager() {
                                 key={index}
                                 value={cls.class.toString()}
                               >
-                                Class {cls.class}
+                                {cls.class}
                               </SelectItem>
                             ) : null
                           )}

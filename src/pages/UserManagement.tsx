@@ -1862,7 +1862,6 @@ export const UserManagement: React.FC = () => {
                                     variant="outline"
                                     className="bg-blue-50 text-blue-700 border-blue-200"
                                   >
-                                    Class{" "}
                                     {academicClasses?.find((academicClass) => academicClass.id === cls.class?.class_id)
                                       ?.class || "N/A"}{" "}
                                     {cls.class?.division || ""}
@@ -2164,7 +2163,6 @@ export const UserManagement: React.FC = () => {
                             onCheckedChange={() => toggleClassSelection(cls.id)}
                           />
                           <Label htmlFor={`class-${cls.id}`} className="text-sm">
-                            Class{" "}
                             {academicClasses?.find((academicClass) => academicClass.id === cls.class_id)?.class ||
                               "N/A"}{" "}
                             {cls.division}
@@ -2243,7 +2241,6 @@ export const UserManagement: React.FC = () => {
                           onCheckedChange={() => toggleClassSelection(cls.id)}
                         />
                         <Label htmlFor={`class-alloc-${cls.id}`} className="text-sm">
-                          Class Class{" "}
                           {academicClasses?.find((academicClass) => academicClass.id === cls.class_id)?.class || "N/A"}{" "}
                           {cls.division}
                         </Label>
@@ -2263,7 +2260,6 @@ export const UserManagement: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     {selectedTeacher.assigend_classes.map((cls) => (
                       <Badge key={cls.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        Class{" "}
                         {academicClasses?.find((academicClass) => academicClass.id === cls.class?.class_id)?.class ||
                           "N/A"}{" "}
                         {cls.class?.division}

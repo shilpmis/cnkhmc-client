@@ -20,18 +20,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SaralPagination } from "@/components/ui/common/SaralPagination"
 import { LeaveApplicationForm } from "@/components/Leave/LeaveApplicationFormData"
 import { useToast } from "@/hooks/use-toast"
-import type { LeaveApplication } from "@/types/leave"
+import type { LeaveApplication, CompOffRequest } from "@/types/leave"
 import type { PageMeta } from "@/types/global"
-import { LeaveBalance, useGetLeaveBalancesQuery, useLazyGetAllLeavePoliciesForUserQuery, useLazyGetStaffsLeaveAppicationQuery, useWithdrawLeaveApplicationMutation } from "@/services/LeaveService"
+import {
+  LeaveBalance,
+  useGetLeaveBalancesQuery,
+  useLazyGetAllLeavePoliciesForUserQuery,
+  useLazyGetStaffsLeaveAppicationQuery,
+  useWithdrawLeaveApplicationMutation,
+  useGetStaffCompOffRequestsQuery,
+  useSubmitCompOffRequestMutation,
+} from "@/services/LeaveService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { selectLeavePolicyForUser } from "@/redux/slices/leaveSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw, AlertCircle } from "lucide-react"
+import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw, AlertCircle, Award } from "lucide-react"
 import { Label } from "@radix-ui/react-label"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 
 const LeaveDashboardForTeachers: React.FC = () => {
+
   const authState = useAppSelector(selectAuthState)
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
   const leavePolicyForUser = useAppSelector(selectLeavePolicyForUser)
@@ -85,8 +95,76 @@ const LeaveDashboardForTeachers: React.FC = () => {
   // Add the mutation hook
   const [withdrawLeaveApplication, { isLoading: isWithdrawing }] = useWithdrawLeaveApplicationMutation()
 
+  // Comp Off States & Hooks
+  const [isCompOffDialogOpen, setIsCompOffDialogOpen] = useState(false)
+  const [compOffForm, setCompOffForm] = useState({
+    worked_date: "",
+    day_type: "full_day" as "full_day" | "half_day",
+    reason: "",
+    description: "",
+  })
+
+  const {
+    data: compOffData,
+    isLoading: isCompOffLoading,
+    refetch: refetchCompOff,
+  } = useGetStaffCompOffRequestsQuery(
+    { staff_id: authState.user?.staff_id || 0 },
+    { skip: !authState.user?.staff_id }
+  )
+
+  const [submitCompOff, { isLoading: isSubmittingCompOff }] = useSubmitCompOffRequestMutation()
+
+  const handleCompOffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!compOffForm.worked_date || !compOffForm.reason.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please fill in worked date and reason.",
+      })
+      return
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0]
+    if (compOffForm.worked_date > todayStr) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Date",
+        description: "Comp Off can only be requested for past or current dates.",
+      })
+      return
+    }
+
+    try {
+      const res = await submitCompOff({
+        worked_date: compOffForm.worked_date,
+        day_type: compOffForm.day_type,
+        reason: compOffForm.reason.trim(),
+        description: compOffForm.description.trim() || undefined,
+        staff_id: authState.user?.staff_id || undefined,
+        academic_year: CurrentAcademicSessionForSchool?.id,
+      }).unwrap()
+
+      toast({
+        title: "Comp Off Claim Submitted",
+        description: res.message || "Your Comp Off claim has been submitted for approval.",
+      })
+
+      setIsCompOffDialogOpen(false)
+      setCompOffForm({ worked_date: "", day_type: "full_day", reason: "", description: "" })
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: err?.data?.message || err?.message || "Failed to submit Comp Off request.",
+      })
+    }
+  }
+
   // Format date
   const formatDate = (dateString: string) => {
+
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
   }
@@ -343,12 +421,15 @@ const LeaveDashboardForTeachers: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="balance" className="flex items-center">
             <Calendar className="mr-2 h-4 w-4" /> {t("leave_balance")}
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center">
             <FileText className="mr-2 h-4 w-4" /> {t("leave_history")}
+          </TabsTrigger>
+          <TabsTrigger value="compoff" className="flex items-center">
+            <Award className="mr-2 h-4 w-4 text-amber-500" /> Comp Off
           </TabsTrigger>
         </TabsList>
 
@@ -601,7 +682,182 @@ const LeaveDashboardForTeachers: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Comp Off Tab */}
+        <TabsContent value="compoff" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                  <Award className="h-5 w-5 text-amber-500" />
+                  Compensatory Off (Comp Off)
+                </CardTitle>
+                <CardDescription>
+                  Log work performed on college holidays or Sundays to claim compensatory leave credits.
+                </CardDescription>
+              </div>
+              <Button onClick={() => setIsCompOffDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Request Comp Off
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isCompOffLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading Comp Off claims...</div>
+              ) : compOffData && compOffData.data && compOffData.data.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Worked Date</TableHead>
+                      <TableHead>Day Type</TableHead>
+                      <TableHead>Credited Days</TableHead>
+                      <TableHead>Reason / Event</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Admin Remarks</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {compOffData.data.map((req: CompOffRequest) => (
+                      <TableRow key={req.id}>
+                        <TableCell className="font-medium">{formatDate(req.worked_date)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {req.day_type === "half_day" ? "Half Day" : "Full Day"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-semibold text-amber-600">+{req.credited_days} Day(s)</TableCell>
+                        <TableCell className="font-medium">{req.reason}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                          {req.description || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              req.status === "approved"
+                                ? "default"
+                                : req.status === "rejected"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="capitalize"
+                          >
+                            {req.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {req.admin_remarks || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
+                  <Award className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                  <p className="font-semibold text-lg text-foreground mb-1">No Comp Off claims submitted yet</p>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                    Have you worked on a college holiday or Sunday? Click below to request your Comp Off leave credit.
+                  </p>
+                  <Button onClick={() => setIsCompOffDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
+                    <Plus className="mr-2 h-4 w-4" /> Request Comp Off
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Request Comp Off Dialog */}
+      <Dialog open={isCompOffDialogOpen} onOpenChange={setIsCompOffDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-amber-500" />
+              Request Compensatory Off (Comp Off)
+            </DialogTitle>
+            <DialogDescription>
+              Submit details of the holiday/Sunday worked to receive Comp Off credit upon admin approval.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCompOffSubmit} className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="worked_date">
+                Worked Date <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="worked_date"
+                type="date"
+                max={new Date().toISOString().split("T")[0]}
+                value={compOffForm.worked_date}
+                onChange={(e) => setCompOffForm({ ...compOffForm, worked_date: e.target.value })}
+                required
+              />
+              <p className="text-xs text-muted-foreground">Only past or current dates (holidays/Sundays) can be selected.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="day_type">
+                Day Type <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={compOffForm.day_type}
+                onValueChange={(val: "full_day" | "half_day") => setCompOffForm({ ...compOffForm, day_type: val })}
+              >
+                <SelectTrigger id="day_type">
+                  <SelectValue placeholder="Select day type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_day">Full Day (1.0 Day Credit)</SelectItem>
+                  <SelectItem value="half_day">Half Day (0.5 Day Credit)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason">
+                Reason / Event Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="reason"
+                type="text"
+                placeholder="e.g. Sunday Practical Exam Duty / Annual Function Setup"
+                value={compOffForm.reason}
+                onChange={(e) => setCompOffForm({ ...compOffForm, reason: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Detailed Description / Remarks (Optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="Provide additional details regarding duties performed..."
+                value={compOffForm.description}
+                onChange={(e) => setCompOffForm({ ...compOffForm, description: e.target.value })}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsCompOffDialogOpen(false)} disabled={isSubmittingCompOff}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmittingCompOff} className="bg-amber-600 hover:bg-amber-700 text-white">
+                {isSubmittingCompOff ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Comp Off Claim"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Apply/Edit Leave Dialog */}
       <Dialog
@@ -703,7 +959,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
                         <div>
                           <p className="text-sm text-muted-foreground">{t("hourly_leave")}</p>
                           <p>
-                            {selectedLeave.total_hour} {t("hours")}
+                            {selectedLeave.total_hour} hours
                           </p>
                         </div>
                       </div>
@@ -711,38 +967,15 @@ const LeaveDashboardForTeachers: React.FC = () => {
                   </div>
                 </div>
 
-                {selectedLeave.status !== "pending" && (
-                  <div>
-                    <h4 className="font-medium mb-2">{t("approval_details")}</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-start">
-                        <User className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedLeave.status === "approved" ? t("approved_by") : t("rejected_by")}
-                          </p>
-                          {/* <p>{selectedLeave.approved_by || t("not_available")}</p> */}
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <Clock className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">{t("updated_on")}</p>
-                          {/* <p>{formatDate(selectedLeave.updated_at)}</p> */}
-                        </div>
-                      </div>
-                      {selectedLeave.remarks && (
-                        <div className="flex items-start">
-                          <AlertCircle className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm text-muted-foreground">{t("remarks")}</p>
-                            <p>{selectedLeave.remarks}</p>
-                          </div>
-                        </div>
-                      )}
+                <div>
+                  <h4 className="font-medium mb-2">{t("leave_balance")}</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">{t("requested_days")}</span>
+                      <span className="font-medium">{selectedLeave.number_of_days}</span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
@@ -751,51 +984,20 @@ const LeaveDashboardForTeachers: React.FC = () => {
             <Button variant="outline" onClick={() => setIsLeaveDetailDialogOpen(false)}>
               {t("close")}
             </Button>
-            {selectedLeave && selectedLeave.status === "pending" && (
-              <>
-                <Button
-                  variant="default"
-                  onClick={() => {
-                    setIsLeaveDetailDialogOpen(false)
-                    handleDialog("edit", selectedLeave)
-                  }}
-                  disabled={isDateTodayOrPast(selectedLeave.from_date)}
-                  title={isDateTodayOrPast(selectedLeave.from_date) ? t("cannot_edit_current_or_past_leave") : ""}
-                >
-                  {t("edit")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setIsLeaveDetailDialogOpen(false)
-                    handleWithdrawLeave(selectedLeave)
-                  }}
-                  disabled={isDateTodayOrPast(selectedLeave.from_date)}
-                  title={isDateTodayOrPast(selectedLeave.from_date) ? t("cannot_withdraw_current_or_past_leave") : ""}
-                >
-                  {t("withdraw")}
-                </Button>
-              </>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Withdraw Leave Dialog */}
       <Dialog open={isWithdrawDialogOpen} onOpenChange={setIsWithdrawDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <span>{t("withdraw_leave_application")}</span>
-              <Badge className="bg-red-100 text-red-800">
-                {t("withdraw")}
-              </Badge>
-            </DialogTitle>
+            <DialogTitle>{t("withdraw_leave_application")}</DialogTitle>
             <DialogDescription>
-              {t("provide_a_reason_for_withdrawing_this_leave_application")}
+              {t("are_you_sure_you_want_to_withdraw_this_leave_application")}
             </DialogDescription>
           </DialogHeader>
-          
+
           {leaveToWithdraw && (
             <div className="bg-muted/50 p-3 rounded-md mb-4">
               <div className="text-sm">

@@ -32,6 +32,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Package,
+  BookOpen,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { Permission, UserRole } from "@/types/user"
@@ -78,6 +79,11 @@ const SideBarItems: SidebarItem[] = [
     url: "/d/mark-attendance",
     icon: ClipboardList,
     requiredPermission: Permission.MARK_ATTENDANCE,
+  },
+  {
+    title: "lecture_attendance",
+    url: "/d/lecture-attendance",
+    icon: BookOpen,
   },
   // {
   //   title: "staff-attendance",

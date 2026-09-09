@@ -101,7 +101,7 @@ export function StudentSearchResults({ results, isLoading, error, onSelectStuden
                   <div className="text-sm text-muted-foreground">
                     {className && division ? (
                       <>
-                        Class {className} - {division}
+                        {className} - {division}
                         {divisionAlias ? ` (${divisionAlias})` : ""}
                       </>
                     ) : (

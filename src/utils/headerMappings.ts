@@ -239,6 +239,10 @@ export const staffHeaderMappings: Record<string, string> = {
   'email': 'Email Address',
   'qualification': 'Qualification',
   
+  // Registration information
+  'nch_registration_no': 'NCH Registration No.',
+  'nch_registration_date': 'NCH Registration Date',
+  
   // Address details
   'address': 'Address',
   'city': 'City',

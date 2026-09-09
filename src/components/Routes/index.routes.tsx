@@ -17,6 +17,7 @@ import { useVerifyQuery } from "@/services/AuthService"
 import AdminLeaveManagement from "@/pages/AdminLeaveManagement"
 import AdminAttendanceView from "../../pages/AdminAttendance"
 import StudentAttendanceView from "@/pages/AttendancePage"
+import LectureAttendancePage from "@/pages/LectureAttendancePage"
 import { Permission, UserRole } from "@/types/user"
 import { LeaveManagementSettings } from "../Settings/LeaveManagementSettings"
 import { SearchProvider } from "../Dashboard/searchContext"
@@ -67,6 +68,7 @@ import ExamSchedules from "@/pages/ExamSchedules"
 import HostelManagement from "@/pages/HostelManagement"
 import DeadStockRegister from "@/pages/DeadStockRegister"
 import InventoryDepartments from "@/pages/InventoryDepartments"
+import PracticalBatchSettings from "@/components/Settings/PracticalBatchSettings"
 
 export default function RootRoute() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
@@ -400,6 +402,24 @@ export default function RootRoute() {
               }
             />
 
+            {/* Lecture/Lab Attendance */}
+            <Route
+              path="lecture-attendance"
+              element={
+                <PrivateRoute
+                  allowedRoles={[
+                    UserRole.SUPER_ADMIN,
+                    UserRole.ADMIN,
+                    UserRole.PRINCIPAL,
+                    UserRole.HEAD_TEACHER,
+                    UserRole.SCHOOL_TEACHER,
+                  ]}
+                >
+                  <LectureAttendancePage />
+                </PrivateRoute>
+              }
+            />
+
             <Route
               path="admissions"
               element={
@@ -547,6 +567,14 @@ export default function RootRoute() {
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
                     <StudentPromotionManagement />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="manage/batches"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <PracticalBatchSettings />
                   </PrivateRoute>
                 }
               />

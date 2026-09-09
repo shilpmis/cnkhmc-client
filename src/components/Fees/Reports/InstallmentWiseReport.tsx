@@ -208,7 +208,7 @@ const InstallmentWiseReport: React.FC = () => {
         const worksheetData = [
             ["Installment Wise Fees Report"],
             [""],
-            ["Class:", selectedClassObj ? `Class ${selectedClassObj.class}` : ""],
+            ["Class:", selectedClassObj ? selectedClassObj.class : ""],
             ["Division:", selectedDivisionObj ? selectedDivisionObj.division : ""],
             ["Academic Session:", selectedAcademicSessionObj?.session_name || ""],
             ["Generated On:", new Date().toLocaleDateString()],
@@ -294,7 +294,7 @@ const InstallmentWiseReport: React.FC = () => {
           
           <div class="info">
             <div class="info-row">
-              <span><strong>Class:</strong> ${selectedClassObj ? `Class ${selectedClassObj.class}` : ""}</span>
+              <span><strong>Class:</strong> ${selectedClassObj ? selectedClassObj.class : ""}</span>
               <span><strong>Division:</strong> ${selectedDivisionObj?.division || ""}</span>
             </div>
             <div class="info-row">
@@ -423,7 +423,7 @@ const InstallmentWiseReport: React.FC = () => {
                                 <SelectContent>
                                     {academicClasses?.map((cls) => (
                                         <SelectItem key={cls.id} value={cls.id.toString()}>
-                                            Class {cls.class}
+                                            {cls.class}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -570,7 +570,7 @@ const InstallmentWiseReport: React.FC = () => {
                             <div>
                                 <p className="text-sm text-gray-600">{t("class_division")}</p>
                                 <p className="font-semibold">
-                                    Class {academicClasses?.find((cls) => cls.id.toString() === selectedClass)?.class} -{" "}
+                                    {academicClasses?.find((cls) => cls.id.toString() === selectedClass)?.class} -{" "}
                                     {availableDivisions.find((div) => div.id.toString() === selectedDivision)?.division}
                                 </p>
                             </div>

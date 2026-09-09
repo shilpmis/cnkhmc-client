@@ -971,7 +971,7 @@ export const ConcessionDetailDialog: React.FC<ConcessionDetailDialogProps> = ({ 
     if (!cls) return "N/A"
 
     const division = cls.divisions.find((d) => d.id === divisionId)
-    return `Class ${cls.class}${division ? ` - ${division.division}` : ""}${
+    return `${cls.class}${division ? ` - ${division.division}` : ""}${
       division?.aliases ? ` (${division.aliases})` : ""
     }`
   }
@@ -1272,7 +1272,7 @@ export const ConcessionDetailDialog: React.FC<ConcessionDetailDialogProps> = ({ 
                           <SelectItem value="all">{t("all_classes")}</SelectItem>
                           {academicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id.toString()}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>

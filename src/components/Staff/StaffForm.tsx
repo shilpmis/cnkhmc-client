@@ -124,6 +124,8 @@ const StaffForm: React.FC<StaffFormProps> = ({
       staff_category: null,
       designation: null,
       department_id: undefined,
+      nch_registration_no: null,
+      nch_registration_date: null,
     },
   })
 
@@ -167,6 +169,8 @@ const StaffForm: React.FC<StaffFormProps> = ({
     teacher_code: "professional",
     state_council_reg_no: "professional",
     ayush_registration_no: "professional",
+    nch_registration_no: "professional",
+    nch_registration_date: "professional",
     date_of_registration: "professional",
     university_appointment_letter_no: "professional",
     university_appointment_date: "professional",

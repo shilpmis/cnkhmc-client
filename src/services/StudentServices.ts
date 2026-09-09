@@ -148,6 +148,17 @@ export const StudentApi = createApi({
       }),
     }),
 
+    bulkAssignPracticalBatch: builder.mutation<
+      any,
+      { student_ids: number[]; practical_batch: string | null }
+    >({
+      query: (payload) => ({
+        url: `students/bulk-assign-batch`,
+        method: "POST",
+        body: payload,
+      }),
+    }),
+
     searchStudents: builder.query<
       Student[],
       {
@@ -182,12 +193,25 @@ export const StudentApi = createApi({
         };
       },
     }),
-    // Management apis 
+    // Management apis
 
+    fetchPracticalBatchSettings: builder.query<{ id: number; school_id: number; batches: string[] }, void>({
+      query: () => ({
+        url: `practical-batch-settings`,
+        method: 'GET',
+      }),
+    }),
 
-
-
-
+    updatePracticalBatchSettings: builder.mutation<
+      { id: number; school_id: number; batches: string[] },
+      { batches: string[] }
+    >({
+      query: (payload) => ({
+        url: `practical-batch-settings`,
+        method: 'PUT',
+        body: payload,
+      }),
+    }),
 
   }),
 });
@@ -204,8 +228,10 @@ export const {
   useDownloadExcelTemplateMutation,
   useSearchStudentsQuery,
   useLazySearchStudentsQuery,
+  useBulkAssignPracticalBatchMutation,
+  useFetchPracticalBatchSettingsQuery,
+  useUpdatePracticalBatchSettingsMutation,
   usePrefetch
-
 } = StudentApi;
 
 /**

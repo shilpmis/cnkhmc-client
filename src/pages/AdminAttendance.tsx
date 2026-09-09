@@ -835,7 +835,7 @@ const AdminAttendanceView: React.FC = () => {
                   {AcademicClasses?.map((cls: any, index: any) =>
                     cls.divisions.length > 0 ? (
                       <SelectItem key={index} value={cls.class.toString()}>
-                        Class {cls.class}
+                        {cls.class}
                       </SelectItem>
                     ) : null
                   )}

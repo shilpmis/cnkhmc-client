@@ -149,6 +149,11 @@ const navigationSections: NavSection[] = [
             icon: GraduationCap,
             href: "manage/promotion",
           },
+          {
+            title: "practical_batches",
+            icon: Settings,
+            href: "manage/batches",
+          },
         ],
       },
     ],

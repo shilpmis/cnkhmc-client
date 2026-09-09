@@ -25,7 +25,7 @@ export const ProfessionalDetailsSection: React.FC<ProfessionalDetailsSectionProp
       <CardHeader>
         <CardTitle>Professional Details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -89,6 +89,34 @@ export const ProfessionalDetailsSection: React.FC<ProfessionalDetailsSectionProp
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Date of Registration</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} value={field.value ?? ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="nch_registration_no"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>NCH Registration No {form.watch("is_teaching_role") && <span className="text-red-500">*</span>}</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value ?? ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="nch_registration_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>NCH Registration Date {form.watch("is_teaching_role") && <span className="text-red-500">*</span>}</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} value={field.value ?? ""} />
                 </FormControl>

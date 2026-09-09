@@ -167,7 +167,19 @@ export const editDivision = createAsyncThunk<
     const res = await ApiService.put(`class/${paylaod.class_id}`, {aliases : paylaod.aliases});
     return res.data;
   } catch (error: any) {
-    return rejectWithValue(error.response?.data || "Failed to create class");
+    return rejectWithValue(error.response?.data || "Failed to update division");
+  }
+});
+
+export const deleteDivision = createAsyncThunk<
+  { message: string; id: number },
+  number
+>("academic/deleteDivision", async (divisionId, { rejectWithValue }) => {
+  try {
+    const res = await ApiService.delete(`class/division/${divisionId}`);
+    return res.data;
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data || "Failed to delete division");
   }
 });
 

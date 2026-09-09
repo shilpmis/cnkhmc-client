@@ -82,6 +82,7 @@ export interface Student {
   fourth_year_roll_number: number | null;
   aadhar_no: number | null;
   is_active: boolean;
+  practical_batch?: string | null;
   student_meta?: StudentMeta;
   academic_class: StudentEnrollment[];
 }

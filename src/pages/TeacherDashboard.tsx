@@ -291,7 +291,7 @@ export default function TeacherDashboard() {
                     </CardTitle>
                     <CardDescription className="flex items-center gap-1 font-medium text-blue-600">
                       <BookOpen className="h-3.5 w-3.5" />
-                      Class {period.period_config_class_day?.class?.class}
+                      {period.period_config_class_day?.class?.class}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pb-4">

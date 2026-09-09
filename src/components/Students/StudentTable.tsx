@@ -65,6 +65,8 @@ export default function StudentTable({
   const authState = useAppSelector(selectAuthState)
   const schoolId = authState.user?.school_id || 0
 
+  const isCollege = authState.user?.school?.school_type === 'COLLEGE'
+
   // Add sorting function
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -163,9 +165,11 @@ export default function StudentTable({
         <div className="text-center py-4 text-gray-500">{t("no_records_found")}</div>
       ) : (
         <>
+
           <Table>
             <TableHeader>
               <TableRow>
+
                 <TableHead
                   className="cursor-pointer hover:bg-gray-50 select-none"
                   onClick={() => handleSort('gr_no')}
@@ -205,12 +209,24 @@ export default function StudentTable({
                     <SortIcon field="aadhar_no" />
                   </div>
                 </TableHead>
+                {isCollege && (
+                  <TableHead
+                    className="cursor-pointer hover:bg-gray-50 select-none"
+                    onClick={() => handleSort('practical_batch')}
+                  >
+                    <div className="flex items-center">
+                      {t("practical_batch") || "Practical Batch"}
+                      <SortIcon field="practical_batch" />
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead>{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedData(currentPage).map((student, index) => (
                 <TableRow key={index}>
+
                   <TableCell>{student.gr_no}</TableCell>
                   <TableCell>
                     <button
@@ -225,6 +241,9 @@ export default function StudentTable({
                   <TableCell>{student.father_name}</TableCell>
                   <TableCell>{student.primary_mobile}</TableCell>
                   <TableCell>{student.aadhar_no}</TableCell>
+                  {isCollege && (
+                    <TableCell>{student.practical_batch || "None"}</TableCell>
+                  )}
                   <TableCell>
                     <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(student)}>
                       <Edit className="h-4 w-4 mr-1" /> {t("edit")}

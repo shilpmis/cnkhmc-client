@@ -197,14 +197,17 @@ import { useLazyGetStaffByIdQuery } from "@/services/StaffService"
 import * as XLSX from "xlsx"
 import { toast } from "@/hooks/use-toast"
 
-const isValidEmail = (email: string): boolean => {
+const isValidEmail = (email?: string | null): boolean => {
+  if (!email) return false
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
-const isValidMobile = (mobile: number): boolean => {
+const isValidMobile = (mobile?: number | string | null): boolean => {
+  if (!mobile) return false
+  const str = String(mobile).trim()
   const mobileRegex = /^[6-9]\d{9}$/
-  return mobileRegex.test(mobile.toString())
+  return mobileRegex.test(str)
 }
 
 interface StaffTableProps {

@@ -57,6 +57,25 @@ const StudentForm: React.FC<StudentFormProps> = ({
     return value ? new Date(value).toISOString().split("T")[0] : " "
   }
 
+  const normalizeGender = (val: any): "Male" | "Female" => {
+    if (!val) return "Male" as any
+    const str = String(val).trim().toLowerCase()
+    if (["male", "m"].includes(str)) return "Male"
+    if (["female", "f"].includes(str)) return "Female"
+    if (val === "Male" || val === "Female") return val
+    return "Male" as any
+  }
+
+  const normalizeCategory = (val: any): "ST" | "SC" | "OBC" | "OPEN" | null => {
+    if (!val) return null
+    const str = String(val).trim().toUpperCase()
+    if (["OPEN", "GENERAL", "GEN"].includes(str) || str.includes("EWS")) return "OPEN"
+    if (["ST", "S.T.", "SCHEDULED TRIBE"].includes(str)) return "ST"
+    if (["SC", "S.C.", "SCHEDULED CASTE"].includes(str)) return "SC"
+    if (["OBC", "O.B.C.", "SEBC", "S.E.B.C."].includes(str)) return "OBC"
+    return null
+  }
+
   const AcademicClasses = useAppSelector(selectAcademicClasses)
   const authState = useAppSelector(selectAuthState)
   const isCollege = authState.user?.school?.school_type === 'COLLEGE'
@@ -235,6 +254,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
       quota_fees: "",
       activity_house: "",
       bank_branch_name: "",
+      practical_batch: "",
     },
   })
 
@@ -503,6 +523,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
           fourth_year_roll_number: null,
           aadhar_no: values.aadhar_no,
           is_active: true,
+          practical_batch: values.practical_batch ?? null,
         },
         student_meta_data: {
           aadhar_dise_no: values.aadhar_dise_no ?? null,
@@ -746,6 +767,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (values.aadhar_no !== initial_data?.aadhar_no) {
         payload.students_data.aadhar_no = values.aadhar_no
       }
+      if (values.practical_batch !== initial_data?.practical_batch) {
+        payload.students_data.practical_batch = values.practical_batch || null
+      }
 
       if (isCollege) {
         const collegeFields = [
@@ -872,7 +896,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         middle_name: initial_data?.middle_name ? initial_data?.middle_name : null,
         first_name_in_guj: initial_data?.first_name_in_guj,
         middle_name_in_guj: initial_data?.middle_name_in_guj,
-        gender: initial_data?.gender,
+        gender: normalizeGender(initial_data?.gender),
         birth_date: initial_data?.birth_date ? formatData(initial_data.birth_date) : "",
         enrollment_code: initial_data?.enrollment_code,
         gr_no: initial_data?.gr_no,
@@ -892,7 +916,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         religion_in_guj: initial_data?.student_meta?.religion_in_guj,
         caste: initial_data?.student_meta?.caste,
         caste_in_guj: initial_data?.student_meta?.caste_in_guj,
-        category: initial_data?.student_meta?.category,
+        category: normalizeCategory(initial_data?.student_meta?.category),
         privious_school: initial_data?.student_meta?.privious_school,
         privious_school_in_guj: initial_data?.student_meta?.privious_school_in_guj,
         address: initial_data?.student_meta?.address,
@@ -994,6 +1018,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         quota_fees: initial_data?.student_meta?.quota_fees || "",
         activity_house: initial_data?.student_meta?.activity_house || "",
         bank_branch_name: initial_data?.student_meta?.bank_branch_name || "",
+        practical_batch: initial_data?.practical_batch || "",
       })
 
     } else if (form_type === "create" && initial_data && is_use_for_onBoarding) {
@@ -1027,7 +1052,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         first_name_in_guj: initial_data.first_name_in_guj || null,
         middle_name_in_guj: initial_data.middle_name_in_guj || null,
         last_name_in_guj: initial_data.last_name_in_guj || null,
-        gender: initial_data.gender,
+        gender: normalizeGender(initial_data.gender),
         birth_date: initial_data.birth_date ? formatData(initial_data.birth_date) : "",
         gr_no: initial_data.gr_no,
         primary_mobile: initial_data.primary_mobile,
@@ -1689,6 +1714,35 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       </FormItem>
                     )}
                   />
+                  {isCollege && (
+                    <FormField
+                      control={form.control}
+                      name="practical_batch"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("practical_batch") || "Practical Batch"}</FormLabel>
+                          <Select
+                            value={field.value || ""}
+                            onValueChange={(value) => field.onChange(value === "None" ? "" : value)}
+                            disabled={form_type === "view"}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Batch" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="None">None</SelectItem>
+                              <SelectItem value="Batch A">Batch A</SelectItem>
+                              <SelectItem value="Batch B">Batch B</SelectItem>
+                              <SelectItem value="Batch C">Batch C</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
                 {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1719,7 +1773,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               (cls, index) =>
                                 cls.divisions.length > 0 && (
                                   <SelectItem key={index} value={cls.id.toString()}>
-                                    Class {cls.class}
+                                    {cls.class}
                                   </SelectItem>
                                 ),
                             )}
@@ -1798,7 +1852,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                                     key={index}
                                     value={cls.id.toString()}
                                   >
-                                    Class {cls.class}
+                                    {cls.class}
                                   </SelectItem>
                                 )
                             )}

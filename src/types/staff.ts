@@ -51,8 +51,8 @@ export interface StaffType {
   gender: "Male" | "Female";
   birth_date: Date | null;
   marital_status: string | null;
-  mobile_number: number;
-  email: string;
+  mobile_number: number | string | null;
+  email: string | null;
   emergency_contact_name: string | null;
   emergency_contact_number: number | null;
   qualification: string | null;

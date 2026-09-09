@@ -658,7 +658,7 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
                         <SelectContent>
                           {AcademicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id.toString()}>
-                              Class {cls.class}
+                              {cls.class}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -14,6 +14,51 @@ const formatData = (value: any): string => {
   }
 }
 
+const normalizeGender = (val: any): "Male" | "Female" | undefined => {
+  if (!val) return undefined
+  const str = String(val).trim().toLowerCase()
+  if (["male", "m"].includes(str)) return "Male"
+  if (["female", "f"].includes(str)) return "Female"
+  if (val === "Male" || val === "Female") return val
+  return undefined
+}
+
+const normalizeMaritalStatus = (val: any): "Single" | "Married" | "Divorced" | "Widowed" | null => {
+  if (!val) return null
+  const str = String(val).trim().toLowerCase()
+  if (["single", "unmarried"].includes(str)) return "Single"
+  if (["married"].includes(str)) return "Married"
+  if (["divorced"].includes(str)) return "Divorced"
+  if (["widowed"].includes(str)) return "Widowed"
+  const capitalized = str.charAt(0).toUpperCase() + str.slice(1)
+  if (["Single", "Married", "Divorced", "Widowed"].includes(capitalized)) {
+    return capitalized as any
+  }
+  return null
+}
+
+const normalizeCategory = (val: any): "ST" | "SC" | "OBC" | "OPEN" | null => {
+  if (!val) return null
+  const str = String(val).trim().toUpperCase()
+  if (["OPEN", "GENERAL", "GEN"].includes(str) || str.includes("EWS")) return "OPEN"
+  if (["ST", "S.T.", "SCHEDULED TRIBE"].includes(str)) return "ST"
+  if (["SC", "S.C.", "SCHEDULED CASTE"].includes(str)) return "SC"
+  if (["OBC", "O.B.C.", "SEBC", "S.E.B.C."].includes(str)) return "OBC"
+  return null
+}
+
+const normalizeEmploymentStatus = (val: any): "Permanent" | "Trial_Period" | "Resigned" | "Contract_Based" | "Notice_Period" | undefined => {
+  if (!val) return undefined
+  const str = String(val).trim().toLowerCase()
+  if (str.includes("permanent")) return "Permanent"
+  if (str.includes("trial")) return "Trial_Period"
+  if (str.includes("resign")) return "Resigned"
+  if (str.includes("contract")) return "Contract_Based"
+  if (str.includes("notice")) return "Notice_Period"
+  if (["Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"].includes(val)) return val
+  return undefined
+}
+
 export const useStaffFormReset = (
   form: UseFormReturn<StaffFormData>,
   formType: "create" | "update" | "view",
@@ -30,16 +75,16 @@ export const useStaffFormReset = (
         first_name_in_guj: initialData.first_name_in_guj || null,
         last_name_in_guj: initialData.last_name_in_guj || null,
         middle_name_in_guj: initialData.middle_name_in_guj || null,
-        gender: (initialData.gender as any) || undefined,
+        gender: normalizeGender(initialData.gender),
         birth_date: initialData.birth_date ? formatData(initialData.birth_date) : null,
         aadhar_no: initialData.aadhar_no || null,
-        mobile_number: initialData.mobile_number || undefined,
+        mobile_number: initialData.mobile_number ? Number(initialData.mobile_number) || undefined : undefined,
         email: initialData.email || null,
         religion: initialData.religion || null,
         religion_in_guj: initialData.religion_in_guj || null,
         caste: initialData.caste || null,
         caste_in_guj: initialData.caste_in_guj || null,
-        category: (initialData.category as any) || null,
+        category: normalizeCategory(initialData.category),
         address: initialData.address || null,
         district: initialData.district || null,
         city: initialData.city || null,
@@ -48,11 +93,11 @@ export const useStaffFormReset = (
         account_no: initialData.account_no || null,
         IFSC_code: initialData.IFSC_code || null,
         joining_date: initialData.joining_date ? formatData(initialData.joining_date) : null,
-        employment_status: (initialData.employment_status as any) || undefined,
+        employment_status: normalizeEmploymentStatus(initialData.employment_status),
         state: initialData.state || null,
         qualification: initialData.qualification || null,
         subject_specialization: initialData.subject_specialization || null,
-        marital_status: (initialData.marital_status as any) || null,
+        marital_status: normalizeMaritalStatus(initialData.marital_status),
         pan_card_no: initialData.pan_card_no ? initialData.pan_card_no.toString() : null,
         ayush_id_no: initialData.ayush_id_no || null,
         teacher_code: initialData.teacher_code || null,
@@ -76,6 +121,9 @@ export const useStaffFormReset = (
         bank_branch_name: initialData.bank_branch_name || null,
         pay_scale: initialData.pay_scale || null,
         retirement_age: initialData.retirement_age ?? null,
+        staff_type: initialData.staff_type || null,
+        staff_category: initialData.staff_category || null,
+        designation: initialData.designation || null,
       })
     }
   }, [formType, initialData, form])

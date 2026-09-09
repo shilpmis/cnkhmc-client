@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
 import type { AcademicClasses, ClassData, Division } from "@/types/academic"
-import { Edit, PlusCircle, Save, Calendar, Plus, AlertCircle, X } from "lucide-react"
+import { Edit, PlusCircle, Save, Calendar, Plus, AlertCircle, X, Trash2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { SaralCard } from "../../ui/common/SaralCard"
 import { Badge } from "../../ui/badge"
@@ -25,6 +25,7 @@ import {
   createClasses,
   createDivision,
   editDivision,
+  deleteDivision,
   useGetAcademicClassesQuery,
   useGetAcademicSessionsQuery,
   useSetActiveSessionMutation,
@@ -137,11 +138,14 @@ export default function AcademicSettings() {
   const [showNoActiveSessionAlert, setShowNoActiveSessionAlert] = useState(false)
 
   // State for classes and divisions
+  // State for classes and divisions
   const [selectedClasses, setSelectedClasses] = useState<{ id: number; class: AvailableClasses }[] | null>(null)
   const [academicClasses, setAcademicClasses] = useState<AcademicClasses[]>([])
   const [editingClass, setEditingClass] = useState<ClassData | null>(null)
   const [newDivision, setNewDivision] = useState<{ class: number; aliases: string; division: string } | null>(null)
   const [editingDivision, setEditingDivision] = useState<{ classId: number; division: Division } | null>(null)
+  const [createWithDivision, setCreateWithDivision] = useState<boolean>(false)
+  const [collegeWithDivision, setCollegeWithDivision] = useState<boolean>(false)
 
   const [isEditDivisionDialogOpen, setIsEditDivisionDialogOpen] = useState(false)
   const [isConfirmSaveDialogOpen, setIsConfirmSaveDialogOpen] = useState(false)
@@ -205,11 +209,11 @@ export default function AcademicSettings() {
   }
 
   const disabledClasses = useMemo(() => {
-    return academicClasses.filter((c) => c.divisions.length > 0).map((c) => c.class)
+    return academicClasses.map((c) => c.class)
   }, [academicClasses])
 
   const checkedClasses = useMemo(() => {
-    const checkedAcademicClasses = academicClasses.filter((c) => c.divisions.length > 0).map((c) => c.class)
+    const checkedAcademicClasses = academicClasses.map((c) => c.class)
     const checkedClasses = selectedClasses ? selectedClasses.map((c) => c.class) : []
     return new Set([...checkedAcademicClasses, ...checkedClasses])
   }, [academicClasses, selectedClasses])
@@ -235,18 +239,35 @@ export default function AcademicSettings() {
     classId = Number.parseInt(classId.toString())
     const cls = academicClasses.find((c) => c.id === classId)
     if (cls) {
-      const lastDivision = cls.divisions[cls.divisions.length - 1]
-      const nextLetter = String.fromCharCode(lastDivision.division.charCodeAt(0) + 1)
+      const lastDivision = cls.divisions && cls.divisions.length > 0 ? cls.divisions[cls.divisions.length - 1] : null
+      const nextLetter = lastDivision ? String.fromCharCode(lastDivision.division.charCodeAt(0) + 1) : "A"
       setNewDivision({ division: nextLetter, aliases: `${nextLetter}`, class: classId })
       formForDivsion.reset({
         class_id: cls.id,
         class: cls.class,
-        // aliases: nextLetter,
         division: nextLetter,
+        aliases: null,
         formType: "create",
       })
     }
     setIsDivisionForDialogOpen(true)
+  }
+
+  const handleDeleteDivision = async (divisionId: number) => {
+    try {
+      await dispatch(deleteDivision(divisionId)).unwrap()
+      toast({
+        title: "Division Deleted",
+        description: "Division deleted successfully.",
+      })
+      refetchClasses()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete division.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleEditDivision = (division: Division , clas : AcademicClasses) => {
@@ -276,12 +297,13 @@ export default function AcademicSettings() {
 
   const confirmSaveSelectionOfClasses = async () => {
     if (selectedClasses && selectedClasses.length > 0) {
-      let payload: Omit<Class, "id" | "school_id">[] = []
+      let payload: any[] = []
 
       payload = selectedClasses.map((clas) => {
         return {
           class: clas.class,
           academic_session_id: currentAcademicSession!.id,
+          with_division: createWithDivision,
         }
       })
 
@@ -289,22 +311,6 @@ export default function AcademicSettings() {
         const added_class: any = await dispatch(createClasses(payload))
 
         if (added_class.meta.requestStatus === "fulfilled") {
-          // Update the academicClasses state with the new classes
-          const newClasses = payload.map((clas, index) => ({
-            class: clas.class,
-            divisions: [
-              {
-                id: added_class.payload[0].id,
-                school_id: user!.school_id,
-                class: clas.class.toString(),
-                academic_session_id: currentAcademicSession?.id ?? 0,
-              },
-            ],
-          }))
-
-          setAcademicClasses((prevClasses): any => [...prevClasses, ...newClasses])
-
-          // Clear the selected classes
           setSelectedClasses([])
 
           toast({
@@ -364,7 +370,8 @@ export default function AcademicSettings() {
         class: finalClassName,
         batch_id: Number(collegeBatchId),
         department_id: Number(collegeDeptId),
-        academic_session_id: currentAcademicSession!.id
+        academic_session_id: currentAcademicSession!.id,
+        with_division: collegeWithDivision,
       }]
       
       const result: any = await dispatch(createClasses(payload)).unwrap()
@@ -831,10 +838,22 @@ export default function AcademicSettings() {
                                 onChange={(e) => setCollegeClassName(e.target.value)}
                               />
                             </div>
-                            <Button onClick={handleCreateCollegeClass}>
-                              <Plus className="mr-2 h-4 w-4" />
-                              {t("add_class")}
-                            </Button>
+                            <div className="flex flex-col justify-end gap-2">
+                              <div className="flex items-center space-x-2 pb-1">
+                                <Checkbox
+                                  id="college-with-division"
+                                  checked={collegeWithDivision}
+                                  onCheckedChange={(checked) => setCollegeWithDivision(!!checked)}
+                                />
+                                <Label htmlFor="college-with-division" className="text-xs font-medium cursor-pointer">
+                                  {t("add_default_division") || "Add Division ('A')"}
+                                </Label>
+                              </div>
+                              <Button onClick={handleCreateCollegeClass}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                {t("add_class")}
+                              </Button>
+                            </div>
                           </div>
                           
                           {/* Live Preview for College Class Name */}
@@ -872,13 +891,23 @@ export default function AcademicSettings() {
                                     htmlFor={`class-${cls.id}`}
                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                                   >
-                                    Class {cls.class}
+                                    {cls.class}
                                   </label>
                                 </div>
                               </div>
                             ))}
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="create-with-division"
+                                checked={createWithDivision}
+                                onCheckedChange={(checked) => setCreateWithDivision(!!checked)}
+                              />
+                              <Label htmlFor="create-with-division" className="text-sm font-medium cursor-pointer">
+                                {t("create_with_default_division") || "Create with default Division ('A')"}
+                              </Label>
+                            </div>
                             <Button onClick={handleSaveButtonForSelectedClasses} disabled={!selectedClasses}>
                               <Save className="mr-2 h-4 w-4" />
                               {t("save")}
@@ -925,44 +954,59 @@ export default function AcademicSettings() {
                               if (!isCollege || filterDepartmentId === "all") return true;
                               return std.department_id?.toString() === filterDepartmentId;
                             })
-                            .map(
-                            (std, index) =>
-                              std.divisions.length > 0 && (
-                                <TableRow key={index}>
-                                  <TableCell className="font-medium">{std.class}</TableCell>
-                                  <TableCell>
+                            .map((std, index) => (
+                              <TableRow key={std.id || index}>
+                                <TableCell className="font-medium">{std.class}</TableCell>
+                                <TableCell>
+                                  {std.divisions && std.divisions.length > 0 ? (
                                     <div className="flex gap-2 flex-wrap">
                                       {std.divisions.map((division) => (
                                         <Badge
                                           key={division.id}
                                           variant="secondary"
-                                          className="flex items-center gap-1 p-3"
+                                          className="flex items-center gap-1.5 p-2 px-3"
                                         >
-                                          <p>
+                                          <span>
                                             ({std.class}- {division.division})
-                                          </p>
-                                          <p>{division.aliases}</p>
+                                          </span>
+                                          {division.aliases && (
+                                            <span className="text-xs font-medium text-muted-foreground">({division.aliases})</span>
+                                          )}
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-4 w-4 p-0 ml-1"
-                                            onClick={() => handleEditDivision(division , std)}
+                                            className="h-5 w-5 p-0 ml-1 hover:bg-background/80"
+                                            onClick={() => handleEditDivision(division, std)}
+                                            title={t("edit") || "Edit Alias"}
                                           >
                                             <Edit className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => handleDeleteDivision(division.id)}
+                                            title={t("delete") || "Delete Division"}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
                                           </Button>
                                         </Badge>
                                       ))}
                                     </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Button size="sm" variant="outline" onClick={() => handleAddDivision(std.id)}>
-                                      <PlusCircle className="mr-2 h-4 w-4" />
-                                      {t("add_division")}
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ),
-                          )}
+                                  ) : (
+                                    <Badge variant="outline" className="text-muted-foreground italic font-normal">
+                                      {t("no_division") || "No Division"}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button size="sm" variant="outline" onClick={() => handleAddDivision(std.id)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    {t("add_division")}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
                         </TableBody>
                       </Table>
                     </SaralCard>

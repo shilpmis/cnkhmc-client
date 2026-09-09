@@ -246,7 +246,7 @@ const ManageStudents: React.FC = () => {
     {
       division_id: selectedDivision ? Number.parseInt(selectedDivision) : 0,
       page: currentPage,
-      // academic_session: currentAcademicSession?.id || 0,
+      academic_session: currentAcademicSession?.id || 0,
     },
     {
       skip: !selectedDivision || !currentAcademicSession,
@@ -760,7 +760,7 @@ const ManageStudents: React.FC = () => {
                   </SelectItem>
                   {AcademicClasses?.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id.toString()}>
-                      Class {cls.class}
+                      {cls.class}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1024,7 +1024,7 @@ const ManageStudents: React.FC = () => {
                           return cls.class >= studentClass.class
                         }).map((cls) => (
                           <SelectItem key={cls.id} value={cls.id.toString()}>
-                            Class {cls.class}
+                            {cls.class}
                           </SelectItem>
                         ))}
                       </SelectContent>

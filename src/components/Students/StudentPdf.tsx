@@ -517,7 +517,7 @@ const StudentDetailsPDF: React.FC<StudentPDFProps> = ({ student, currentUser }) 
             </View>
             <View style={styles.column}>
               <Text style={styles.label}>Admission Class</Text>
-              <Text style={styles.value}>Class {student.student.student_meta?.admission_class_id || "N/A"}</Text>
+              <Text style={styles.value}>{student.student.student_meta?.admission_class_id || "N/A"}</Text>
             </View>
             <View style={styles.column}>
               <Text style={styles.label}>New Admission</Text>

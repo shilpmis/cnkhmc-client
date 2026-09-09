@@ -46,7 +46,7 @@ const fieldGroups = {
 }
 
 export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadModalProps) {
-  const [staffType, setStaffType] = useState<"teaching" | "non-teaching">("teaching")
+  const [staffType, setStaffType] = useState<"teaching" | "non-teaching" | "hospital">("teaching")
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({})
   const [isDownloading, setIsDownloading] = useState(false)
   const {t} = useTranslation()
@@ -159,7 +159,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
       // Transform Excel headers client-side before download
       const transformedExcel = await transformExcelHeaders(response);
 
-      const fileName = `${staffType === "teaching" ? "Teaching_Staff" : "Non_Teaching_Staff"}_${new Date().toISOString().split("T")[0]}.xlsx`
+      const fileName = `${staffType === "teaching" ? "Teaching_Staff" : staffType === "hospital" ? "Hospital_Staff" : "Non_Teaching_Staff"}_${new Date().toISOString().split("T")[0]}.xlsx`
 
       const url = URL.createObjectURL(transformedExcel)
       const link = document.createElement("a")
@@ -192,7 +192,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
           <CardTitle className="text-base">{t("select_staff_type")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="teaching"
@@ -208,6 +208,14 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
                 onCheckedChange={() => setStaffType("non-teaching")}
               />
               <Label htmlFor="non-teaching">{t("non_teaching_staff")}</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hospital"
+                checked={staffType === "hospital"}
+                onCheckedChange={() => setStaffType("hospital")}
+              />
+              <Label htmlFor="hospital">{t("hospital_staff") || "Hospital Staff"}</Label>
             </div>
           </div>
         </CardContent>

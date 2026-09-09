@@ -122,7 +122,7 @@ export const RecentInquiries: React.FC<RecentInquiriesProps> = ({ academicSessio
                       <TableCell className="font-medium">
                         {inquiry.first_name} {inquiry.middle_name} {inquiry.last_name}
                       </TableCell>
-                      <TableCell>{inquiry.class_name || `Class ${inquiry.inquiry_for_class}`}</TableCell>
+                      <TableCell>{inquiry.class_name || `${inquiry.inquiry_for_class}`}</TableCell>
                       <TableCell>{inquiry.primary_mobile}</TableCell>
                       <TableCell>{formatDate(inquiry.created_at)}</TableCell>
                       <TableCell>
@@ -179,7 +179,7 @@ export const RecentInquiries: React.FC<RecentInquiriesProps> = ({ academicSessio
                   <div>
                     <p className="text-sm text-muted-foreground">{t("inquiry_for_class")}</p>
                     <p className="font-medium">
-                      {`Class ${AcademicClassForSchool!.find((classItem) => classItem.id === selectedInquiry.inquiry_for_class)?.class}`}
+                      {`${AcademicClassForSchool!.find((classItem) => classItem.id === selectedInquiry.inquiry_for_class)?.class}`}
                     </p>
                   </div>
                 </div>

@@ -279,7 +279,7 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                   <div>
                     <p className="text-sm text-muted-foreground">{t("admission_class")}</p>
                     <p className="font-medium">{
-                      student.student.student_meta?.admission_class_id ? `Class ${getClass(student.student.student_meta?.admission_class_id)}` : "N/A"
+                      student.student.student_meta?.admission_class_id ? `${getClass(student.student.student_meta?.admission_class_id)}` : "N/A"
                     }</p>
                   </div>
                   <div>
@@ -485,7 +485,7 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{t("admission_class")}</span>
                   <span className="font-medium">{
-                    student.student.student_meta?.admission_class_id ? `Class ${getClass(student.student.student_meta?.admission_class_id)}` : "N/A"
+                    student.student.student_meta?.admission_class_id ? `${getClass(student.student.student_meta?.admission_class_id)}` : "N/A"
                   } </span>
                 </div>
                 <Separator />

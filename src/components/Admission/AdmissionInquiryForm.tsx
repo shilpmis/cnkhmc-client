@@ -1618,7 +1618,7 @@ export default function AdmissionInquiryForm({
                   ) : AcademicClasses && AcademicClasses.length > 0 ? (
                     AcademicClasses.map((cls) => (
                       <SelectItem key={cls.id} value={cls.id.toString()} disabled={!enabledClassIds.includes(cls.id)}>
-                        Class {cls.class}
+                        {cls.class}
                       </SelectItem>
                     ))
                   ) : (

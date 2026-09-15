@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { RotateCcw, Save, Trash2, Plus, Loader2, AlertCircle, Beaker, Dumbbell, Calendar, Info, XCircle } from "lucide-react"
+import { RotateCcw, Save, Trash2, Plus, Loader2, AlertCircle, Beaker, Dumbbell, Calendar, Info, XCircle, BookOpen, Presentation } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { parseBackendError } from "@/lib/errorParser"
@@ -51,6 +51,8 @@ const createPeriodSchema = (periodsCount: number) => {
           lab_id: z.number().nullable(),
           is_pt: z.boolean().default(false),
           is_free_period: z.boolean().default(false),
+          is_library: z.boolean().default(false),
+          is_seminar: z.boolean().default(false),
           duration: z.number(),
         }),
       )
@@ -266,6 +268,8 @@ export default function TimetableGenerator({
         period.is_break ||
         period.is_pt ||
         period.is_free_period ||
+        period.is_library ||
+        period.is_seminar ||
         !period.subjects_division_masters_id ||
         !period.staff_enrollment_id
       ) {
@@ -285,8 +289,10 @@ export default function TimetableGenerator({
           subjects_division_masters_id: period.subjects_division_masters_id,
           staff_enrollment_id: period.staff_enrollment_id,
           lab_id: period.lab_id,
-          is_pt: period.is_pt,
+          is_pt: period.is_pt || false,
           is_free_period: period.is_free_period,
+          is_library: period.is_library || false,
+          is_seminar: period.is_seminar || false,
         }
 
         await verifyPeriodConfiguration({ payload: periodPayload }).unwrap()
@@ -335,8 +341,10 @@ export default function TimetableGenerator({
         subjects_division_masters_id: period.subjects_division_masters_id,
         staff_enrollment_id: period.staff_enrollment_id,
         lab_id: period.lab_id,
-        is_pt: period.is_pt,
+        is_pt: period.is_pt || false,
         is_free_period: period.is_free_period,
+        is_library: period.is_library || false,
+        is_seminar: period.is_seminar || false,
         duration: calculateDuration(period.start_time, period.end_time),
       }))
       replace(formattedPeriods)
@@ -365,7 +373,7 @@ export default function TimetableGenerator({
     try {
       // Check for subjects that need to be assigned to the division first
       const newSubjectSelections = data.periods.filter(p => 
-        !p.is_break && !p.is_pt && !p.is_free_period && 
+        !p.is_break && !p.is_pt && !p.is_free_period && !p.is_library && !p.is_seminar &&
         p.subjects_division_masters_id === null && 
         (form.getValues() as any).periods[data.periods.indexOf(p)].subjects_division_masters_id_raw?.startsWith("new_")
       );
@@ -378,7 +386,7 @@ export default function TimetableGenerator({
       
       for (let i = 0; i < data.periods.length; i++) {
         const period = data.periods[i];
-        const isSpecialPeriod = period.is_break || period.is_pt || period.is_free_period;
+        const isSpecialPeriod = period.is_break || period.is_pt || period.is_free_period || period.is_library || period.is_seminar;
         
         let subjects_division_masters_id = period.subjects_division_masters_id;
         
@@ -533,6 +541,8 @@ export default function TimetableGenerator({
 
     if (hasError) return "bg-red-50 border-red-200"
     if (period.is_break) return "bg-amber-50 border-amber-200"
+    if (period.is_library) return "bg-sky-50 border-sky-200"
+    if (period.is_seminar) return "bg-purple-50 border-purple-200"
     if (period.is_pt) return "bg-purple-50 border-purple-200"
     if (period.lab_id) return "bg-blue-50 border-blue-200"
     if (period.is_free_period) return "bg-gray-50 border-gray-200"
@@ -706,24 +716,32 @@ export default function TimetableGenerator({
                           className={
                             field.is_break
                               ? "bg-amber-100 text-amber-800 border-amber-200"
-                              : field.is_pt
-                                ? "bg-purple-100 text-purple-800 border-purple-200"
-                                : field.lab_id
-                                  ? "bg-blue-100 text-blue-800 border-blue-200"
-                                  : field.is_free_period
-                                    ? "bg-gray-100 text-gray-800 border-gray-200"
-                                    : "bg-green-100 text-green-800 border-green-200"
+                              : field.is_library
+                                ? "bg-sky-100 text-sky-800 border-sky-200"
+                                : field.is_seminar
+                                  ? "bg-purple-100 text-purple-800 border-purple-200"
+                                  : field.is_pt
+                                    ? "bg-purple-100 text-purple-800 border-purple-200"
+                                    : field.lab_id
+                                      ? "bg-blue-100 text-blue-800 border-blue-200"
+                                      : field.is_free_period
+                                        ? "bg-gray-100 text-gray-800 border-gray-200"
+                                        : "bg-green-100 text-green-800 border-green-200"
                           }
                         >
                           {field.is_break
                             ? t("break")
-                            : field.is_pt
-                              ? t("pt")
-                              : field.lab_id
-                                ? t("lab")
-                                : field.is_free_period
-                                  ? t("free")
-                                  : t("regular")}
+                            : field.is_library
+                              ? (t("library") || "Library")
+                              : field.is_seminar
+                                ? (t("seminar") || "Seminar")
+                                : field.is_pt
+                                  ? t("pt")
+                                  : field.lab_id
+                                    ? t("lab")
+                                    : field.is_free_period
+                                      ? (t("free") || "Free")
+                                      : t("regular")}
                         </Badge>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -750,7 +768,7 @@ export default function TimetableGenerator({
                                     setHasChanges(true)
                                     handleFieldChange(index, "staff_enrollment_id", null)
                                   }}
-                                  disabled={field.is_break || field.is_pt || field.is_free_period}
+                                  disabled={field.is_break || field.is_pt || field.is_free_period || field.is_library || field.is_seminar}
                                 >
                                   <SelectTrigger className="w-40 h-8">
                                     <SelectValue placeholder={t("select_subject")} />
@@ -834,28 +852,62 @@ export default function TimetableGenerator({
                           <div className="flex flex-wrap gap-1">
                             <FormField
                               control={form.control}
-                              name={`periods.${index}.is_pt`}
-                              render={({ field: ptField }) => (
+                              name={`periods.${index}.is_library`}
+                              render={({ field: libField }) => (
                                 <FormItem className="flex items-center space-x-1 m-0">
                                   <FormControl>
                                     <Button
                                       type="button"
-                                      variant={ptField.value ? "default" : "outline"}
+                                      variant={libField.value ? "default" : "outline"}
                                       size="sm"
                                       className="h-6 px-2 text-xs"
                                       onClick={() => {
-                                        const newValue = !ptField.value
-                                        handleFieldChange(index, "is_pt", newValue)
+                                        const newValue = !libField.value
+                                        handleFieldChange(index, "is_library", newValue)
                                         if (newValue) {
+                                          handleFieldChange(index, "is_seminar", false)
                                           handleFieldChange(index, "is_free_period", false)
+                                          handleFieldChange(index, "is_pt", false)
                                           handleFieldChange(index, "lab_id", null)
                                           handleFieldChange(index, "subjects_division_masters_id", null)
                                           handleFieldChange(index, "staff_enrollment_id", null)
                                         }
                                       }}
                                     >
-                                      <Dumbbell className="h-3 w-3 mr-1" />
-                                      {t("pt")}
+                                      <BookOpen className="h-3 w-3 mr-1" />
+                                      {t("library") || "Library"}
+                                    </Button>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name={`periods.${index}.is_seminar`}
+                              render={({ field: semField }) => (
+                                <FormItem className="flex items-center space-x-1 m-0">
+                                  <FormControl>
+                                    <Button
+                                      type="button"
+                                      variant={semField.value ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-6 px-2 text-xs"
+                                      onClick={() => {
+                                        const newValue = !semField.value
+                                        handleFieldChange(index, "is_seminar", newValue)
+                                        if (newValue) {
+                                          handleFieldChange(index, "is_library", false)
+                                          handleFieldChange(index, "is_free_period", false)
+                                          handleFieldChange(index, "is_pt", false)
+                                          handleFieldChange(index, "lab_id", null)
+                                          handleFieldChange(index, "subjects_division_masters_id", null)
+                                          handleFieldChange(index, "staff_enrollment_id", null)
+                                        }
+                                      }}
+                                    >
+                                      <Presentation className="h-3 w-3 mr-1" />
+                                      {t("seminar") || "Seminar"}
                                     </Button>
                                   </FormControl>
                                 </FormItem>
@@ -875,6 +927,8 @@ export default function TimetableGenerator({
                                         if (value !== "none") {
                                           handleFieldChange(index, "is_pt", false)
                                           handleFieldChange(index, "is_free_period", false)
+                                          handleFieldChange(index, "is_library", false)
+                                          handleFieldChange(index, "is_seminar", false)
                                         }
                                       }}
                                     >
@@ -918,6 +972,8 @@ export default function TimetableGenerator({
                                         handleFieldChange(index, "is_free_period", newValue)
                                         if (newValue) {
                                           handleFieldChange(index, "is_pt", false)
+                                          handleFieldChange(index, "is_library", false)
+                                          handleFieldChange(index, "is_seminar", false)
                                           handleFieldChange(index, "lab_id", null)
                                           handleFieldChange(index, "subjects_division_masters_id", null)
                                           handleFieldChange(index, "staff_enrollment_id", null)

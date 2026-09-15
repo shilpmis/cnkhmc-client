@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,20 +27,23 @@ import {
 } from "lucide-react"
 
 // API service for staff data
-import { useLazyGetTeachingStaffQuery, useLazyGetOtherStaffQuery } from "@/services/StaffService"
+import { useLazyGetTeachingStaffQuery, useLazyGetOtherStaffQuery, useGetStaffConfigurationsQuery } from "@/services/StaffService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import type { StaffType } from "@/types/staff"
 import type { PageMeta } from "@/types/global"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-// Employment status options
-const employmentStatuses = ["All Statuses", "Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"]
-
 const EmployeeManagement = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const { data: allConfigs } = useGetStaffConfigurationsQuery()
+
+  const dynamicEmploymentStatuses: string[] = useMemo(() => {
+    const custom = allConfigs?.filter((c) => c.config_type === "EMPLOYMENT_STATUS").map((c) => c.name) || []
+    return ["All Statuses", ...custom]
+  }, [allConfigs])
 
   // API hooks
   const [getTeachingStaff, { data: teachingStaff, isLoading: isTeachingStaffLoading }] = useLazyGetTeachingStaffQuery()
@@ -359,7 +362,7 @@ const EmployeeManagement = () => {
                       <SelectValue placeholder={t("status")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {employmentStatuses.map((status) => (
+                      {dynamicEmploymentStatuses.map((status) => (
                         <SelectItem key={status} value={status}>
                           {status.replace("_", " ")}
                         </SelectItem>

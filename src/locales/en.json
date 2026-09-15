@@ -36,6 +36,7 @@
     "academic_calendar": "Academic Calendar",
     "academic_details": "Academic Details",
     "academic_management": "Academic Management",
+    "calendar_categories": "Calendar Categories",
     "academic_session": "Academic Session",
     "academic_session_and_are_open_for_admissions_by_admin.": "academic session and are open for admissions by admin.",
     "academic_session_management": "Academic Session Management",
@@ -1484,6 +1485,7 @@
     "no_available_components_for_this_type": "No Available Components For This Type",
     "no_available_divisions_for_migration": "No Available Divisions For Migration",
     "no_bank_details_available": "No Bank Details Available",
+    "no_batch": "No Batch (All Students)",
     "no_batches_found": "No Batches Found",
     "no_breaks": "No Breaks",
     "no_cancelled_applications_found": "No Cancelled Applications Found",
@@ -2752,5 +2754,11 @@
     "your_leave_request_has_been_approved": "Your Leave Request Has Been Approved",
     "your_profile": "Your Profile",
     "your_recent_actions_and_updates": "Your Recent Actions And Updates",
-    "your_recent_notifications_and_alerts": "Your Recent Notifications And Alerts"
+    "your_recent_notifications_and_alerts": "Your Recent Notifications And Alerts",
+    "is_library_period": "Is Library Period",
+    "is_seminar_period": "Is Seminar Period",
+    "is_free_period": "Is Free Period",
+    "library": "Library",
+    "seminar": "Seminar",
+    "free": "Free"
 }

@@ -16,6 +16,7 @@ import {
   Banknote,
   CalendarDays,
   FileText,
+  Tag,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -59,6 +60,11 @@ const navigationSections: NavSection[] = [
         title: "academic_management",
         icon: GraduationCap,
         href: "academic",
+      },
+      {
+        title: "calendar_categories",
+        icon: Tag,
+        href: "calendar-categories",
       },
       {
         title: "department_management",

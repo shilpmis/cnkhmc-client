@@ -89,7 +89,7 @@ export const OtherDetailsSection: React.FC<OtherDetailsSectionProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("category")}</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+              <Select onValueChange={field.onChange} value={field.value || undefined}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder={t("select_category")} />

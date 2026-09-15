@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -9,12 +9,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, AlertTriangle, Edit, Plus, Trash } from "lucide-react"
+import { 
+  AlertCircle, 
+  AlertTriangle, 
+  Edit, 
+  Plus, 
+  Trash2, 
+  Search, 
+  Users, 
+  Layers, 
+  Briefcase, 
+  BadgeCheck, 
+  FileText, 
+  BookOpen, 
+  GraduationCap, 
+  Shield, 
+  SlidersHorizontal,
+  X
+} from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useAppDispatch } from "@/redux/hooks/useAppDispatch"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import {
@@ -27,7 +45,7 @@ import {
   useUpdateStaffConfigurationMutation,
   useDeleteStaffConfigurationMutation
 } from "@/services/StaffService"
-import { StaffRole } from "@/types/staff"
+import { StaffRole, StaffConfiguration } from "@/types/staff"
 import { selectSchoolStaffRoles } from "@/redux/slices/staffSlice"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { z } from "zod"
@@ -57,26 +75,214 @@ const formSchemaForStaffRole = z.object({
   formType: z.enum(["create", "edit"])
 })
 
+type ConfigType = 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION' | 'EMPLOYMENT_STATUS' | 'LETTER_TYPE' | 'SUBJECT_SPECIALIZATION' | 'QUALIFICATION'
+
+interface ConfigTabPanelProps {
+  title: string
+  description: string
+  icon: React.ElementType
+  configType: ConfigType
+  items: StaffConfiguration[]
+  parentLabel?: string
+  searchPlaceholder?: string
+  onAdd: (type: ConfigType) => void
+  onEdit: (type: ConfigType, item: StaffConfiguration) => void
+  onDelete: (item: StaffConfiguration) => void
+}
+
+function ConfigTabPanel({
+  title,
+  description,
+  icon: Icon,
+  configType,
+  items,
+  parentLabel,
+  searchPlaceholder = "Search items...",
+  onAdd,
+  onEdit,
+  onDelete
+}: ConfigTabPanelProps) {
+  const [searchTerm, setSearchTerm] = useState("")
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm.trim()) return items
+    const term = searchTerm.toLowerCase()
+    return items.filter((item) => 
+      item.name.toLowerCase().includes(term) ||
+      (item.parent?.name && item.parent.name.toLowerCase().includes(term))
+    )
+  }, [items, searchTerm])
+
+  return (
+    <Card className="rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+      <CardHeader className="p-6 pb-5 border-b border-border/60 bg-card">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0 mt-0.5">
+              <Icon className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
+                <Badge variant="secondary" className="px-2.5 py-0.5 text-xs font-semibold rounded-full">
+                  {items.length} {items.length === 1 ? 'item' : 'items'}
+                </Badge>
+              </div>
+              <CardDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                {description}
+              </CardDescription>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {items.length > 0 && (
+              <div className="relative w-full md:w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder={searchPlaceholder}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 text-xs rounded-lg"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+            <Button 
+              onClick={() => onAdd(configType)} 
+              className="h-9 px-4 text-xs font-medium rounded-lg shadow-sm gap-1.5 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              Add {title.replace(/s$/, '')}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center bg-muted/10">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-3.5">
+              <Icon className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">No {title} configured yet</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-5">
+              Get started by adding your first {title.toLowerCase().replace(/s$/, '')} for your institution.
+            </p>
+            <Button 
+              onClick={() => onAdd(configType)}
+              size="sm"
+              className="gap-1.5 rounded-lg text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add {title.replace(/s$/, '')}
+            </Button>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-10 text-center text-muted-foreground">
+            <Search className="w-8 h-8 mb-2 opacity-40" />
+            <p className="text-sm font-medium">No results matching "{searchTerm}"</p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSearchTerm("")} 
+              className="mt-2 text-xs text-primary"
+            >
+              Clear filter
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-16 font-semibold text-xs uppercase tracking-wider text-muted-foreground">#</TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Name</TableHead>
+                  {parentLabel && (
+                    <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">{parentLabel}</TableHead>
+                  )}
+                  <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredItems.map((item, idx) => (
+                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                    <TableCell className="font-medium text-sm text-foreground">
+                      {item.name}
+                    </TableCell>
+                    {parentLabel && (
+                      <TableCell>
+                        {item.parent?.name ? (
+                          <Badge variant="outline" className="text-xs bg-background font-normal border-border/80">
+                            {item.parent.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">None</span>
+                        )}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                          onClick={() => onEdit(configType, item)}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
+                          onClick={() => onDelete(item)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function StaffSettings() {
   const [createConfig] = useCreateStaffConfigurationMutation()
   const [updateConfig] = useUpdateStaffConfigurationMutation()
   const [deleteConfig] = useDeleteStaffConfigurationMutation()
-  const { data: allConfigs } = useGetStaffConfigurationsQuery()
+  const { data: allConfigs, isLoading: isConfigsLoading } = useGetStaffConfigurationsQuery()
 
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [configDialogMode, setConfigDialogMode] = useState<"add" | "edit">("add")
-  const [configDialogType, setConfigDialogType] = useState<'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION'>('STAFF_TYPE')
+  const [configDialogType, setConfigDialogType] = useState<ConfigType>('STAFF_TYPE')
   const [selectedConfig, setSelectedConfig] = useState<any>(null)
   const [configName, setConfigName] = useState("")
   const [configParentId, setConfigParentId] = useState<string>("")
   const [isConfigDeleteOpen, setIsConfigDeleteOpen] = useState(false)
   const [configToDelete, setConfigToDelete] = useState<any>(null)
 
-  const staffTypes = allConfigs?.filter(c => c.config_type === 'STAFF_TYPE') || []
-  const staffCategories = allConfigs?.filter(c => c.config_type === 'STAFF_CATEGORY') || []
-  const designations = allConfigs?.filter(c => c.config_type === 'DESIGNATION') || []
+  const staffTypes = useMemo(() => allConfigs?.filter(c => c.config_type === 'STAFF_TYPE') || [], [allConfigs])
+  const staffCategories = useMemo(() => allConfigs?.filter(c => c.config_type === 'STAFF_CATEGORY') || [], [allConfigs])
+  const designations = useMemo(() => allConfigs?.filter(c => c.config_type === 'DESIGNATION') || [], [allConfigs])
+  const employmentStatuses = useMemo(() => allConfigs?.filter(c => c.config_type === 'EMPLOYMENT_STATUS') || [], [allConfigs])
+  const letterTypes = useMemo(() => allConfigs?.filter(c => c.config_type === 'LETTER_TYPE') || [], [allConfigs])
+  const subjectSpecializations = useMemo(() => allConfigs?.filter(c => c.config_type === 'SUBJECT_SPECIALIZATION') || [], [allConfigs])
+  const qualifications = useMemo(() => allConfigs?.filter(c => c.config_type === 'QUALIFICATION') || [], [allConfigs])
 
-  const handleOpenConfigDialog = (type: 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION', mode: "add" | "edit", item?: any) => {
+  const handleOpenConfigDialog = (type: ConfigType, mode: "add" | "edit", item?: any) => {
     setConfigDialogType(type)
     setConfigDialogMode(mode)
     if (mode === "edit" && item) {
@@ -112,13 +318,13 @@ export default function StaffSettings() {
         }).unwrap()
         toast({
           title: "Configuration Updated",
-          description: `Successfully updated ${configName}.`,
+          description: `Successfully updated "${configName}".`,
         })
       } else {
         await createConfig(payload).unwrap()
         toast({
           title: "Configuration Created",
-          description: `Successfully created ${configName}.`,
+          description: `Successfully created "${configName}".`,
         })
       }
       setIsConfigDialogOpen(false)
@@ -160,30 +366,31 @@ export default function StaffSettings() {
     },
   })
 
-
   const dispatch = useAppDispatch()
   const authState = useAppSelector(selectAuthState)
   const StaffRoleState = useAppSelector(selectSchoolStaffRoles)
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
   const [
     getSchoolStaff, 
-    { data, isLoading, isFetching, isSuccess, isError, error },
+    { isLoading: isRoleLoading, isFetching },
   ] = useLazyGetSchoolStaffRoleQuery();
  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDialogForDeleteStaffOpen, setIsDialogForDeleteStaffOpen] = useState<boolean>(false)
-  const {t} = useTranslation()
-  const [showNoActiveSessionAlert, setShowNoActiveSessionAlert] = useState(false);
+  const { t } = useTranslation()
+  const [roleSearchTerm, setRoleSearchTerm] = useState("")
 
-  useEffect(() => {
-    if (!CurrentAcademicSessionForSchool) {
-      setShowNoActiveSessionAlert(true);
-    }
-  }, [CurrentAcademicSessionForSchool]);
-
+  const filteredRoles = useMemo(() => {
+    if (!StaffRoleState) return []
+    if (!roleSearchTerm.trim()) return StaffRoleState
+    const term = roleSearchTerm.toLowerCase()
+    return StaffRoleState.filter((r) => 
+      r.role.toLowerCase().includes(term) ||
+      (r.is_teaching_role ? "teaching" : "non-teaching").includes(term)
+    )
+  }, [StaffRoleState, roleSearchTerm])
 
   const handleOpenDialog = (mode: "add" | "edit", role?: StaffRole) => {
-
     if (mode === "edit" && role) {
       formForStaffRole.reset({
         role_id: role.id,
@@ -207,7 +414,6 @@ export default function StaffSettings() {
   }
 
   const handleSubmit = async () => {
-
     try {
       if (formForStaffRole.getValues('formType') === "edit") {
         let role_id = formForStaffRole.getValues('role_id')
@@ -217,7 +423,7 @@ export default function StaffSettings() {
             payload: { role: formForStaffRole.getValues('role_name') }
           }))
         } else {
-          alert("Bug :: Role Id is not been provided !")
+          alert("Bug :: Role Id has not been provided!")
         }
         toast({
           title: "Role Updated",
@@ -235,12 +441,12 @@ export default function StaffSettings() {
         if (new_staff.meta.requestStatus === 'rejected') {
           toast({
             variant: "destructive",
-            title: "Error !",
-            description: `${new_staff.payload.message} !`,
+            title: "Error!",
+            description: `${new_staff.payload.message}!`,
           })
         } else {
           toast({
-            title: "Role Created !",
+            title: "Role Created!",
             description: `${formForStaffRole.getValues('role_name')} has been created.`,
           })
           handleCloseDialog()
@@ -250,7 +456,6 @@ export default function StaffSettings() {
       handleCloseDialog()
     } catch (error) {
       toast({
-        // title: "Error",
         title: `Failed to ${formForStaffRole.getValues('formType')} role. Already Present`,
         variant: "destructive",
       })
@@ -259,8 +464,7 @@ export default function StaffSettings() {
 
   const handleDeleteRole = async (id: number) => {
     try {
-      const res = await dispatch(deleteStaffRole(id)).unwrap()
-      console.log(res)
+      await dispatch(deleteStaffRole(id)).unwrap()
       toast({
         title: "Role Removed",
         description: "The role has been removed from the list.",
@@ -271,8 +475,8 @@ export default function StaffSettings() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: error.message,
-        description: "Failed to delete role ."
+        title: error.message || "Failed to delete role.",
+        description: "Failed to delete role."
       })
     }
   }
@@ -283,479 +487,623 @@ export default function StaffSettings() {
     }
   }, [])
 
+  const configTypeTitles: Record<ConfigType, string> = {
+    STAFF_TYPE: "Staff Type",
+    STAFF_CATEGORY: "Staff Category",
+    DESIGNATION: "Designation",
+    EMPLOYMENT_STATUS: "Employment Status",
+    LETTER_TYPE: "Letter Type",
+    SUBJECT_SPECIALIZATION: "Subject Specialization",
+    QUALIFICATION: "Qualification"
+  }
 
-
-  if (isLoading) return <div>Loading...</div>
+  if (isRoleLoading && isConfigsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">{t("staff_settings")}</h1>
-        {(isFetching || isLoading) && <div>Loading...</div>}
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 text-primary rounded-xl">
+              <SlidersHorizontal className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                {t("staff_settings")}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Manage roles, classifications, qualifications, letter templates, and subject specializations
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Tabs defaultValue="legacy-roles" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="legacy-roles">Legacy Roles</TabsTrigger>
-            <TabsTrigger value="staff-types">Staff Types</TabsTrigger>
-            <TabsTrigger value="staff-categories">Staff Categories</TabsTrigger>
-            <TabsTrigger value="designations">Designations</TabsTrigger>
+        {isFetching && (
+          <Badge variant="outline" className="animate-pulse gap-1.5 self-start md:self-auto">
+            <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            Syncing changes...
+          </Badge>
+        )}
+      </div>
+
+      <Tabs defaultValue="subject-specializations" className="w-full space-y-6">
+        {/* Modern 2-Row Tabs Navigation Bar */}
+        <div className="p-2 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-xs">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-transparent p-0 h-auto w-full">
+            <TabsTrigger 
+              value="legacy-roles" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Shield className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Legacy Roles</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {StaffRoleState?.length || 0}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="staff-types" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Staff Types</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {staffTypes.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="staff-categories" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Staff Categories</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {staffCategories.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="designations" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Briefcase className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Designations</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {designations.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="employment-statuses" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <BadgeCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Employee Statuses</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {employmentStatuses.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="letter-types" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Letter Types</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {letterTypes.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="subject-specializations" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Subject Specializations</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {subjectSpecializations.length}
+              </Badge>
+            </TabsTrigger>
+
+            <TabsTrigger 
+              value="qualifications" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <GraduationCap className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">Qualifications</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
+                {qualifications.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
+        </div>
 
-          {/* Legacy Roles Tab */}
-          <TabsContent value="legacy-roles">
-            {StaffRoleState && StaffRoleState.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">{t("manage_satff_designation")}</CardTitle>
-                  <CardDescription>{t("add,_edit,_or_remove_staff_roles_for_your_school")}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">{t("roles")}</h2>
-                    <Button onClick={() => handleOpenDialog("add")}>
-                      <Plus className="mr-2 h-4 w-4" />{t("add_role")} 
+        {/* Legacy Roles Tab */}
+        <TabsContent value="legacy-roles">
+          <Card className="rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+            <CardHeader className="p-6 pb-5 border-b border-border/60 bg-card">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0 mt-0.5">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <CardTitle className="text-xl font-bold tracking-tight">{t("manage_satff_designation")}</CardTitle>
+                      <Badge variant="secondary" className="px-2.5 py-0.5 text-xs font-semibold rounded-full">
+                        {StaffRoleState?.length || 0} roles
+                      </Badge>
+                    </div>
+                    <CardDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                      {t("add,_edit,_or_remove_staff_roles_for_your_school")}
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {StaffRoleState && StaffRoleState.length > 0 && (
+                    <div className="relative w-full md:w-56">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search roles..."
+                        value={roleSearchTerm}
+                        onChange={(e) => setRoleSearchTerm(e.target.value)}
+                        className="pl-9 h-9 text-xs rounded-lg"
+                      />
+                      {roleSearchTerm && (
+                        <button
+                          onClick={() => setRoleSearchTerm("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <Button onClick={() => handleOpenDialog("add")} className="h-9 px-4 text-xs font-medium rounded-lg shadow-sm gap-1.5 shrink-0">
+                    <Plus className="w-4 h-4" />
+                    {t("add_role")}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              {StaffRoleState && StaffRoleState.length > 0 ? (
+                filteredRoles.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-10 text-center text-muted-foreground">
+                    <Search className="w-8 h-8 mb-2 opacity-40" />
+                    <p className="text-sm font-medium">No roles matching "{roleSearchTerm}"</p>
+                    <Button variant="ghost" size="sm" onClick={() => setRoleSearchTerm("")} className="mt-2 text-xs text-primary">
+                      Clear filter
                     </Button>
                   </div>
+                ) : (
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t("role_name")}</TableHead>
-                          <TableHead>{t("role_type")}</TableHead>
-                          <TableHead className="text-right">{t("actions")}</TableHead>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-16 font-semibold text-xs uppercase tracking-wider text-muted-foreground">#</TableHead>
+                          <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">{t("role_name")}</TableHead>
+                          <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">{t("role_type")}</TableHead>
+                          <TableHead className="text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground">{t("actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {StaffRoleState.map((staff) => (
-                          <TableRow key={staff.id}>
-                            <TableCell className="font-medium">{staff.role}</TableCell>
-                            <TableCell>{staff.is_teaching_role ? "Teaching" : "Non-Teaching"}</TableCell>
+                        {filteredRoles.map((staff, idx) => (
+                          <TableRow key={staff.id} className="hover:bg-muted/30 transition-colors">
+                            <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                            <TableCell className="font-medium text-sm text-foreground">{staff.role}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs font-medium ${
+                                  staff.is_teaching_role 
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" 
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
+                                }`}
+                              >
+                                {staff.is_teaching_role ? "Teaching" : "Non-Teaching"}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mr-2"
-                                onClick={() => handleOpenDialog("edit", staff)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />{t("edit")}
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => {
-                                formForStaffRole.setValue('role_id', staff.id)
-                                setIsDialogForDeleteStaffOpen(true)
-                              }}
-                                className="hover:bg-red-600 hover:text-white"
-                              >
-                                <Trash className="h-4 w-4 mr-1" />{t("delete")}
-                              </Button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2.5 text-xs font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                                  onClick={() => handleOpenDialog("edit", staff)}
+                                >
+                                  <Edit className="h-3.5 w-3.5 mr-1" />{t("edit")}
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => {
+                                    formForStaffRole.setValue('role_id', staff.id)
+                                    setIsDialogForDeleteStaffOpen(true)
+                                  }}
+                                  className="h-8 px-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-1" />{t("delete")}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            {StaffRoleState && StaffRoleState.length == 0 && (
-              <Card className="border border-dashed border-gray-300 shadow-sm rounded-2xl text-center p-6 max-w-md mx-auto lg:mt-10">
-                <CardHeader>
-                  <div className="flex justify-center text-red-500 mb-3">
-                    <AlertCircle className="w-12 h-12" />
+                )
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-muted/10">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-3.5">
+                    <Shield className="w-7 h-7" />
                   </div>
-                  <CardTitle className="text-xl font-semibold">{t("no_staff_role_available")}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">{t("please_create_role_for_your_school_staff!")}</p>
-                </CardContent>
-                <CardFooter className="flex justify-center space-x-4 mt-4">
-                  <Button variant="secondary">Refresh</Button>
-                  <Button onClick={() => handleOpenDialog("add")}>
-                    <Plus className="mr-2 h-4 w-4" />{t("add_role")}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Staff Types Tab */}
-          <TabsContent value="staff-types">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Staff Types</CardTitle>
-                <CardDescription>Configure primary staff types (e.g. Teaching, Non-Teaching)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Staff Types</h2>
-                  <Button onClick={() => handleOpenConfigDialog("STAFF_TYPE", "add")}>
-                    <Plus className="mr-2 h-4 w-4" />Add Staff Type
+                  <h3 className="text-base font-semibold text-foreground">{t("no_staff_role_available")}</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-5">
+                    {t("please_create_role_for_your_school_staff!")}
+                  </p>
+                  <Button onClick={() => handleOpenDialog("add")} size="sm" className="gap-1.5 rounded-lg text-xs">
+                    <Plus className="w-3.5 h-3.5" />
+                    {t("add_role")}
                   </Button>
                 </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type Name</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {staffTypes.length > 0 ? (
-                        staffTypes.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mr-2"
-                                onClick={() => handleOpenConfigDialog("STAFF_TYPE", "edit", item)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-red-600 hover:text-white"
-                                onClick={() => {
-                                  setConfigToDelete(item)
-                                  setIsConfigDeleteOpen(true)
-                                }}
-                              >
-                                <Trash className="h-4 w-4 mr-1" />Delete
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                            No staff types configured.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Staff Categories Tab */}
-          <TabsContent value="staff-categories">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Staff Categories</CardTitle>
-                <CardDescription>Configure categories under each staff type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Staff Categories</h2>
-                  <Button onClick={() => handleOpenConfigDialog("STAFF_CATEGORY", "add")}>
-                    <Plus className="mr-2 h-4 w-4" />Add Staff Category
-                  </Button>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Category Name</TableHead>
-                        <TableHead>Parent Staff Type</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {staffCategories.length > 0 ? (
-                        staffCategories.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.parent?.name || "N/A"}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mr-2"
-                                onClick={() => handleOpenConfigDialog("STAFF_CATEGORY", "edit", item)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-red-600 hover:text-white"
-                                onClick={() => {
-                                  setConfigToDelete(item)
-                                  setIsConfigDeleteOpen(true)
-                                }}
-                              >
-                                <Trash className="h-4 w-4 mr-1" />Delete
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                            No staff categories configured.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+        {/* Staff Types Tab */}
+        <TabsContent value="staff-types">
+          <ConfigTabPanel
+            title="Staff Types"
+            description="Configure primary staff categories (e.g., Teaching Staff, Administrative, Supporting)"
+            icon={Users}
+            configType="STAFF_TYPE"
+            items={staffTypes}
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
 
-          {/* Designations Tab */}
-          <TabsContent value="designations">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Designations</CardTitle>
-                <CardDescription>Configure designations under each staff category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Designations</h2>
-                  <Button onClick={() => handleOpenConfigDialog("DESIGNATION", "add")}>
-                    <Plus className="mr-2 h-4 w-4" />Add Designation
-                  </Button>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Designation Name</TableHead>
-                        <TableHead>Parent Category</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {designations.length > 0 ? (
-                        designations.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.parent?.name || "N/A"}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mr-2"
-                                onClick={() => handleOpenConfigDialog("DESIGNATION", "edit", item)}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="hover:bg-red-600 hover:text-white"
-                                onClick={() => {
-                                  setConfigToDelete(item)
-                                  setIsConfigDeleteOpen(true)
-                                }}
-                              >
-                                <Trash className="h-4 w-4 mr-1" />Delete
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                            No designations configured.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Staff Categories Tab */}
+        <TabsContent value="staff-categories">
+          <ConfigTabPanel
+            title="Staff Categories"
+            description="Organize designations under parent staff types"
+            icon={Layers}
+            configType="STAFF_CATEGORY"
+            items={staffCategories}
+            parentLabel="Parent Staff Type"
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
 
-        {/* Configurations CRUD Dialog */}
-        <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {configDialogMode === "add" ? "Add New " : "Edit "} 
-                {configDialogType === 'STAFF_TYPE' ? "Staff Type" : configDialogType === 'STAFF_CATEGORY' ? "Staff Category" : "Designation"}
-              </DialogTitle>
-              <DialogDescription>
-                {configDialogMode === "add" 
-                  ? "Enter the name and configuration details below." 
-                  : "Update the configuration details below."}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleConfigSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="config-name">Name <span className="text-red-500">*</span></Label>
-                <Input 
-                  id="config-name" 
-                  type="text" 
-                  value={configName} 
-                  onChange={(e) => setConfigName(e.target.value)} 
-                  required
-                />
+        {/* Designations Tab */}
+        <TabsContent value="designations">
+          <ConfigTabPanel
+            title="Designations"
+            description="Define specific job titles under respective staff categories"
+            icon={Briefcase}
+            configType="DESIGNATION"
+            items={designations}
+            parentLabel="Parent Category"
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
+
+        {/* Employee Statuses Tab */}
+        <TabsContent value="employment-statuses">
+          <ConfigTabPanel
+            title="Employment Statuses"
+            description="Manage employment types (e.g., Permanent, Probation, Contract, Visiting)"
+            icon={BadgeCheck}
+            configType="EMPLOYMENT_STATUS"
+            items={employmentStatuses}
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
+
+        {/* Letter Types Tab */}
+        <TabsContent value="letter-types">
+          <ConfigTabPanel
+            title="Letter Types"
+            description="Configure institutional letters (e.g., Approval Letters, Appointment Orders, Experience Certificates)"
+            icon={FileText}
+            configType="LETTER_TYPE"
+            items={letterTypes}
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
+
+        {/* Subject Specializations Tab */}
+        <TabsContent value="subject-specializations">
+          <ConfigTabPanel
+            title="Subject Specializations"
+            description="Manage subject disciplines selectable when onboarding teaching staff"
+            icon={BookOpen}
+            configType="SUBJECT_SPECIALIZATION"
+            items={subjectSpecializations}
+            searchPlaceholder="Search subjects..."
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
+
+        {/* Qualifications Tab */}
+        <TabsContent value="qualifications">
+          <ConfigTabPanel
+            title="Qualifications"
+            description="Define educational degrees and certifications selectable in staff profiles"
+            icon={GraduationCap}
+            configType="QUALIFICATION"
+            items={qualifications}
+            searchPlaceholder="Search qualifications..."
+            onAdd={(type) => handleOpenConfigDialog(type, "add")}
+            onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
+            onDelete={(item) => {
+              setConfigToDelete(item)
+              setIsConfigDeleteOpen(true)
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Configurations Add/Edit Dialog */}
+      <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {configDialogMode === "add" ? "Add " : "Edit "} 
+              {configTypeTitles[configDialogType]}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {configDialogMode === "add" 
+                ? `Enter details to create a new ${configTypeTitles[configDialogType].toLowerCase()}.` 
+                : `Update details for this ${configTypeTitles[configDialogType].toLowerCase()}.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleConfigSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="config-name" className="text-xs font-semibold">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <Input 
+                id="config-name" 
+                type="text" 
+                placeholder={`Enter ${configTypeTitles[configDialogType].toLowerCase()} name`}
+                value={configName} 
+                onChange={(e) => setConfigName(e.target.value)} 
+                className="h-10 rounded-xl text-sm"
+                required
+                autoFocus
+              />
+            </div>
+
+            {configDialogType === 'STAFF_CATEGORY' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="parent-type" className="text-xs font-semibold">
+                  Parent Staff Type <span className="text-destructive">*</span>
+                </Label>
+                <Select value={configParentId} onValueChange={setConfigParentId} required>
+                  <SelectTrigger id="parent-type" className="h-10 rounded-xl text-sm">
+                    <SelectValue placeholder="Select Parent Staff Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id.toString()}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            )}
 
-              {configDialogType === 'STAFF_CATEGORY' && (
-                <div className="space-y-2">
-                  <Label htmlFor="parent-type">Parent Staff Type <span className="text-red-500">*</span></Label>
-                  <Select value={configParentId} onValueChange={setConfigParentId} required>
-                    <SelectTrigger id="parent-type">
-                      <SelectValue placeholder="Select Parent Staff Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id.toString()}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            {configDialogType === 'DESIGNATION' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="parent-category" className="text-xs font-semibold">
+                  Parent Category <span className="text-destructive">*</span>
+                </Label>
+                <Select value={configParentId} onValueChange={setConfigParentId} required>
+                  <SelectTrigger id="parent-category" className="h-10 rounded-xl text-sm">
+                    <SelectValue placeholder="Select Parent Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name} ({cat.parent?.name || "No Type"})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-              {configDialogType === 'DESIGNATION' && (
-                <div className="space-y-2">
-                  <Label htmlFor="parent-category">Parent Category <span className="text-red-500">*</span></Label>
-                  <Select value={configParentId} onValueChange={setConfigParentId} required>
-                    <SelectTrigger id="parent-category">
-                      <SelectValue placeholder="Select Parent Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {staffCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.name} ({cat.parent?.name || "No Type"})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            <DialogFooter className="pt-3 gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsConfigDialogOpen(false)} className="rounded-xl">
+                Cancel
+              </Button>
+              <Button type="submit" className="rounded-xl">
+                {configDialogMode === "add" ? "Create" : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="secondary" onClick={() => setIsConfigDialogOpen(false)}>
-                  Cancel
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isConfigDeleteOpen} onOpenChange={setIsConfigDeleteOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-3">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <DialogHeader className="text-center space-y-1">
+            <DialogTitle className="text-lg font-bold text-foreground">Delete Confirmation</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Are you sure you want to delete <strong className="text-foreground">"{configToDelete?.name}"</strong>? Any staff records associated with this may be affected.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="pt-4 flex justify-center gap-2 sm:justify-center">
+            <Button type="button" variant="outline" onClick={() => setIsConfigDeleteOpen(false)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleConfigDelete} className="rounded-xl">
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Legacy Staff Role Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              {formForStaffRole.getValues('formType') === "create" ? t("create_role") : t("edit_role")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t("enter_role_details_below")}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...formForStaffRole}>
+            <form onSubmit={formForStaffRole.handleSubmit(handleSubmit)} className="space-y-4 pt-2">
+              <FormField
+                control={formForStaffRole.control}
+                name="role_name"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs font-semibold">{t("role_name")} <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter role name" {...field} className="h-10 rounded-xl text-sm" />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={formForStaffRole.control}
+                name="role_type"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs font-semibold">{t("role_type")} <span className="text-destructive">*</span></FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-10 rounded-xl text-sm">
+                          <SelectValue placeholder="Select a role type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="teaching">Teaching</SelectItem>
+                        <SelectItem value="non-teaching">Non-Teaching</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="pt-3 gap-2">
+                <Button type="button" variant="outline" onClick={handleCloseDialog} className="rounded-xl">
+                  {t("cancel")}
                 </Button>
-                <Button type="submit">
-                  {configDialogMode === "add" ? "Create" : "Update"}
+                <Button type="submit" className="rounded-xl">
+                  {formForStaffRole.getValues('formType') === "create" ? t("create_role") : t("save_changes")}
                 </Button>
               </DialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-        {/* Configurations Delete Confirmation */}
-        <Dialog open={isConfigDeleteOpen} onOpenChange={setIsConfigDeleteOpen}>
-          <DialogContent className="max-w-md rounded-2xl shadow-lg">
-            <DialogHeader className="text-center">
-              <AlertTriangle className="text-red-600 w-7 h-7 mx-auto mb-2" />
-              <DialogTitle className="text-2xl font-bold text-gray-800">Delete Confirmation</DialogTitle>
-              <DialogDescription className="text-gray-600">
-                Are you sure you want to delete this configuration? Any records referencing it will be affected.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4 flex justify-center space-x-4">
-              <Button type="button" variant="outline" onClick={() => setIsConfigDeleteOpen(false)} className="px-6 py-2 rounded-lg">
-                Cancel
-              </Button>
-              <Button type="button" variant="destructive" onClick={handleConfigDelete} className="px-6 py-2 rounded-lg bg-red-600 text-white">
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Legacy Roles Dialogs */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{formForStaffRole.getValues('formType') === "create" ? t("add_new_role") : t("edit_role")}</DialogTitle>
-              <DialogDescription>
-                {formForStaffRole.getValues('formType') === "create"
-                  ? t("enter_the_details_of_the_new_role_here.")
-                  : t("update_the_details_of_the_role_here.")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <Form {...formForStaffRole}>
-                <form onSubmit={formForStaffRole.handleSubmit(handleSubmit)} className="space-y-6">
-                  <FormField
-                    control={formForStaffRole.control}
-                    name="role_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel required>{t("designation")}</FormLabel>
-                        <FormControl>
-                          <Input type="text" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={formForStaffRole.control}
-                    name="role_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("role_type")}</FormLabel>
-                        <FormControl>
-                          <Select
-                            {...field}
-                            value={field.value}
-                            onValueChange={(value) => field.onChange(value)}
-                            disabled={formForStaffRole.getValues('formType') === "edit"}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select role type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="teaching">{t("teaching")}</SelectItem>
-                              <SelectItem value="non-teaching">{t("non_teaching")}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex justify-end space-x-4 pt-4">
-                    <Button type="button" variant="secondary" onClick={handleCloseDialog}>
-                      {t("cancel")}
-                    </Button>
-                    <Button type="submit">
-                      {formForStaffRole.getValues('formType') === "create" ? t("add_role") : t("update_role")}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isDialogForDeleteStaffOpen} onOpenChange={setIsDialogForDeleteStaffOpen}>
-          <DialogContent className="max-w-md rounded-2xl shadow-lg">
-            <DialogHeader className="text-center">
-              <AlertTriangle className="text-red-600 w-7 h-7 mx-auto mb-2" />
-              <DialogTitle className="text-2xl font-bold text-gray-800">{t("delete_confirmation")}</DialogTitle>
-              <DialogDescription className="text-gray-600">
-              {t("are_you_sure_you_want_to_delete ?")}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4 flex justify-center space-x-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogForDeleteStaffOpen(false)} className="px-6 py-2 rounded-lg">
-                {t("cancel")}
-              </Button>
-              <Button type="button" variant="destructive" onClick={() => handleDeleteRole(formForStaffRole.getValues('role_id')!)} className="px-6 py-2 rounded-lg bg-red-600 text-white">
-                {t("delete")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
+      {/* Legacy Staff Role Delete Dialog */}
+      <Dialog open={isDialogForDeleteStaffOpen} onOpenChange={setIsDialogForDeleteStaffOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-3">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <DialogHeader className="text-center space-y-1">
+            <DialogTitle className="text-lg font-bold">{t("delete_role_confirmation")}</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t("are_you_sure_you_want_to_delete_this_role?_this_action_cannot_be_undone.")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4 flex justify-center gap-2 sm:justify-center">
+            <Button variant="outline" onClick={() => setIsDialogForDeleteStaffOpen(false)} className="rounded-xl">
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const id = formForStaffRole.getValues('role_id')
+                if (id) {
+                  handleDeleteRole(id)
+                }
+              }}
+              className="rounded-xl"
+            >
+              {t("delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
-

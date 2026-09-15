@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
+import * as XLSX from "xlsx"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -19,156 +19,49 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { toast } from "@/hooks/use-toast"
-import { Calendar, Plus, FileText, Clock, AlertCircle, CalendarDays, User } from "lucide-react"
-
-// Mock data types
-interface LeaveType {
-  id: number
-  name: string
-  color: string
-}
-
-interface LeaveBalance {
-  leaveTypeId: number
-  total: number
-  used: number
-  remaining: number
-}
-
-interface LeaveRequest {
-  id: number
-  leaveTypeId: number
-  startDate: string
-  endDate: string
-  days: number
-  reason: string
-  status: "Approved" | "Rejected" | "Pending"
-  appliedOn: string
-  approvedBy?: string
-  approvedOn?: string
-  comments?: string
-}
-
-// Mock data for leave types
-const mockLeaveTypes: LeaveType[] = [
-  { id: 1, name: "Casual Leave", color: "bg-blue-500" },
-  { id: 2, name: "Sick Leave", color: "bg-red-500" },
-  { id: 3, name: "Earned Leave", color: "bg-green-500" },
-  { id: 4, name: "Maternity Leave", color: "bg-purple-500" },
-  { id: 5, name: "Paternity Leave", color: "bg-yellow-500" },
-  { id: 6, name: "Unpaid Leave", color: "bg-gray-500" },
-]
-
-// Mock data for leave balances
-const mockLeaveBalances: LeaveBalance[] = [
-  { leaveTypeId: 1, total: 12, used: 5, remaining: 7 },
-  { leaveTypeId: 2, total: 10, used: 2, remaining: 8 },
-  { leaveTypeId: 3, total: 15, used: 0, remaining: 15 },
-  { leaveTypeId: 4, total: 180, used: 0, remaining: 180 },
-  { leaveTypeId: 5, total: 15, used: 0, remaining: 15 },
-  { leaveTypeId: 6, total: 0, used: 0, remaining: 0 },
-]
-
-// Mock data for leave requests
-const mockLeaveRequests: LeaveRequest[] = [
-  {
-    id: 1,
-    leaveTypeId: 1,
-    startDate: "2023-12-25",
-    endDate: "2023-12-26",
-    days: 2,
-    reason: "Family function",
-    status: "Approved",
-    appliedOn: "2023-12-10",
-    approvedBy: "Jane Smith",
-    approvedOn: "2023-12-12",
-  },
-  {
-    id: 2,
-    leaveTypeId: 2,
-    startDate: "2024-01-15",
-    endDate: "2024-01-17",
-    days: 3,
-    reason: "Fever and cold",
-    status: "Approved",
-    appliedOn: "2024-01-14",
-    approvedBy: "Jane Smith",
-    approvedOn: "2024-01-14",
-  },
-  {
-    id: 3,
-    leaveTypeId: 1,
-    startDate: "2024-02-05",
-    endDate: "2024-02-05",
-    days: 1,
-    reason: "Personal work",
-    status: "Rejected",
-    appliedOn: "2024-01-25",
-    approvedBy: "Jane Smith",
-    approvedOn: "2024-01-27",
-    comments: "High workload during this period",
-  },
-  {
-    id: 4,
-    leaveTypeId: 6,
-    startDate: "2024-03-10",
-    endDate: "2024-03-12",
-    days: 3,
-    reason: "Family emergency",
-    status: "Approved",
-    appliedOn: "2024-03-09",
-    approvedBy: "Jane Smith",
-    approvedOn: "2024-03-09",
-  },
-  {
-    id: 5,
-    leaveTypeId: 1,
-    startDate: "2024-04-20",
-    endDate: "2024-04-22",
-    days: 3,
-    reason: "Personal work",
-    status: "Pending",
-    appliedOn: "2024-04-10",
-  },
-]
+import { Calendar, FileSpreadsheet, Clock, AlertCircle, CalendarDays, User, Award, RefreshCw } from "lucide-react"
+import { useGetIndividualTeacherLeaveReportQuery } from "@/services/LeaveService"
+import type { StaffType } from "@/types/staff"
 
 interface EmployeeProps {
-  employee: any
+  employee: StaffType
 }
 
 const EmployeeLeaves: React.FC<EmployeeProps> = ({ employee }) => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState("balance")
   const [isLeaveDetailDialogOpen, setIsLeaveDetailDialogOpen] = useState(false)
-  const [isApplyLeaveDialogOpen, setIsApplyLeaveDialogOpen] = useState(false)
-  const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null)
+  const [selectedLeave, setSelectedLeave] = useState<any | null>(null)
 
-  // Format date
-  const formatDate = (dateString: string) => {
+  // Fetch real employee leave balances, applications, and comp offs
+  const {
+    data: leaveReportData,
+    isLoading: isReportLoading,
+    refetch: refetchReport,
+  } = useGetIndividualTeacherLeaveReportQuery(
+    { staff_id: employee?.id },
+    { skip: !employee?.id }
+  )
+
+  const balances = leaveReportData?.balances || []
+  const applications = leaveReportData?.applications || []
+  const compOffRequests = leaveReportData?.comp_off_requests || []
+
+  // Format date helper
+  const formatDate = (dateString?: string | Date | null) => {
+    if (!dateString) return "-"
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
   }
 
-  // Get leave type name
-  const getLeaveTypeName = (leaveTypeId: number) => {
-    const leaveType = mockLeaveTypes.find((type) => type.id === leaveTypeId)
-    return leaveType ? leaveType.name : "Unknown"
-  }
-
-  // Get leave type color
-  const getLeaveTypeColor = (leaveTypeId: number) => {
-    const leaveType = mockLeaveTypes.find((type) => type.id === leaveTypeId)
-    return leaveType ? leaveType.color : "bg-gray-500"
-  }
-
-  // Get status badge variant
+  // Status badge styling helper
   const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-      case "Approved":
+    switch (status?.toLowerCase()) {
+      case "approved":
         return "default"
-      case "Rejected":
+      case "rejected":
         return "destructive"
-      case "Pending":
+      case "pending":
         return "secondary"
       default:
         return "outline"
@@ -176,146 +69,307 @@ const EmployeeLeaves: React.FC<EmployeeProps> = ({ employee }) => {
   }
 
   // Handle view leave detail
-  const handleViewLeaveDetail = (leave: LeaveRequest) => {
+  const handleViewLeaveDetail = (leave: any) => {
     setSelectedLeave(leave)
     setIsLeaveDetailDialogOpen(true)
   }
 
-  // Handle apply leave
-  const handleApplyLeave = () => {
-    setIsApplyLeaveDialogOpen(true)
+  // ──────────────────────────────────────────────────────────────────────────
+  // EXPORT INDIVIDUAL EMPLOYEE LEAVE REPORT TO EXCEL
+  // ──────────────────────────────────────────────────────────────────────────
+  const exportIndividualLeaveToExcel = () => {
+    if (!employee) {
+      toast({ variant: "destructive", title: "No Employee", description: "Employee information is missing." })
+      return
+    }
+
+    try {
+      const workbook = XLSX.utils.book_new()
+      const staffName = `${employee.first_name || ""} ${employee.last_name || ""}`.trim() || "Staff"
+
+      // Sheet 1: Leave Balances Overview
+      const balanceRows = (balances || []).map((b: any, idx: number) => ({
+        "Sr No": idx + 1,
+        "Leave Type": b.leave_type?.leave_type_name || "N/A",
+        "Total Quota": Number(b.total_leaves || 0),
+        "Used Leaves": Number(b.used_leaves || 0),
+        "Pending Approval": Number(b.pending_leaves || 0),
+        "Available Balance": Number(b.available_balance || 0),
+      }))
+      const balanceSheet = XLSX.utils.json_to_sheet(
+        balanceRows.length > 0 ? balanceRows : [{ Note: "No leave balance records assigned" }]
+      )
+      XLSX.utils.book_append_sheet(workbook, balanceSheet, "Leave Balances")
+
+      // Sheet 2: Detailed Applications History
+      const appRows = (applications || []).map((app: any, idx: number) => ({
+        "Sr No": idx + 1,
+        "Applied Date": app.created_at ? new Date(app.created_at).toLocaleDateString() : "-",
+        "Leave Type": app.leave_type?.leave_type_name || app.leave_type_name || "Leave",
+        "From Date": new Date(app.from_date).toLocaleDateString(),
+        "To Date": new Date(app.to_date).toLocaleDateString(),
+        "Duration (Days)": app.number_of_days,
+        "Half Day": app.is_half_day ? `Yes (${app.half_day_type || "Half"})` : "No",
+        "Reason": app.reason || "-",
+        "Status": app.status,
+        "Remarks / Action": app.remarks || (app.approved_by_user ? `By ${app.approved_by_user.first_name}` : "-"),
+      }))
+      const appSheet = XLSX.utils.json_to_sheet(
+        appRows.length > 0 ? appRows : [{ Note: "No leave applications on record" }]
+      )
+      XLSX.utils.book_append_sheet(workbook, appSheet, "Leave Applications")
+
+      // Sheet 3: Comp Off History
+      const compOffRows = (compOffRequests || []).map((c: any, idx: number) => ({
+        "Sr No": idx + 1,
+        "Worked Date": new Date(c.worked_date).toLocaleDateString(),
+        "Day Type": c.day_type === "half_day" ? "Half Day (0.5)" : "Full Day (1.0)",
+        "Credited Days": c.credited_days,
+        "Reason / Event": c.reason,
+        "Description": c.description || "-",
+        "Status": c.status,
+        "Admin Remarks": c.admin_remarks || "-",
+      }))
+      const compOffSheet = XLSX.utils.json_to_sheet(
+        compOffRows.length > 0 ? compOffRows : [{ Note: "No compensatory off records" }]
+      )
+      XLSX.utils.book_append_sheet(workbook, compOffSheet, "Comp Off Claims")
+
+      const dateStr = new Date().toISOString().split("T")[0]
+      const safeName = staffName.replace(/[^a-zA-Z0-9]/g, "_")
+      XLSX.writeFile(workbook, `Leave_Record_${safeName}_${dateStr}.xlsx`)
+
+      toast({
+        title: "Export Successful",
+        description: `Leave report for ${staffName} downloaded successfully.`,
+      })
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: err.message || "Could not export leave records to Excel.",
+      })
+    }
   }
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">{t("leaves")}</h2>
-        <Button onClick={handleApplyLeave}>
-          <Plus className="mr-2 h-4 w-4" /> {t("apply_leave")}
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div>
+          <h2 className="text-2xl font-bold">{t("leaves")}</h2>
+          <p className="text-sm text-muted-foreground">
+            View allocated leave quotas, balance progress, and leave application records.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={exportIndividualLeaveToExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Export Leave Records (.xlsx)
+          </Button>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="balance" className="flex items-center">
-            <Calendar className="mr-2 h-4 w-4" /> {t("leave_balance")}
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center">
-            <FileText className="mr-2 h-4 w-4" /> {t("leave_history")}
-          </TabsTrigger>
-        </TabsList>
+      {isReportLoading ? (
+        <div className="py-12 text-center text-muted-foreground flex items-center justify-center gap-2">
+          <RefreshCw className="h-5 w-5 animate-spin text-primary" /> Loading employee leave records...
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="balance" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" /> {t("leave_balance")}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" /> {t("leave_history")} ({applications.length})
+            </TabsTrigger>
+            <TabsTrigger value="compoff" className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-500" /> Comp Off ({compOffRequests.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Leave Balance Tab */}
-        <TabsContent value="balance" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {t("leave_balance")}
-              </CardTitle>
-              <CardDescription>{t("view_employee_leave_balance_and_usage")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mockLeaveBalances.map((balance) => {
-                  const leaveType = mockLeaveTypes.find((type) => type.id === balance.leaveTypeId)
-                  if (!leaveType) return null
+          {/* 1. Leave Balance Tab */}
+          <TabsContent value="balance" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  {t("leave_balance")}
+                </CardTitle>
+                <CardDescription>
+                  Current academic session leave balances, used days, and remaining allowance.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {balances.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No leave balances assigned yet for this staff member.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {balances.map((balance: any) => {
+                      const total = Number(balance.total_leaves || 0)
+                      const used = Number(balance.used_leaves || 0)
+                      const available = Number(balance.available_balance || 0)
+                      const usagePercentage = total > 0 ? (used / total) * 100 : 0
 
-                  const usagePercentage = balance.total > 0 ? (balance.used / balance.total) * 100 : 0
+                      return (
+                        <Card key={balance.id} className="border shadow-sm">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-semibold text-base">{balance.leave_type?.leave_type_name || "Leave"}</h4>
+                              <Badge variant={available > 0 ? "outline" : "destructive"}>
+                                {available} Available
+                              </Badge>
+                            </div>
+                            <Progress value={Math.min(100, usagePercentage)} className="h-2 mb-2" />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Total: {total}</span>
+                              <span className="text-amber-600 font-medium">Used: {used}</span>
+                              <span className="text-emerald-600 font-bold">Remaining: {available}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                  return (
-                    <Card key={balance.leaveTypeId} className="border shadow-sm">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full ${leaveType.color} mr-2`}></div>
-                            <h4 className="font-medium">{leaveType.name}</h4>
-                          </div>
-                          <Badge variant="outline">
-                            {balance.remaining} / {balance.total}
-                          </Badge>
-                        </div>
-                        <Progress value={usagePercentage} className="h-2" />
-                        <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                          <span>
-                            {t("used")}: {balance.used}
-                          </span>
-                          <span>
-                            {t("remaining")}: {balance.remaining}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Leave History Tab */}
-        <TabsContent value="history" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                {t("leave_history")}
-              </CardTitle>
-              <CardDescription>{t("view_employee_leave_requests_and_status")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {mockLeaveRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">{t("no_leave_requests_found")}</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("leave_type")}</TableHead>
-                      <TableHead>{t("duration")}</TableHead>
-                      <TableHead>{t("days")}</TableHead>
-                      <TableHead>{t("applied_on")}</TableHead>
-                      <TableHead>{t("status")}</TableHead>
-                      <TableHead className="text-right">{t("actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockLeaveRequests.map((leave) => (
-                      <TableRow key={leave.id} className="cursor-pointer" onClick={() => handleViewLeaveDetail(leave)}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full ${getLeaveTypeColor(leave.leaveTypeId)} mr-2`}></div>
-                            <span>{getLeaveTypeName(leave.leaveTypeId)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
-                        </TableCell>
-                        <TableCell>{leave.days}</TableCell>
-                        <TableCell>{formatDate(leave.appliedOn)}</TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(leave.status)}>{leave.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleViewLeaveDetail(leave)
-                            }}
+          {/* 2. Leave History Tab */}
+          <TabsContent value="history" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  {t("leave_history")}
+                </CardTitle>
+                <CardDescription>Itemized leave applications, duration, reasons, and approval status.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {applications.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">{t("no_leave_requests_found")}</div>
+                ) : (
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Applied Date</TableHead>
+                          <TableHead>{t("leave_type")}</TableHead>
+                          <TableHead>{t("duration")}</TableHead>
+                          <TableHead className="text-center">{t("days")}</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead>{t("status")}</TableHead>
+                          <TableHead className="text-right">{t("actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {applications.map((leave: any) => (
+                          <TableRow
+                            key={leave.id}
+                            className="cursor-pointer hover:bg-muted/40"
+                            onClick={() => handleViewLeaveDetail(leave)}
                           >
-                            {t("view_details")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {formatDate(leave.created_at)}
+                            </TableCell>
+                            <TableCell className="font-semibold">
+                              {leave.leave_type?.leave_type_name || leave.leave_type_name || "Leave"}
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(leave.from_date)} - {formatDate(leave.to_date)}
+                              {leave.is_half_day && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Half Day ({leave.half_day_type || "0.5"})
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-bold">{leave.number_of_days}</TableCell>
+                            <TableCell className="max-w-[200px] truncate">{leave.reason}</TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusBadgeVariant(leave.status)} className="capitalize">
+                                {leave.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewLeaveDetail(leave)
+                                }}
+                              >
+                                {t("view_details")}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 3. Comp Off Tab */}
+          <TabsContent value="compoff" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-amber-500" />
+                  Compensatory Off Claims
+                </CardTitle>
+                <CardDescription>
+                  Logged work done on holidays/weekends converted into earned leave credits.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {compOffRequests.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No Comp Off requests on record.</div>
+                ) : (
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>Worked Date</TableHead>
+                          <TableHead>Day Type</TableHead>
+                          <TableHead className="text-center">Credited Days</TableHead>
+                          <TableHead>Reason / Event</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Remarks</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {compOffRequests.map((c: any) => (
+                          <TableRow key={c.id}>
+                            <TableCell className="font-medium">{formatDate(c.worked_date)}</TableCell>
+                            <TableCell className="capitalize">
+                              {c.day_type === "half_day" ? "Half Day" : "Full Day"}
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-amber-600">+{c.credited_days}</TableCell>
+                            <TableCell>{c.reason}</TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusBadgeVariant(c.status)} className="capitalize">
+                                {c.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{c.admin_remarks || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* Leave Detail Dialog */}
       <Dialog open={isLeaveDetailDialogOpen} onOpenChange={setIsLeaveDetailDialogOpen}>
@@ -329,82 +383,72 @@ const EmployeeLeaves: React.FC<EmployeeProps> = ({ employee }) => {
             <div className="space-y-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full ${getLeaveTypeColor(selectedLeave.leaveTypeId)} mr-2`}></div>
-                    <h3 className="text-lg font-medium">{getLeaveTypeName(selectedLeave.leaveTypeId)}</h3>
-                  </div>
-                  <p className="text-muted-foreground mt-1">
-                    {formatDate(selectedLeave.startDate)} - {formatDate(selectedLeave.endDate)} ({selectedLeave.days}{" "}
+                  <h3 className="text-lg font-medium">
+                    {selectedLeave.leave_type?.leave_type_name || selectedLeave.leave_type_name || "Leave"}
+                  </h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {formatDate(selectedLeave.from_date)} - {formatDate(selectedLeave.to_date)} ({selectedLeave.number_of_days}{" "}
                     {t("days")})
                   </p>
                 </div>
-                <Badge variant={getStatusBadgeVariant(selectedLeave.status)}>{selectedLeave.status}</Badge>
+                <Badge variant={getStatusBadgeVariant(selectedLeave.status)} className="capitalize">
+                  {selectedLeave.status}
+                </Badge>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/30">
                 <h4 className="font-medium mb-2">{t("reason")}</h4>
-                <p>{selectedLeave.reason}</p>
+                <p className="text-sm">{selectedLeave.reason || "No reason specified"}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-medium mb-2">{t("application_details")}</h4>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-sm">
                     <div className="flex items-start">
-                      <Clock className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
+                      <Clock className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">{t("applied_on")}</p>
-                        <p>{formatDate(selectedLeave.appliedOn)}</p>
+                        <p className="text-xs text-muted-foreground">{t("applied_on")}</p>
+                        <p>{formatDate(selectedLeave.created_at)}</p>
                       </div>
                     </div>
                     <div className="flex items-start">
-                      <CalendarDays className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
+                      <CalendarDays className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
                       <div>
-                        <p className="text-sm text-muted-foreground">{t("leave_duration")}</p>
+                        <p className="text-xs text-muted-foreground">{t("leave_duration")}</p>
                         <p>
-                          {formatDate(selectedLeave.startDate)} - {formatDate(selectedLeave.endDate)}
+                          {formatDate(selectedLeave.from_date)} - {formatDate(selectedLeave.to_date)}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {selectedLeave.status !== "Pending" && (
-                  <div>
-                    <h4 className="font-medium mb-2">{t("approval_details")}</h4>
-                    <div className="space-y-2">
-                      {selectedLeave.approvedBy && (
-                        <div className="flex items-start">
-                          <User className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {selectedLeave.status === "Approved" ? t("approved_by") : t("rejected_by")}
-                            </p>
-                            <p>{selectedLeave.approvedBy}</p>
-                          </div>
+                <div>
+                  <h4 className="font-medium mb-2">{t("approval_details")}</h4>
+                  <div className="space-y-2 text-sm">
+                    {selectedLeave.approved_by_user && (
+                      <div className="flex items-start">
+                        <User className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Action By</p>
+                          <p>
+                            {selectedLeave.approved_by_user.first_name} {selectedLeave.approved_by_user.last_name || ""}
+                          </p>
                         </div>
-                      )}
-                      {selectedLeave.approvedOn && (
-                        <div className="flex items-start">
-                          <Clock className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm text-muted-foreground">{t("approved_on")}</p>
-                            <p>{formatDate(selectedLeave.approvedOn)}</p>
-                          </div>
+                      </div>
+                    )}
+                    {selectedLeave.remarks && (
+                      <div className="flex items-start">
+                        <AlertCircle className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">{t("comments")}</p>
+                          <p>{selectedLeave.remarks}</p>
                         </div>
-                      )}
-                      {selectedLeave.comments && (
-                        <div className="flex items-start">
-                          <AlertCircle className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm text-muted-foreground">{t("comments")}</p>
-                            <p>{selectedLeave.comments}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
@@ -416,41 +460,8 @@ const EmployeeLeaves: React.FC<EmployeeProps> = ({ employee }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Apply Leave Dialog */}
-      <Dialog open={isApplyLeaveDialogOpen} onOpenChange={setIsApplyLeaveDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{t("apply_for_leave")}</DialogTitle>
-            <DialogDescription>{t("fill_in_the_details_to_apply_for_leave")}</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Leave application form would go here */}
-            <p className="text-center text-muted-foreground py-8">{t("leave_application_form_placeholder")}</p>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsApplyLeaveDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              onClick={() => {
-                setIsApplyLeaveDialogOpen(false)
-                toast({
-                  title: "Leave application submitted",
-                  description: "Your leave application has been submitted for approval",
-                })
-              }}
-            >
-              {t("submit_application")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
 
 export default EmployeeLeaves
-

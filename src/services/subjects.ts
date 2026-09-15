@@ -7,6 +7,7 @@ import { SchoolSubject, SubjectDivisionMaster, SubjectDivisionStaffMaster } from
 
 export const SubjectApi = createApi({
     reducerPath: 'subjectApi',
+    tagTypes: ['Subjects', 'DivisionSubjects'],
     baseQuery: fetchBaseQuery({
         baseUrl: `${baseUrl.serverUrl}api/v1/`,
         prepareHeaders: (headers, { getState }) => {
@@ -20,9 +21,10 @@ export const SubjectApi = createApi({
                 url: `/subjects?academic_session=${academic_session_id}`,
                 method: "GET",
             }),
+            providesTags: ['Subjects'],
         }),
-        createSubject: builder.mutation<SchoolSubject, { name: string, description: string, academic_session_id: number, year?: string }>({
-            query: ({ name, description, academic_session_id, year }) => ({
+        createSubject: builder.mutation<SchoolSubject, { name: string, description: string, academic_session_id: number, year?: string, code?: string }>({
+            query: ({ name, description, academic_session_id, year, code }) => ({
                 url: `/subject`,
                 method: "POST",
                 body: {
@@ -30,28 +32,33 @@ export const SubjectApi = createApi({
                     description: description,
                     academic_session_id: academic_session_id,
                     academic_year: academic_session_id,
-                    year: year
+                    year: year,
+                    code: code,
                 }
             }),
+            invalidatesTags: ['Subjects'],
         }),
-        updateSubject: builder.mutation<SchoolSubject, { id: number, name: string, description: string, academic_session_id: number, year?: string }>({
+        updateSubject: builder.mutation<SchoolSubject, { id: number, name: string, description: string, academic_session_id: number, year?: string, code?: string }>({
             query: ({ id, ...body }) => ({
                 url: `/subject/${id}`,
                 method: "PUT",
                 body: body
             }),
+            invalidatesTags: ['Subjects', 'DivisionSubjects'],
         }),
         deleteSubject: builder.mutation<{ message: string }, { id: number }>({
             query: ({ id }) => ({
                 url: `/subject/${id}`,
                 method: "DELETE",
             }),
+            invalidatesTags: ['Subjects', 'DivisionSubjects'],
         }),
         getSubjectsForDivision: builder.query<SubjectDivisionMaster[], { academic_session_id: number, division_id: number }>({
             query: ({ academic_session_id, division_id }) => ({
                 url: `/subjects/division/${division_id}?academic_session=${academic_session_id}`,
                 method: "GET",
             }),
+            providesTags: ['DivisionSubjects'],
         }),
         assignSubjectToDivision: builder.mutation<
             SubjectDivisionMaster[], { academic_session_id: number, division_id: number, subjects: { subject_id: number, code_for_division: string, description?: string }[] }>({
@@ -64,6 +71,7 @@ export const SubjectApi = createApi({
                         subjects: subjects
                     }
                 }),
+                invalidatesTags: ['DivisionSubjects'],
             }),
         assignStaffToSubjects: builder.mutation<
             SubjectDivisionStaffMaster[], 
@@ -73,12 +81,21 @@ export const SubjectApi = createApi({
                     method: "POST",
                     body: payload
                 }),
+                invalidatesTags: ['DivisionSubjects'],
             }),
         unassignStaffFromSubject: builder.mutation<{ message: string }, { id: number }>({
             query: ({ id }) => ({
                 url: `/subject/assign/staffs/${id}`,
                 method: "DELETE",
             }),
+            invalidatesTags: ['DivisionSubjects'],
+        }),
+        unassignSubjectFromDivision: builder.mutation<{ message: string }, { id: number }>({
+            query: ({ id }) => ({
+                url: `/subject/assign/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ['DivisionSubjects'],
         }),
     })
 })
@@ -93,5 +110,6 @@ export const {
     useAssignSubjectToDivisionMutation,
     useLazyGetSubjectsForDivisionQuery,
     useAssignStaffToSubjectsMutation,
-    useUnassignStaffFromSubjectMutation
+    useUnassignStaffFromSubjectMutation,
+    useUnassignSubjectFromDivisionMutation,
 } = SubjectApi;

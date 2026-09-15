@@ -1,8 +1,10 @@
 import type React from "react"
+import { useState, useEffect } from "react"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { UseFormReturn } from "react-hook-form"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -20,25 +22,92 @@ export const AddressDetailsSection: React.FC<AddressDetailsSectionProps> = ({
 }) => {
   const { t } = useTranslation()
 
+  const currentAddress = form.watch("address")
+
+  const [sameAsCorrespondence, setSameAsCorrespondence] = useState<boolean>(() => {
+    const addr = form.getValues("address")
+    const perm = form.getValues("permanent_address")
+    if (addr && perm && addr === perm) return true
+    if (!perm && addr) return true
+    return false
+  })
+
+  const handleSameAsCorrespondenceChange = (checked: boolean) => {
+    setSameAsCorrespondence(checked)
+    if (checked) {
+      const addr = form.getValues("address")
+      form.setValue("permanent_address", addr)
+    }
+  }
+
+  useEffect(() => {
+    if (sameAsCorrespondence) {
+      if (form.getValues("permanent_address") !== currentAddress) {
+        form.setValue("permanent_address", currentAddress)
+      }
+    }
+  }, [currentAddress, sameAsCorrespondence, form])
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("address_details")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Address of Correspondence */}
         <FormField
           control={form.control}
           name="address"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("address")}</FormLabel>
+              <FormLabel>Address of Correspondence</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value ?? ""} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Enter address of correspondence"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {/* Checkbox: Same Address */}
+        <div className="flex items-center space-x-2 py-1">
+          <Checkbox
+            id="same-address-checkbox"
+            checked={sameAsCorrespondence}
+            onCheckedChange={handleSameAsCorrespondenceChange}
+          />
+          <label
+            htmlFor="same-address-checkbox"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            Permanent address is same as address of correspondence
+          </label>
+        </div>
+
+        {/* Permanent Address */}
+        <FormField
+          control={form.control}
+          name="permanent_address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Permanent Address</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Enter permanent address"
+                  disabled={sameAsCorrespondence}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -111,3 +180,4 @@ export const AddressDetailsSection: React.FC<AddressDetailsSectionProps> = ({
     </Card>
   )
 }
+

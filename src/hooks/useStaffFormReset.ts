@@ -47,16 +47,9 @@ const normalizeCategory = (val: any): "ST" | "SC" | "OBC" | "OPEN" | null => {
   return null
 }
 
-const normalizeEmploymentStatus = (val: any): "Permanent" | "Trial_Period" | "Resigned" | "Contract_Based" | "Notice_Period" | undefined => {
+const normalizeEmploymentStatus = (val: any): string | undefined => {
   if (!val) return undefined
-  const str = String(val).trim().toLowerCase()
-  if (str.includes("permanent")) return "Permanent"
-  if (str.includes("trial")) return "Trial_Period"
-  if (str.includes("resign")) return "Resigned"
-  if (str.includes("contract")) return "Contract_Based"
-  if (str.includes("notice")) return "Notice_Period"
-  if (["Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"].includes(val)) return val
-  return undefined
+  return String(val)
 }
 
 export const useStaffFormReset = (
@@ -86,6 +79,7 @@ export const useStaffFormReset = (
         caste_in_guj: initialData.caste_in_guj || null,
         category: normalizeCategory(initialData.category),
         address: initialData.address || null,
+        permanent_address: initialData.permanent_address || null,
         district: initialData.district || null,
         city: initialData.city || null,
         postal_code: initialData.postal_code ? initialData.postal_code.toString() : null,
@@ -114,6 +108,9 @@ export const useStaffFormReset = (
         pg_degree: initialData.pg_degree || null,
         pg_passing_university: initialData.pg_passing_university || null,
         pg_passing_year: initialData.pg_passing_year || null,
+        diploma_degree: initialData.diploma_degree || null,
+        diploma_council: initialData.diploma_council || null,
+        diploma_passing_year: initialData.diploma_passing_year || null,
         other_degree: initialData.other_degree || null,
         other_passing_university: initialData.other_passing_university || null,
         other_passing_year: initialData.other_passing_year || null,
@@ -124,6 +121,27 @@ export const useStaffFormReset = (
         staff_type: initialData.staff_type || null,
         staff_category: initialData.staff_category || null,
         designation: initialData.designation || null,
+        department_id: initialData.department_id ?? undefined,
+        leave_policy_ids: initialData.leave_policy_ids || [],
+        letters: initialData.letters && initialData.letters.length > 0
+          ? initialData.letters.map((l) => ({
+              id: l.id,
+              letter_type: l.letter_type,
+              letter_type_id: l.letter_type_id || null,
+              letter_no: l.letter_no || "",
+              letter_date: l.letter_date ? formatData(l.letter_date) : "",
+              remarks: l.remarks || "",
+            }))
+          : (initialData.university_approval_letter_no || initialData.uni_approval_number
+            ? [
+                {
+                  letter_type: "University Approval Letter",
+                  letter_no: initialData.university_approval_letter_no || initialData.uni_approval_number || "",
+                  letter_date: formatData(initialData.university_approval_date || initialData.uni_approval_date),
+                  remarks: "",
+                }
+              ]
+            : []),
       })
     }
   }, [formType, initialData, form])

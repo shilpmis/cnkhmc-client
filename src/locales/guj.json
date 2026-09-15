@@ -31,6 +31,7 @@
     "academic_calendar": "શૈક્ષણિક કેલેન્ડર",
     "academic_details": "શૈક્ષણિક વિગતો",
     "academic_management": "શૈક્ષણિક મેનેજમેન્ટ",
+    "calendar_categories": "કેલેન્ડર કેટેગરીઝ",
     "academic_session": "શૈક્ષણિક સત્ર",
     "academic_session_and_are_open_for_admissions_by_admin.": "શૈક્ષણિક સત્ર અને પ્રવેશો માટે ખુલ્લા છે",
     "academic_session_management": "શૈક્ષણિક સત્ર વ્યવસ્થાપન",
@@ -1469,6 +1470,7 @@
     "no_available_components_for_this_type": "આ પ્રકાર માટે કોઈ ઉપલબ્ધ ઘટકો નથી",
     "no_available_divisions_for_migration": "સ્થાનાંતરણ માટે કોઈ ઉપલબ્ધ વિભાગો નથી",
     "no_bank_details_available": "કોઈ બેંક વિગતો ઉપલબ્ધ નથી",
+    "no_batch": "કોઈ બેચ નથી (બધા વિદ્યાર્થીઓ)",
     "no_batches_found": "કોઈ બેચો મળી નથી",
     "no_breaks": "કોઈ વિરામ નથી",
     "no_cancelled_applications_found": "કોઈ રદ કરેલી અરજીઓ મળી નથી",
@@ -2724,5 +2726,11 @@
     "your_leave_request_has_been_approved": "તમારી રજા વિનંતી મંજુર કરવામાં આવી છે",
     "your_profile": "તમારી પ્રોફાઇલ",
     "your_recent_actions_and_updates": "તમારી તાજેતરની ક્રિયાઓ અને અપડેટ્સ",
-    "your_recent_notifications_and_alerts": "તમારી તાજેતરની સૂચનાઓ અને ચેતવણીઓ"
+    "your_recent_notifications_and_alerts": "તમારી તાજેતરની સૂચનાઓ અને ચેતવણીઓ",
+    "is_library_period": "લાઈબ્રેરી પિરિયડ છે",
+    "is_seminar_period": "સેમિનાર પિરિયડ છે",
+    "is_free_period": "ફ્રી પિરિયડ છે",
+    "library": "લાઈબ્રેરી",
+    "seminar": "સેમિનાર",
+    "free": "ફ્રી"
 }

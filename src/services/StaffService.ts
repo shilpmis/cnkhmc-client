@@ -18,7 +18,7 @@ export const StaffApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getStaffConfigurations: builder.query<StaffConfiguration[], { config_type?: 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION' } | void>({
+    getStaffConfigurations: builder.query<StaffConfiguration[], { config_type?: 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION' | 'EMPLOYMENT_STATUS' | 'LETTER_TYPE' | 'SUBJECT_SPECIALIZATION' | 'QUALIFICATION' } | void>({
       query: (params) => {
         let url = 'staff-configurations'
         if (params?.config_type) {

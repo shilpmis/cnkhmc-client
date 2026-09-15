@@ -87,6 +87,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
       caste_in_guj: null,
       category: null,
       address: null,
+      permanent_address: null,
       district: null,
       city: null,
       state: null,
@@ -113,6 +114,9 @@ const StaffForm: React.FC<StaffFormProps> = ({
       pg_degree: null,
       pg_passing_university: null,
       pg_passing_year: null,
+      diploma_degree: null,
+      diploma_council: null,
+      diploma_passing_year: null,
       other_degree: null,
       other_passing_university: null,
       other_passing_year: null,
@@ -126,10 +130,13 @@ const StaffForm: React.FC<StaffFormProps> = ({
       department_id: undefined,
       nch_registration_no: null,
       nch_registration_date: null,
+      leave_policy_ids: [],
+      letters: [],
     },
   })
 
   const tabMapping: { [key: string]: string } = {
+    letters: "professional",
     is_teaching_role: "role",
     staff_role_id: "role",
     staff_type: "role",
@@ -154,6 +161,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
     caste_in_guj: "other",
     category: "other",
     address: "address",
+    permanent_address: "address",
     district: "address",
     city: "address",
     state: "address",
@@ -183,6 +191,9 @@ const StaffForm: React.FC<StaffFormProps> = ({
     pg_degree: "academic",
     pg_passing_university: "academic",
     pg_passing_year: "academic",
+    diploma_degree: "academic",
+    diploma_council: "academic",
+    diploma_passing_year: "academic",
     other_degree: "academic",
     other_passing_university: "academic",
     other_passing_year: "academic",
@@ -218,14 +229,16 @@ const StaffForm: React.FC<StaffFormProps> = ({
     }
   }, [activeTab])
 
-  useEffect(() => {
-    const errors = form.formState.errors
-    if (Object.keys(errors).length > 0) {
-      const firstErrorField = Object.keys(errors)[0]
+  const handleInvalid = (errors: any) => {
+    const errorKeys = Object.keys(errors)
+    if (errorKeys.length > 0) {
+      const firstErrorField = errorKeys[0]
       const tabToActivate = tabMapping[firstErrorField]
-      setActiveTab(tabToActivate)
+      if (tabToActivate) {
+        setActiveTab(tabToActivate)
+      }
     }
-  }, [form.formState.errors])
+  }
 
   useEffect(() => {
     if (!teachingRoles || !nonTeachingRoles) {
@@ -242,7 +255,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmit, handleInvalid)} className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3 md:grid-cols-9">
             <TabsTrigger value="role">{t("role")}</TabsTrigger>

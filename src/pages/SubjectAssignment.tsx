@@ -31,6 +31,7 @@ import {
   useLazyGetSubjectsForDivisionQuery,
   useAssignStaffToSubjectsMutation,
   useUnassignStaffFromSubjectMutation,
+  useUnassignSubjectFromDivisionMutation,
 } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
@@ -39,6 +40,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -57,11 +59,9 @@ const subjectAssignmentSchema = z.object({
   description: z.string().optional(),
 })
 
-// Updated teacher assignment form schema for single teacher selection
+// Updated teacher assignment form schema for multiple teacher selection
 const teacherAssignmentSchema = z.object({
-  staff_enrollment_id: z.number({
-    required_error: "Please select a teacher",
-  }),
+  staff_enrollment_ids: z.array(z.number()).min(1, "Please select at least one teacher"),
   notes: z.string().optional(),
 })
 
@@ -78,6 +78,7 @@ export default function SubjectAssignment() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState<SubjectDivisionMaster | null>(null)
+  const [subjectToUnassign, setSubjectToUnassign] = useState<SubjectDivisionMaster | null>(null)
   const [teachingStaff, setTeachingStaff] = useState<StaffType[]>([])
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -90,6 +91,7 @@ export default function SubjectAssignment() {
   const [getTeachingStaff, { isLoading: isLoadingTeachers }] = useLazyGetAllTeachingStaffQuery()
   const [assignStaffToSubjects, { isLoading: isAssigningTeachers }] = useAssignStaffToSubjectsMutation()
   const [unassignStaffFromSubject, { isLoading: isUnassigningTeacher }] = useUnassignStaffFromSubjectMutation()
+  const [unassignSubjectFromDivision, { isLoading: isUnassigningSubject }] = useUnassignSubjectFromDivisionMutation()
 
   // Setup forms
   const form = useForm<z.infer<typeof subjectAssignmentSchema>>({
@@ -103,7 +105,7 @@ export default function SubjectAssignment() {
   const teacherForm = useForm<z.infer<typeof teacherAssignmentSchema>>({
     resolver: zodResolver(teacherAssignmentSchema),
     defaultValues: {
-      staff_enrollment_id: undefined,
+      staff_enrollment_ids: [],
       notes: "",
     },
   })
@@ -140,7 +142,7 @@ export default function SubjectAssignment() {
       loadTeachingStaff()
       // Reset the form when opening the dialog
       teacherForm.reset({
-        staff_enrollment_id: undefined,
+        staff_enrollment_ids: [],
         notes: "",
       })
     }
@@ -357,7 +359,7 @@ export default function SubjectAssignment() {
       await assignStaffToSubjects({
         payload: {
           subjects_division_id: selectedSubject.id,
-          staff_enrollment_ids: [data.staff_enrollment_id], // Send as array with single item
+          staff_enrollment_ids: data.staff_enrollment_ids,
           notes: data.notes,
         },
       })
@@ -397,6 +399,20 @@ export default function SubjectAssignment() {
         description: t("teacher_has_been_unassigned_from_subject_successfully"),
       })
 
+      // Optimistically update local selectedSubject state so UI updates instantly
+      if (selectedSubject) {
+        setSelectedSubject((prev) =>
+          prev
+            ? {
+                ...prev,
+                subject_staff_divisioin_master: (prev.subject_staff_divisioin_master || []).filter(
+                  (t) => t.id !== teacherId
+                ),
+              }
+            : null
+        )
+      }
+
       // Refresh subjects for division
       if (selectedDivision && currentAcademicSession) {
         getSubjectsForDivision({
@@ -414,6 +430,45 @@ export default function SubjectAssignment() {
     }
   }
 
+  const handleUnassignSubject = async () => {
+    if (!subjectToUnassign) return
+
+    try {
+      await unassignSubjectFromDivision({ id: subjectToUnassign.id }).unwrap()
+
+      toast({
+        title: t("subject_unassigned") || "Subject Unassigned",
+        description: t("subject_unassigned_successfully") || "Subject has been unassigned from this division successfully.",
+      })
+
+      setSubjectToUnassign(null)
+
+      // Refresh subjects for division
+      if (selectedDivision && currentAcademicSession) {
+        getSubjectsForDivision({
+          academic_session_id: currentAcademicSession.id,
+          division_id: Number(selectedDivision),
+        })
+      }
+    } catch (error: any) {
+      console.error("Error unassigning subject:", error)
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: error?.data?.message || t("failed_to_unassign_subject") || "Failed to unassign subject from division.",
+      })
+    }
+  }
+
+  // Keep selectedSubject in sync with divisionSubjects updates
+  useEffect(() => {
+    if (selectedSubject && divisionSubjects) {
+      const updated = divisionSubjects.find((s) => s.id === selectedSubject.id)
+      if (updated) {
+        setSelectedSubject(updated)
+      }
+    }
+  }, [divisionSubjects])
 
   // Open teacher assignment dialog
   const openTeacherDialog = (subject: SubjectDivisionMaster) => {
@@ -669,15 +724,26 @@ export default function SubjectAssignment() {
                             </TableCell>
                             {!isTeacher && (
                               <TableCell className="text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openTeacherDialog(item)}
-                                  className="h-8 px-2 lg:px-3"
-                                >
-                                  <UserPlus className="h-4 w-4 mr-0 lg:mr-2" />
-                                  <span className="hidden lg:inline">{t("assign_teacher")}</span>
-                                </Button>
+                                <div className="flex items-center justify-end space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openTeacherDialog(item)}
+                                    className="h-8 px-2 lg:px-3"
+                                  >
+                                    <UserPlus className="h-4 w-4 mr-0 lg:mr-2" />
+                                    <span className="hidden lg:inline">{t("assign_teacher")}</span>
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSubjectToUnassign(item)}
+                                    className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                                    title={t("unassign_subject") || "Unassign Subject"}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             )}
                           </TableRow>
@@ -757,12 +823,12 @@ export default function SubjectAssignment() {
 
                   <FormField
                     control={teacherForm.control}
-                    name="staff_enrollment_id"
+                    name="staff_enrollment_ids"
                     render={({ field }) => (
                       <FormItem>
                         <div className="mb-4">
-                          <FormLabel className="text-base">{t("select_teacher")}</FormLabel>
-                          <FormDescription>{t("select_a_teacher_to_assign_to_this_subject")}</FormDescription>
+                          <FormLabel className="text-base">{t("select_teachers")}</FormLabel>
+                          <FormDescription>{t("select_teachers_to_assign_to_this_subject")}</FormDescription>
                         </div>
 
                         {isLoadingTeachers ? (
@@ -771,13 +837,10 @@ export default function SubjectAssignment() {
                           </div>
                         ) : filteredTeachingStaff.length > 0 ? (
                           <ScrollArea className="h-[300px] border rounded-md p-4">
-                            <RadioGroup
-                              onValueChange={(value) => field.onChange(Number(value))}
-                              value={field.value?.toString()}
-                              className="space-y-2"
-                            >
+                            <div className="space-y-2">
                               {filteredTeachingStaff.map((teacher) => {
                                 const alreadyAssigned = isTeacherAssigned(teacher.staff_enrollment_id)
+                                const isChecked = field.value?.includes(teacher.staff_enrollment_id)
 
                                 return (
                                   <div
@@ -791,8 +854,14 @@ export default function SubjectAssignment() {
                                         <Ban className="h-4 w-4 text-muted-foreground" />
                                       </div>
                                     ) : (
-                                      <RadioGroupItem
-                                        value={teacher.staff_enrollment_id.toString()}
+                                      <Checkbox
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          const newValue = checked
+                                            ? [...(field.value || []), teacher.staff_enrollment_id]
+                                            : (field.value || []).filter((id) => id !== teacher.staff_enrollment_id)
+                                          field.onChange(newValue)
+                                        }}
                                         id={`teacher-${teacher.staff_enrollment_id}`}
                                         disabled={alreadyAssigned}
                                       />
@@ -827,7 +896,7 @@ export default function SubjectAssignment() {
                                   </div>
                                 )
                               })}
-                            </RadioGroup>
+                            </div>
                           </ScrollArea>
                         ) : (
                           <Alert>
@@ -947,6 +1016,38 @@ export default function SubjectAssignment() {
               )}
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unassign Subject Confirmation Dialog */}
+      <Dialog open={!!subjectToUnassign} onOpenChange={(open) => !open && setSubjectToUnassign(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("unassign_subject") || "Unassign Subject"}</DialogTitle>
+            <DialogDescription>
+              {t("unassign_subject_confirmation_desc") ||
+                `Are you sure you want to unassign "${subjectToUnassign?.subject?.name || "this subject"}" from ${selectedClassObj ? selectedClassObj.class : ""} ${selectedDivisionObj ? selectedDivisionObj.division : ""}? This will also remove any assigned teachers for this subject.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSubjectToUnassign(null)}
+              disabled={isUnassigningSubject}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleUnassignSubject}
+              disabled={isUnassigningSubject}
+            >
+              {isUnassigningSubject && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("unassign") || "Unassign"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -389,7 +389,7 @@ export const Staff: React.FC = () => {
       joining_date: z.string().nullable().optional().or(z.literal("")),
       promotion_date: z.string().nullable().optional().or(z.literal("")),
       total_experience: z.union([z.string(), z.number()]).nullable().optional().or(z.literal("")),
-      employment_status: z.enum(["Active", "Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"]).optional().or(z.literal("")),
+      employment_status: z.string().optional().or(z.literal("")),
       registration_authority: z.string().nullable().optional().or(z.literal("")),
       registration_number: z.string().nullable().optional().or(z.literal("")),
       registration_date: z.string().nullable().optional().or(z.literal("")),

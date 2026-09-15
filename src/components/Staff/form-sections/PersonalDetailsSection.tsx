@@ -117,7 +117,7 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel required>{t("gender")}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ""}>
+                <Select onValueChange={field.onChange} value={field.value || undefined}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender" />
@@ -170,7 +170,7 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Marital Status</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ""}>
+                <Select onValueChange={field.onChange} value={field.value || undefined}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, BookOpen, Users, Beaker, Dumbbell, Coffee, Clock, RotateCcw, Plus, History, FileDown, Edit3, Eye } from "lucide-react"
+import { Save, Loader2, BookOpen, Users, Beaker, Dumbbell, Coffee, Clock, RotateCcw, Plus, History, FileDown, Edit3, Eye, Presentation } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useToast } from "@/hooks/use-toast"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
@@ -15,6 +15,7 @@ import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useLazyGetSubjectsForDivisionQuery, useAssignSubjectToDivisionMutation, useLazyGetAllSubjectsQuery } from "@/services/subjects"
 import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
+import { useFetchPracticalBatchSettingsQuery } from "@/services/StudentServices"
 import { useUpdateWeekWiseTimeTableForDivisionMutation, useSaveTimetableVersionMutation, useLazyGetTimetableVersionsQuery, useRestoreTimetableVersionMutation } from "@/services/timetableService"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
@@ -51,8 +52,10 @@ interface PeriodState extends Partial<PeriodsConfig> {
   subjects_division_masters_id: number | null;
   staff_enrollment_id: number | null;
   lab_id: number | null;
-  is_pt: boolean;
+  is_pt?: boolean;
   is_free_period: boolean;
+  is_library?: boolean;
+  is_seminar?: boolean;
   duration?: number;
   class_day_config_id: number;
 }
@@ -80,7 +83,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   const [viewMode, setViewMode] = useState<'edit' | 'readonly'>('edit')
   const [isQuickAssignMode, setIsQuickAssignMode] = useState(false)
   const [quickAssignData, setQuickAssignData] = useState({
-    subjectId: "none", staffId: "none", labId: "none", isPt: false, isFree: false, batchName: ""
+    subjectId: "none", staffId: "none", labId: "none", isLibrary: false, isSeminar: false, isFree: false, batchName: ""
   })
 
   // Versions
@@ -102,12 +105,30 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   const [editSubjectId, setEditSubjectId] = useState<string>("none")
   const [editStaffId, setEditStaffId] = useState<string>("none")
   const [editLabId, setEditLabId] = useState<string>("none")
-  const [editIsPt, setEditIsPt] = useState(false)
+  const [editIsLibrary, setEditIsLibrary] = useState(false)
+  const [editIsSeminar, setEditIsSeminar] = useState(false)
   const [editIsFree, setEditIsFree] = useState(false)
   const [editBatchName, setEditBatchName] = useState<string>("")
   
   const [isAddingBatch, setIsAddingBatch] = useState(false)
   const [editingPeriod, setEditingPeriod] = useState<PeriodState | null>(null)
+
+  // Practical batch settings from settings
+  const { data: batchSettings } = useFetchPracticalBatchSettingsQuery()
+  const configuredBatches: string[] = useMemo(() => {
+    if (batchSettings?.batches && batchSettings.batches.length > 0) {
+      return batchSettings.batches
+    }
+    return ["Batch A", "Batch B", "Batch C"]
+  }, [batchSettings])
+
+  const batchOptions = useMemo(() => {
+    const list = [...configuredBatches]
+    if (editBatchName && editBatchName !== "none" && !list.includes(editBatchName)) {
+      list.push(editBatchName)
+    }
+    return list
+  }, [configuredBatches, editBatchName])
 
   // Validation state
   const [coverageReport, setCoverageReport] = useState<any[]>([])
@@ -211,7 +232,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
         const dayWorkingCount = workingDaysCount[dayValue as keyof typeof workingDaysCount] || 0;
         
         periods.forEach(p => {
-          if (!p.is_break && !p.is_pt && !p.is_free_period && p.subjects_division_masters_id === sdmId) {
+          if (!p.is_break && !p.is_pt && !p.is_free_period && !p.is_library && !p.is_seminar && p.subjects_division_masters_id === sdmId) {
             const slotKey = `${dayValue}-${p.start_time}-${p.end_time}-${p.batch_name || 'lecture'}`;
             
             if (!processedSlots.has(slotKey)) {
@@ -332,6 +353,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                   lab_id: null,
                   is_pt: false,
                   is_free_period: false,
+                  is_library: false,
+                  is_seminar: false,
                   batch_name: null,
                   duration: duration,
                   class_day_config_id: dayConfig.id
@@ -362,10 +385,12 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       if (targetPeriodIndex !== -1) {
         newState[dayValue][targetPeriodIndex] = {
           ...newState[dayValue][targetPeriodIndex],
-          subjects_division_masters_id: quickAssignData.subjectId === "none" ? null : Number(quickAssignData.subjectId),
-          staff_enrollment_id: quickAssignData.staffId === "none" ? null : Number(quickAssignData.staffId),
-          lab_id: quickAssignData.labId === "none" ? null : Number(quickAssignData.labId),
-          is_pt: quickAssignData.isPt,
+          subjects_division_masters_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.subjectId === "none") ? null : Number(quickAssignData.subjectId),
+          staff_enrollment_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.staffId === "none") ? null : Number(quickAssignData.staffId),
+          lab_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.labId === "none") ? null : Number(quickAssignData.labId),
+          is_pt: false,
+          is_library: quickAssignData.isLibrary,
+          is_seminar: quickAssignData.isSeminar,
           is_free_period: quickAssignData.isFree,
           batch_name: quickAssignData.batchName || null
         };
@@ -379,7 +404,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     
     // Check if there are multiple batches at this periodIndex
     const periodsAtThisSlot = dayPeriods.filter(p => p.period_order === period.period_order);
-    const hasContent = period.subjects_division_masters_id !== null || period.is_pt || period.is_free_period;
+    const hasContent = period.subjects_division_masters_id !== null || period.is_pt || period.is_free_period || period.is_library || period.is_seminar;
     
     let currentSpan = 1;
     let available = 1;
@@ -398,7 +423,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                     prevP.staff_enrollment_id === period.staff_enrollment_id && 
                     prevP.lab_id === period.lab_id &&
                     prevP.is_pt === period.is_pt &&
-                    prevP.is_free_period === period.is_free_period) {
+                    prevP.is_free_period === period.is_free_period &&
+                    prevP.is_library === period.is_library &&
+                    prevP.is_seminar === period.is_seminar) {
                     currentSpan++;
                     currentOrder--;
                 } else {
@@ -417,7 +444,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                     nextP.staff_enrollment_id === period.staff_enrollment_id && 
                     nextP.lab_id === period.lab_id &&
                     nextP.is_pt === period.is_pt &&
-                    nextP.is_free_period === period.is_free_period) {
+                    nextP.is_free_period === period.is_free_period &&
+                    nextP.is_library === period.is_library &&
+                    nextP.is_seminar === period.is_seminar) {
                     currentSpan++;
                     currentOrder++;
                 } else {
@@ -461,9 +490,21 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     setEditSubjectId(addingBatch ? "none" : (period.subjects_division_masters_id?.toString() || "none"))
     setEditStaffId(addingBatch ? "none" : (period.staff_enrollment_id?.toString() || "none"))
     setEditLabId(addingBatch ? "none" : (period.lab_id?.toString() || "none"))
-    setEditIsPt(addingBatch ? false : period.is_pt)
-    setEditIsFree(addingBatch ? false : period.is_free_period)
-    setEditBatchName(addingBatch ? "" : (period.batch_name || ""))
+    setEditIsLibrary(addingBatch ? false : !!period.is_library)
+    setEditIsSeminar(addingBatch ? false : !!period.is_seminar)
+    setEditIsFree(addingBatch ? false : !!period.is_free_period)
+    
+    if (addingBatch) {
+      const dayPeriods = periodsState[dayValue] || []
+      const existingSlotBatches = dayPeriods
+        .filter(p => p.start_time === period.start_time && p.end_time === period.end_time)
+        .map(p => p.batch_name)
+        .filter(Boolean) as string[]
+      const nextBatch = configuredBatches.find(b => !existingSlotBatches.includes(b)) || configuredBatches[0] || "Batch A"
+      setEditBatchName(nextBatch)
+    } else {
+      setEditBatchName(period.batch_name || "")
+    }
     
     setEditDialogOpen(true)
   }
@@ -512,11 +553,13 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                 
                 const basePeriod = periodsForOrder[0];
                 const newPeriod = { ...basePeriod, id: undefined }; // clear ID for new batch
-                newPeriod.is_pt = editIsPt;
+                newPeriod.is_pt = false;
+                newPeriod.is_library = editIsLibrary;
+                newPeriod.is_seminar = editIsSeminar;
                 newPeriod.is_free_period = editIsFree;
                 newPeriod.batch_name = editBatchName.trim() || null;
                 
-                if (editIsPt || editIsFree) {
+                if (editIsFree || editIsLibrary || editIsSeminar) {
                     newPeriod.subjects_division_masters_id = null;
                     newPeriod.staff_enrollment_id = null;
                     newPeriod.lab_id = null;
@@ -547,11 +590,13 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                         const updatedPeriod = { ...periodToUpdate };
                         
                         if (i < editSpan) {
-                            updatedPeriod.is_pt = editIsPt;
+                            updatedPeriod.is_pt = false;
+                            updatedPeriod.is_library = editIsLibrary;
+                            updatedPeriod.is_seminar = editIsSeminar;
                             updatedPeriod.is_free_period = editIsFree;
                             updatedPeriod.batch_name = editBatchName.trim() || null;
                             
-                            if (editIsPt || editIsFree) {
+                            if (editIsFree || editIsLibrary || editIsSeminar) {
                                 updatedPeriod.subjects_division_masters_id = null;
                                 updatedPeriod.staff_enrollment_id = null;
                                 updatedPeriod.lab_id = null;
@@ -570,6 +615,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                                 updatedPeriod.lab_id = null;
                                 updatedPeriod.is_pt = false;
                                 updatedPeriod.is_free_period = false;
+                                updatedPeriod.is_library = false;
+                                updatedPeriod.is_seminar = false;
                                 updatedPeriod.batch_name = null;
                             }
                         }
@@ -582,7 +629,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                         start_time: periodsForOrder.length > 0 ? periodsForOrder[0].start_time : editingPeriod.start_time,
                         end_time: periodsForOrder.length > 0 ? periodsForOrder[0].end_time : editingPeriod.end_time,
                         is_break: false,
-                        is_pt: editIsPt,
+                        is_pt: false,
+                        is_library: editIsLibrary,
+                        is_seminar: editIsSeminar,
                         is_free_period: editIsFree,
                         subjects_division_masters_id: null,
                         staff_enrollment_id: null,
@@ -590,7 +639,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                         batch_name: editBatchName.trim() || null
                     };
                     
-                    if (!editIsPt && !editIsFree) {
+                    if (!editIsFree && !editIsLibrary && !editIsSeminar) {
                         newPeriod.subjects_division_masters_id = finalSubjectId ? Number(finalSubjectId) : null;
                         newPeriod.staff_enrollment_id = editStaffId === "none" ? null : Number(editStaffId);
                         newPeriod.lab_id = editLabId === "none" ? null : Number(editLabId);
@@ -649,8 +698,10 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                 subjects_division_masters_id: p.subjects_division_masters_id,
                 staff_enrollment_id: p.staff_enrollment_id,
                 lab_id: p.lab_id,
-                is_pt: !!p.is_pt,
+                is_pt: false,
                 is_free_period: !!p.is_free_period,
+                is_library: !!p.is_library,
+                is_seminar: !!p.is_seminar,
                 batch_name: p.batch_name || null
             }));
 
@@ -994,18 +1045,62 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                    </div>
                    <div className="flex flex-col space-y-1">
                      <div className="flex items-center space-x-2">
-                       <Checkbox checked={quickAssignData.isPt} onCheckedChange={(c) => setQuickAssignData(p => ({...p, isPt: !!c}))} />
-                       <Label className="text-xs">PT</Label>
+                       <Checkbox 
+                         checked={quickAssignData.isFree} 
+                         onCheckedChange={(c) => setQuickAssignData(p => ({
+                           ...p, 
+                           isFree: !!c, 
+                           isLibrary: false, 
+                           isSeminar: false,
+                           ...(c ? { subjectId: "none", staffId: "none", labId: "none" } : {})
+                         }))} 
+                       />
+                       <Label className="text-xs">{t("free") || "Free"}</Label>
                      </div>
                      <div className="flex items-center space-x-2">
-                       <Checkbox checked={quickAssignData.isFree} onCheckedChange={(c) => setQuickAssignData(p => ({...p, isFree: !!c}))} />
-                       <Label className="text-xs">Free</Label>
+                       <Checkbox 
+                         checked={quickAssignData.isLibrary} 
+                         onCheckedChange={(c) => setQuickAssignData(p => ({
+                           ...p, 
+                           isLibrary: !!c, 
+                           isFree: false, 
+                           isSeminar: false,
+                           ...(c ? { subjectId: "none", staffId: "none", labId: "none" } : {})
+                         }))} 
+                       />
+                       <Label className="text-xs">{t("library") || "Library"}</Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <Checkbox 
+                         checked={quickAssignData.isSeminar} 
+                         onCheckedChange={(c) => setQuickAssignData(p => ({
+                           ...p, 
+                           isSeminar: !!c, 
+                           isFree: false, 
+                           isLibrary: false,
+                           ...(c ? { subjectId: "none", staffId: "none", labId: "none" } : {})
+                         }))} 
+                       />
+                       <Label className="text-xs">{t("seminar") || "Seminar"}</Label>
                      </div>
                    </div>
-                   <div className="col-span-2">
-                     <Label className="text-xs">Batch</Label>
-                     <Input className="h-8" value={quickAssignData.batchName} onChange={(e) => setQuickAssignData(p => ({...p, batchName: e.target.value}))} placeholder="Batch Name" />
-                   </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">{t("batch_name") || "Batch"}</Label>
+                      <Select 
+                        value={quickAssignData.batchName || "none"} 
+                        onValueChange={(val) => setQuickAssignData(p => ({...p, batchName: val === "none" ? "" : val}))}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder={t("select_batch") || "Select Batch"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t("no_batch") || "No Batch (All Students)"}</SelectItem>
+                          {configuredBatches.map(b => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                 </div>
              )}
            </CardContent>
@@ -1054,6 +1149,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                          p1.lab_id !== p2.lab_id ||
                          p1.is_pt !== p2.is_pt ||
                          p1.is_free_period !== p2.is_free_period ||
+                         p1.is_library !== p2.is_library ||
+                         p1.is_seminar !== p2.is_seminar ||
                          p1.batch_name !== p2.batch_name
                      ) {
                         allMatch = false;
@@ -1098,7 +1195,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                           <div className={`flex flex-col h-full ${periodsAtSlot.length > 1 ? "space-y-2" : ""}`}>
                             {periodsAtSlot.map((period, pIdx) => {
                               let bgColor = "bg-white hover:bg-blue-50 cursor-pointer";
-                              if (period.is_pt) bgColor = "bg-purple-50 hover:bg-purple-100 cursor-pointer";
+                              if (period.is_library) bgColor = "bg-sky-50 hover:bg-sky-100 cursor-pointer border-sky-200";
+                              else if (period.is_seminar) bgColor = "bg-purple-50 hover:bg-purple-100 cursor-pointer border-purple-200";
+                              else if (period.is_pt) bgColor = "bg-purple-50 hover:bg-purple-100 cursor-pointer";
                               else if (period.lab_id) bgColor = "bg-blue-50 hover:bg-blue-100 cursor-pointer";
                               else if (period.is_free_period) bgColor = "bg-gray-50 hover:bg-gray-100 cursor-pointer";
                               else if (period.subjects_division_masters_id) bgColor = "bg-green-50 hover:bg-green-100 cursor-pointer";
@@ -1107,10 +1206,12 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                                 <div key={pIdx} className={`p-2 flex-1 rounded-sm border ${bgColor}`} onClick={() => handleCellClick(day.value, period.period_order - 1, period)}>
                                   <div className="flex flex-col h-full min-h-[70px] justify-center items-center text-center">
                                     
-                                    {period.is_pt && <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800">{t("pt")}</Badge>}
-                                    {period.is_free_period && <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800">{t("free")}</Badge>}
+                                    {period.is_library && <Badge variant="outline" className="text-xs bg-sky-100 text-sky-800 border-sky-300 flex items-center gap-1"><BookOpen className="h-3 w-3" /> {t("library") || "Library"}</Badge>}
+                                    {period.is_seminar && <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1"><Presentation className="h-3 w-3" /> {t("seminar") || "Seminar"}</Badge>}
+                                    {period.is_pt && !period.is_seminar && <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800">{t("pt")}</Badge>}
+                                    {period.is_free_period && <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800">{t("free") || "Free"}</Badge>}
                                     
-                                    {!period.is_pt && !period.is_free_period && (
+                                    {!period.is_pt && !period.is_free_period && !period.is_library && !period.is_seminar && (
                                       <>
                                         {period.batch_name && (
                                           <Badge variant="outline" className="mb-1 bg-blue-100 text-blue-800">{period.batch_name}</Badge>
@@ -1190,27 +1291,79 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                     </Select>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-4 p-2.5 bg-slate-50 rounded-md border">
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="is-pt" checked={editIsPt} onCheckedChange={(c) => { setEditIsPt(!!c); if(c) setEditIsFree(false); }} />
-                        <Label htmlFor="is-pt">{t("is_pt_period")}</Label>
+                        <Checkbox 
+                            id="is-free" 
+                            checked={editIsFree} 
+                            onCheckedChange={(c) => { 
+                                setEditIsFree(!!c); 
+                                if (c) { 
+                                    setEditIsLibrary(false); 
+                                    setEditIsSeminar(false); 
+                                    setEditSubjectId("none");
+                                    setEditStaffId("none");
+                                    setEditLabId("none");
+                                } 
+                            }} 
+                        />
+                        <Label htmlFor="is-free" className="cursor-pointer font-medium text-sm">{t("is_free_period") || "Is Free Period"}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="is-free" checked={editIsFree} onCheckedChange={(c) => { setEditIsFree(!!c); if(c) setEditIsPt(false); }} />
-                        <Label htmlFor="is-free">{t("is_free_period")}</Label>
+                        <Checkbox 
+                            id="is-library" 
+                            checked={editIsLibrary} 
+                            onCheckedChange={(c) => { 
+                                setEditIsLibrary(!!c); 
+                                if (c) { 
+                                    setEditIsFree(false); 
+                                    setEditIsSeminar(false); 
+                                    setEditSubjectId("none");
+                                    setEditStaffId("none");
+                                    setEditLabId("none");
+                                } 
+                            }} 
+                        />
+                        <Label htmlFor="is-library" className="cursor-pointer font-medium text-sm">{t("is_library_period") || "Is Library Period"}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox 
+                            id="is-seminar" 
+                            checked={editIsSeminar} 
+                            onCheckedChange={(c) => { 
+                                setEditIsSeminar(!!c); 
+                                if (c) { 
+                                    setEditIsFree(false); 
+                                    setEditIsLibrary(false); 
+                                    setEditSubjectId("none");
+                                    setEditStaffId("none");
+                                    setEditLabId("none");
+                                } 
+                            }} 
+                        />
+                        <Label htmlFor="is-seminar" className="cursor-pointer font-medium text-sm">{t("is_seminar_period") || "Is Seminar Period"}</Label>
                     </div>
                 </div>
 
                 <div className="space-y-2">
                     <Label>{t("batch_name_optional") || "Batch Name (Optional)"}</Label>
-                    <Input 
-                        placeholder={t("e_g_batch_a") || "e.g. Batch A"} 
-                        value={editBatchName} 
-                        onChange={(e) => setEditBatchName(e.target.value)} 
-                    />
+                    <Select 
+                        value={editBatchName || "none"} 
+                        onValueChange={(val) => setEditBatchName(val === "none" ? "" : val)}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder={t("select_batch") || "Select Batch"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">{t("no_batch") || "No Batch (All Students)"}</SelectItem>
+                            {batchOptions.map(b => (
+                                <SelectItem key={b} value={b}>{b}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
-                {!editIsPt && !editIsFree && (
+                {!editIsFree && !editIsLibrary && !editIsSeminar && (
                     <>
                         <div className="space-y-2">
                             <Label>{t("subject")}</Label>

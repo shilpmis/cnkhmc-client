@@ -49,6 +49,7 @@ import PayRun from "../Payroll/Payrun"
 import StundetFeesStatus from "@/pages/StundetFeesStatus"
 import ManageStudents from "../Settings/StudentManagement/StudentManagement"
 import SubjectSettings from "../Settings/AcademicSettings/SubjectSettings"
+import CalendarCategorySettings from "../Settings/AcademicSettings/CalendarCategorySettings"
 import SubjectAssignment from "@/pages/SubjectAssignment"
 import TimetableConfig from "../Settings/AcademicSettings/TimetableConfig"
 import TimetableManagement from "@/pages/TimeTable"
@@ -527,6 +528,14 @@ export default function RootRoute() {
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
                     <AcademicSettings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="calendar-categories"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <CalendarCategorySettings />
                   </PrivateRoute>
                 }
               />

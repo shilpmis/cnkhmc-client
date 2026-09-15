@@ -35,6 +35,7 @@ import {
   Activity,
   Edit2,
   Trash,
+  Presentation,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -560,6 +561,8 @@ export default function AutoTimetableGenerator({
   // Get period icon
   const getPeriodIcon = (period: any) => {
     if (period.is_break) return <Coffee className="h-4 w-4 text-amber-600" />
+    if (period.is_library) return <BookOpen className="h-4 w-4 text-sky-600" />
+    if (period.is_seminar) return <Presentation className="h-4 w-4 text-purple-600" />
     if (period.is_pt) return <Dumbbell className="h-4 w-4 text-purple-600" />
     if (period.lab_id) return <Beaker className="h-4 w-4 text-blue-600" />
     if (period.is_free_period) return <Clock className="h-4 w-4 text-gray-600" />
@@ -569,6 +572,8 @@ export default function AutoTimetableGenerator({
   // Get period background color
   const getPeriodBgColor = (period: any) => {
     if (period.is_break) return "bg-amber-50"
+    if (period.is_library) return "bg-sky-50"
+    if (period.is_seminar) return "bg-purple-50"
     if (period.is_pt) return "bg-purple-50"
     if (period.lab_id) return "bg-blue-50"
     if (period.is_free_period) return "bg-gray-50"
@@ -581,6 +586,20 @@ export default function AutoTimetableGenerator({
       return (
         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
           {t("break")}
+        </Badge>
+      )
+    }
+    if (period.is_library) {
+      return (
+        <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200">
+          {t("library") || "Library"}
+        </Badge>
+      )
+    }
+    if (period.is_seminar) {
+      return (
+        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+          {t("seminar") || "Seminar"}
         </Badge>
       )
     }
@@ -1605,7 +1624,15 @@ export default function AutoTimetableGenerator({
                                                 
                                                 {/* Subject */}
                                                 <div className={`border-r p-2 flex items-center justify-center ${periodsAtSlot.length > 1 ? "border-r-0" : ""}`}>
-                                                    {period.is_pt ? (
+                                                    {period.is_library ? (
+                                                        <span className="text-sm font-medium text-sky-700 flex items-center gap-1">
+                                                            <BookOpen className="h-4 w-4" /> {t("library") || "Library"}
+                                                        </span>
+                                                    ) : period.is_seminar ? (
+                                                        <span className="text-sm font-medium text-purple-700 flex items-center gap-1">
+                                                            <Presentation className="h-4 w-4" /> {t("seminar") || "Seminar"}
+                                                        </span>
+                                                    ) : period.is_pt ? (
                                                         <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
                                                             <Activity className="h-4 w-4" /> {t("physical_training")}
                                                         </span>

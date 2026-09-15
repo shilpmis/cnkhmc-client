@@ -17,7 +17,7 @@ import {
 } from "@/services/LeaveService"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { FileSpreadsheet, Search, User, Users, Calendar, Download, RefreshCw, Award, CheckCircle2, Clock } from "lucide-react"
+import { FileSpreadsheet, Search, User, Users, Calendar, RefreshCw, Award, Clock } from "lucide-react"
 
 export const LeaveReportsPanel: React.FC = () => {
   const { toast } = useToast()
@@ -27,7 +27,7 @@ export const LeaveReportsPanel: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStaffId, setSelectedStaffId] = useState<string>("")
 
-  // Query all teachers summary
+  // Query all staff leave summary
   const {
     data: summaryReport,
     isLoading: isSummaryLoading,
@@ -36,13 +36,13 @@ export const LeaveReportsPanel: React.FC = () => {
     academic_session_id: CurrentAcademicSessionForSchool?.id,
   })
 
-  // Lazy query individual teacher report
+  // Lazy query individual staff report
   const [
     getIndividualReport,
     { data: individualReport, isLoading: isIndividualLoading },
   ] = useLazyGetIndividualTeacherLeaveReportQuery()
 
-  const handleTeacherSelect = (staffIdStr: string) => {
+  const handleStaffSelect = (staffIdStr: string) => {
     setSelectedStaffId(staffIdStr)
     if (staffIdStr) {
       getIndividualReport({ staff_id: Number(staffIdStr) })
@@ -63,19 +63,19 @@ export const LeaveReportsPanel: React.FC = () => {
   // Summary Metrics
   const metrics = useMemo(() => {
     if (!summaryReport || !summaryReport.data)
-      return { totalTeachers: 0, totalLeavesTaken: 0, avgLeavesPerTeacher: 0 }
+      return { totalStaff: 0, totalLeavesTaken: 0, avgLeavesPerStaff: 0 }
 
-    const totalTeachers = summaryReport.data.length
+    const totalStaff = summaryReport.data.length
     const totalLeavesTaken = summaryReport.data.reduce((acc, curr) => acc + (curr.total_leaves_taken || 0), 0)
-    const avgLeavesPerTeacher = totalTeachers > 0 ? (totalLeavesTaken / totalTeachers).toFixed(1) : 0
+    const avgLeavesPerStaff = totalStaff > 0 ? (totalLeavesTaken / totalStaff).toFixed(1) : 0
 
-    return { totalTeachers, totalLeavesTaken, avgLeavesPerTeacher }
+    return { totalStaff, totalLeavesTaken, avgLeavesPerStaff }
   }, [summaryReport])
 
   // ──────────────────────────────────────────────────────────────────────────
-  // EXPORT ALL TEACHERS SUMMARY TO EXCEL
+  // EXPORT ALL STAFF SUMMARY TO EXCEL
   // ──────────────────────────────────────────────────────────────────────────
-  const exportAllTeachersSummaryToExcel = () => {
+  const exportAllStaffSummaryToExcel = () => {
     if (!summaryReport || !summaryReport.data || summaryReport.data.length === 0) {
       toast({ variant: "destructive", title: "No Data", description: "No report data available to export." })
       return
@@ -84,46 +84,46 @@ export const LeaveReportsPanel: React.FC = () => {
     try {
       const leaveTypeNames = summaryReport.leave_types.map((lt) => lt.name)
 
-      const excelRows = summaryReport.data.map((teacher, index) => {
+      const excelRows = summaryReport.data.map((staff, index) => {
         const row: Record<string, any> = {
           "Sr No": index + 1,
-          "Employee ID": teacher.employee_id,
-          "Teacher Name": teacher.full_name,
-          "Department": teacher.department,
+          "Employee ID": staff.employee_id,
+          "Staff Name": staff.full_name,
+          "Department": staff.department,
         }
 
         leaveTypeNames.forEach((typeName) => {
-          const breakdown = teacher.leave_breakdown?.[typeName]
+          const breakdown = staff.leave_breakdown?.[typeName]
           row[`${typeName} (Used / Total)`] = breakdown
             ? `${breakdown.used} / ${breakdown.total}`
             : "0 / 0"
         })
 
-        row["Total Leaves Taken"] = teacher.total_leaves_taken
-        row["Total Balance Remaining"] = teacher.total_leaves_available
+        row["Total Leaves Taken"] = staff.total_leaves_taken
+        row["Total Balance Remaining"] = staff.total_leaves_available
 
         return row
       })
 
       const worksheet = XLSX.utils.json_to_sheet(excelRows)
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, "All Teachers Leave Summary")
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Staff Leave Summary")
 
       const dateStr = new Date().toISOString().split("T")[0]
-      XLSX.writeFile(workbook, `All_Teachers_Leave_Summary_${dateStr}.xlsx`)
+      XLSX.writeFile(workbook, `Staff_Leave_Summary_${dateStr}.xlsx`)
 
-      toast({ title: "Export Successful", description: "All teachers leave summary downloaded successfully." })
+      toast({ title: "Export Successful", description: "All staff leave summary exported to Excel successfully." })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Export Failed", description: err.message || "Could not export Excel file." })
     }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // EXPORT INDIVIDUAL TEACHER REPORT TO EXCEL
+  // EXPORT INDIVIDUAL STAFF REPORT TO EXCEL
   // ──────────────────────────────────────────────────────────────────────────
-  const exportIndividualTeacherReportToExcel = () => {
+  const exportIndividualStaffReportToExcel = () => {
     if (!individualReport || !individualReport.staff) {
-      toast({ variant: "destructive", title: "No Teacher Selected", description: "Please select a teacher to export their report." })
+      toast({ variant: "destructive", title: "No Staff Selected", description: "Please select a staff member to export their report." })
       return
     }
 
@@ -151,10 +151,10 @@ export const LeaveReportsPanel: React.FC = () => {
         "From Date": new Date(app.from_date).toLocaleDateString(),
         "To Date": new Date(app.to_date).toLocaleDateString(),
         "Days / Duration": app.number_of_days,
-        "Is Half Day": app.is_half_day ? `Yes (${app.half_day_type})` : "No",
-        "Reason": app.reason,
+        "Is Half Day": app.is_half_day ? `Yes (${app.half_day_type || "Half"})` : "No",
+        "Reason": app.reason || "-",
         "Status": app.status,
-        "Approver / Action Notes": app.remarks || "-",
+        "Approver / Action Notes": app.remarks || (app.approved_by_user ? `By ${app.approved_by_user.first_name}` : "-"),
       }))
       const appSheet = XLSX.utils.json_to_sheet(appRows.length > 0 ? appRows : [{ Note: "No leave applications found" }])
       XLSX.utils.book_append_sheet(workbook, appSheet, "Leave History")
@@ -189,30 +189,30 @@ export const LeaveReportsPanel: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
             <TabsTrigger value="summary" className="flex items-center gap-2">
-              <Users className="h-4 w-4" /> All Teachers Summary
+              <Users className="h-4 w-4" /> All Staff Summary
             </TabsTrigger>
             <TabsTrigger value="individual" className="flex items-center gap-2">
-              <User className="h-4 w-4" /> Individual Teacher Report
+              <User className="h-4 w-4" /> Individual Staff Report
             </TabsTrigger>
           </TabsList>
 
           {activeReportTab === "summary" ? (
-            <Button onClick={exportAllTeachersSummaryToExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" /> Export All Teachers Summary (.xlsx)
+            <Button onClick={exportAllStaffSummaryToExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" /> Export All Staff Summary (.xlsx)
             </Button>
           ) : (
             <Button
-              onClick={exportIndividualTeacherReportToExcel}
+              onClick={exportIndividualStaffReportToExcel}
               disabled={!selectedStaffId || isIndividualLoading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
             >
-              <FileSpreadsheet className="h-4 w-4" /> Export Teacher Detailed Report (.xlsx)
+              <FileSpreadsheet className="h-4 w-4" /> Export Staff Detailed Report (.xlsx)
             </Button>
           )}
         </div>
 
         {/* ──────────────────────────────────────────────────────────────────────────
-            TAB 1: ALL TEACHERS SUMMARY
+            TAB 1: ALL STAFF SUMMARY
         ────────────────────────────────────────────────────────────────────────── */}
         <TabsContent value="summary" className="space-y-6">
           {/* Summary Cards */}
@@ -223,8 +223,8 @@ export const LeaveReportsPanel: React.FC = () => {
                   <Users className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground font-medium">Total Teaching Staff</p>
-                  <h3 className="text-2xl font-bold">{metrics.totalTeachers}</h3>
+                  <p className="text-sm text-muted-foreground font-medium">Total Staff Members</p>
+                  <h3 className="text-2xl font-bold">{metrics.totalStaff}</h3>
                 </div>
               </CardContent>
             </Card>
@@ -247,8 +247,8 @@ export const LeaveReportsPanel: React.FC = () => {
                   <Award className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground font-medium">Average Leaves Per Teacher</p>
-                  <h3 className="text-2xl font-bold">{metrics.avgLeavesPerTeacher} Days</h3>
+                  <p className="text-sm text-muted-foreground font-medium">Average Leaves Per Staff</p>
+                  <h3 className="text-2xl font-bold">{metrics.avgLeavesPerStaff} Days</h3>
                 </div>
               </CardContent>
             </Card>
@@ -257,14 +257,14 @@ export const LeaveReportsPanel: React.FC = () => {
           <Card>
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
               <div>
-                <CardTitle className="text-xl font-bold">All Teachers Leave Summary Matrix</CardTitle>
-                <CardDescription>Comprehensive view of every leave type taken by each teacher</CardDescription>
+                <CardTitle className="text-xl font-bold">All Staff Leave Summary Matrix</CardTitle>
+                <CardDescription>Comprehensive view of every leave type taken by each staff member</CardDescription>
               </div>
               <div className="relative w-full sm:w-[280px]">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by teacher name or ID..."
+                  placeholder="Search by staff name or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8"
@@ -281,7 +281,7 @@ export const LeaveReportsPanel: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Teacher Name</TableHead>
+                        <TableHead>Staff Name</TableHead>
                         <TableHead>Emp ID</TableHead>
                         <TableHead>Department</TableHead>
                         {summaryReport?.leave_types.map((lt) => (
@@ -325,26 +325,26 @@ export const LeaveReportsPanel: React.FC = () => {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-10 text-muted-foreground">No teacher records match your search query.</div>
+                <div className="text-center py-10 text-muted-foreground">No staff records match your search query.</div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* ──────────────────────────────────────────────────────────────────────────
-            TAB 2: INDIVIDUAL TEACHER REPORT
+            TAB 2: INDIVIDUAL STAFF REPORT
         ────────────────────────────────────────────────────────────────────────── */}
         <TabsContent value="individual" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-bold">Select Teacher for Individual Leave Statement</CardTitle>
-              <CardDescription>View complete leave statement, balances, leave applications, and Comp Off history for a single teacher.</CardDescription>
+              <CardTitle className="text-xl font-bold">Select Staff Member for Individual Leave Statement</CardTitle>
+              <CardDescription>View complete leave statement, balances, leave applications, and Comp Off history for an individual staff member.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="max-w-md">
-                <Select value={selectedStaffId} onValueChange={handleTeacherSelect}>
+                <Select value={selectedStaffId} onValueChange={handleStaffSelect}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="-- Select Teacher / Staff Member --" />
+                    <SelectValue placeholder="-- Select Staff Member --" />
                   </SelectTrigger>
                   <SelectContent>
                     {summaryReport?.data?.map((st) => (
@@ -358,13 +358,13 @@ export const LeaveReportsPanel: React.FC = () => {
 
               {isIndividualLoading && (
                 <div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Fetching teacher leave records...
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Fetching staff leave records...
                 </div>
               )}
 
               {individualReport && individualReport.staff && !isIndividualLoading && (
                 <div className="space-y-6 mt-6">
-                  {/* Teacher Header Info */}
+                  {/* Staff Header Info */}
                   <div className="bg-muted/40 border p-4 rounded-lg flex flex-col sm:flex-row justify-between gap-4">
                     <div>
                       <h3 className="text-xl font-bold text-primary">{individualReport.staff.full_name}</h3>
@@ -373,7 +373,7 @@ export const LeaveReportsPanel: React.FC = () => {
                         <span className="font-medium text-foreground">{individualReport.staff.department}</span>
                       </p>
                     </div>
-                    <Button onClick={exportIndividualTeacherReportToExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white self-start sm:self-center">
+                    <Button onClick={exportIndividualStaffReportToExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white self-start sm:self-center">
                       <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Statement (.xlsx)
                     </Button>
                   </div>
@@ -467,7 +467,7 @@ export const LeaveReportsPanel: React.FC = () => {
                         </Table>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">No leave applications submitted by this teacher.</p>
+                      <p className="text-sm text-muted-foreground italic">No leave applications submitted by this staff member.</p>
                     )}
                   </div>
 
@@ -517,7 +517,7 @@ export const LeaveReportsPanel: React.FC = () => {
                         </Table>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">No Comp Off claims logged for this teacher.</p>
+                      <p className="text-sm text-muted-foreground italic">No Comp Off claims logged for this staff member.</p>
                     )}
                   </div>
                 </div>

@@ -7,21 +7,8 @@ import { Button } from "@/components/ui/button"
 import type { UseFormReturn } from "react-hook-form"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import { useGetStaffConfigurationsQuery } from "@/services/StaffService"
 import { NumberInput } from "../../ui/NumberInput"
-
-const PREDEFINED_QUALIFICATIONS = [
-  "D.Ed", "B.Ed", "M.Ed", "B.A + B.Ed", "B.Sc + B.Ed", "M.A + B.Ed", "M.Sc + B.Ed", "Ph.D",
-  "Diploma", "B.Com", "BBA", "MBA", "M.Com", "ITI", "SSC", "HSC",
-  "BHMS", "MD (Homoeopathy)", "PhD (Homoeopathy)"
-];
-
-const PREDEFINED_SUBJECTS = [
-  "Mathematics", "Physics", "Chemistry", "Biology", "English", "Hindi", "Gujarati",
-  "Social Science", "Computer Science", "Commerce", "Economics", "Physical Education",
-  "Arts", "Music", "Anatomy", "Physiology", "Homoeopathic Pharmacy", "Homoeopathic Materia Medica",
-  "Organon of Medicine", "Pathology", "Forensic Medicine and Toxicology", "Surgery",
-  "Obstetrics and Gynaecology", "Practice of Medicine", "Community Medicine", "Repertory"
-];
 
 interface ContactDetailsSectionProps {
   form: UseFormReturn<StaffFormData>
@@ -37,6 +24,15 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
   isTeachingRole,
 }) => {
   const { t } = useTranslation()
+  const { data: allConfigs } = useGetStaffConfigurationsQuery()
+
+  const availableQualifications = (allConfigs?.filter((c) => c.config_type === "QUALIFICATION") || [])
+    .map((c) => c.name)
+    .filter(Boolean)
+
+  const availableSubjects = (allConfigs?.filter((c) => c.config_type === "SUBJECT_SPECIALIZATION") || [])
+    .map((c) => c.name)
+    .filter(Boolean)
 
   return (
     <Card>
@@ -84,7 +80,7 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
               name="qualification"
               render={({ field }) => {
                 const qualValue = field.value || "";
-                const isQualCustom = qualValue && !PREDEFINED_QUALIFICATIONS.includes(qualValue) && qualValue !== "Others";
+                const isQualCustom = qualValue && !availableQualifications.includes(qualValue) && qualValue !== "Others";
                 const qualSelectValue = isQualCustom ? "Others" : qualValue;
 
                 return (
@@ -97,7 +93,7 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {PREDEFINED_QUALIFICATIONS.map((q) => (
+                        {availableQualifications.map((q) => (
                           <SelectItem key={q} value={q}>{q}</SelectItem>
                         ))}
                         <SelectItem value="Others">Others</SelectItem>
@@ -123,7 +119,7 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
               name="subject_specialization"
               render={({ field }) => {
                 const subjectValue = field.value || "";
-                const isSubjectCustom = subjectValue && !PREDEFINED_SUBJECTS.includes(subjectValue) && subjectValue !== "Others";
+                const isSubjectCustom = subjectValue && !availableSubjects.includes(subjectValue) && subjectValue !== "Others";
                 const subjectSelectValue = isSubjectCustom ? "Others" : subjectValue;
 
                 return (
@@ -136,7 +132,7 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {PREDEFINED_SUBJECTS.map((s) => (
+                        {availableSubjects.map((s) => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
                         <SelectItem value="Others">Others</SelectItem>

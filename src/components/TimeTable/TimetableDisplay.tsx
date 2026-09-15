@@ -250,7 +250,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, BookOpen, Users, Dumbbell, Coffee, Beaker, AlertCircle, Edit } from "lucide-react"
+import { Clock, BookOpen, Users, Dumbbell, Coffee, Beaker, AlertCircle, Edit, Presentation } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import type { ClassDayConfigForTimeTable, TimeTableConfigForSchool, PeriodsConfig } from "@/types/subjects"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
@@ -330,6 +330,18 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
           {t("break")}
         </Badge>
       )
+    } else if (period.is_library) {
+      return (
+        <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200">
+          {t("library") || "Library"}
+        </Badge>
+      )
+    } else if (period.is_seminar) {
+      return (
+        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+          {t("seminar") || "Seminar"}
+        </Badge>
+      )
     } else if (period.is_pt) {
       return (
         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
@@ -360,6 +372,10 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
   const getPeriodIcon = (period: PeriodsConfig) => {
     if (period.is_break) {
       return <Coffee className="h-5 w-5 text-amber-600" />
+    } else if (period.is_library) {
+      return <BookOpen className="h-5 w-5 text-sky-600" />
+    } else if (period.is_seminar) {
+      return <Presentation className="h-5 w-5 text-purple-600" />
     } else if (period.is_pt) {
       return <Dumbbell className="h-5 w-5 text-purple-600" />
     } else if (period.lab_id) {
@@ -407,6 +423,8 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
   // Get period background color
   const getPeriodBgColor = (period: PeriodsConfig) => {
     if (period.is_break) return "bg-amber-50"
+    if (period.is_library) return "bg-sky-50"
+    if (period.is_seminar) return "bg-purple-50"
     if (period.is_pt) return "bg-purple-50"
     if (period.lab_id) return "bg-blue-50"
     if (period.is_free_period) return "bg-gray-50"

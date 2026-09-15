@@ -26,7 +26,7 @@ export const AcademicDetailsSection: React.FC<AcademicDetailsSectionProps> = ({
       <CardHeader>
         <CardTitle>Academic Details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 max-h-[50vh] overflow-y-auto pr-2">
         {/* UG Details */}
         <div className="space-y-4">
           <h4 className="font-semibold text-sm border-b pb-2">Undergraduate (UG) Details</h4>
@@ -110,6 +110,56 @@ export const AcademicDetailsSection: React.FC<AcademicDetailsSectionProps> = ({
             <FormField
               control={form.control}
               name="pg_passing_year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Passing Year</FormLabel>
+                  <FormControl>
+                    <NumberInput
+                      value={field.value}
+                      onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                      allowEmpty={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Diploma Details */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm border-b pb-2">Diploma Details</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="diploma_degree"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Diploma Degree</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="diploma_council"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Council</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="diploma_passing_year"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Passing Year</FormLabel>

@@ -21,7 +21,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import {
   useCreateLabConfigMutation,
   useUpdateLabConfigMutation,
-  useLazyDeleteLabQuery,
+  useDeleteLabMutation,
 } from "@/services/timetableService"
 import type { TimeTableConfigForSchool, labConfig } from "@/types/subjects"
 import { Badge } from "@/components/ui/badge"
@@ -52,7 +52,7 @@ export default function LabSettings({ existingConfig, onLabConfigSaved }: LabSet
   // RTK Query hooks
   const [createLabConfig, { isLoading: isCreating, error: createError }] = useCreateLabConfigMutation()
   const [updateLabConfig, { isLoading: isUpdating, error: updateError }] = useUpdateLabConfigMutation()
-  const [deleteLabConfig, { isLoading: isDeleting, error: deleteError }] = useLazyDeleteLabQuery()
+  const [deleteLabConfig, { isLoading: isDeleting, error: deleteError }] = useDeleteLabMutation()
 
   // Set up lab form
   const form = useForm<z.infer<typeof labSchema>>({

@@ -76,7 +76,7 @@ interface ApiErrorResponse {
  */
 export const LeaveApi = createApi({
   reducerPath: "leaveApi",
-  tagTypes: ["LeaveBalances", "CompOff", "LeaveReports"],
+  tagTypes: ["LeaveBalances", "CompOff", "LeaveReports", "LeavePolicies"],
   baseQuery: fetchBaseQuery({
 
 
@@ -145,6 +145,22 @@ export const LeaveApi = createApi({
         url: `/leave-policy?academic_year=${academic_session_id}&page=${page}`,
         method: "GET",
       }),
+      providesTags: ["LeavePolicies"],
+    }),
+    getAllLeavePoliciesForSchool: builder.query<
+      LeavePolicy[],
+      { academic_session_id?: number } | void
+    >({
+      query: (args) => {
+        const academic_session_id = args?.academic_session_id;
+        return {
+          url: academic_session_id
+            ? `/leave-policy?academic_year=${academic_session_id}&page=all`
+            : `/leave-policy?page=all`,
+          method: "GET",
+        };
+      },
+      providesTags: ["LeavePolicies"],
     }),
     createLeaveType: builder.mutation<
       LeaveType,
@@ -196,6 +212,7 @@ export const LeaveApi = createApi({
           body: { ...rest, academic_year: academic_session_id || payload.academic_year },
         };
       },
+      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
     }),
     updateLeavePolicy: builder.mutation<
       LeavePolicy,
@@ -212,6 +229,14 @@ export const LeaveApi = createApi({
           body: { ...rest, academic_year: academic_session_id || payload.academic_year },
         };
       },
+      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
+    }),
+    deleteLeavePolicy: builder.mutation<{ message: string }, number>({
+      query: (policy_id) => ({
+        url: `/leave-policy/${policy_id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
     }),
 
     getStaffsLeaveAppication: builder.query<
@@ -408,6 +433,9 @@ export const LeaveApi = createApi({
 export const {
   useLazyGetLeaveTypeForSchoolPageWiseQuery,
   useLazyGetLeavePolicyForSchoolPageWiseQuery,
+  useGetLeavePolicyForSchoolPageWiseQuery,
+  useGetAllLeavePoliciesForSchoolQuery,
+  useLazyGetAllLeavePoliciesForSchoolQuery,
   useLazyGetAllLeaveTypeForSchoolQuery,
   useGetAllLeaveTypeForSchoolQuery,
   useLazyGetStaffsLeaveAppicationQuery,
@@ -418,6 +446,7 @@ export const {
 
   useCreateLeavePolicyMutation,
   useUpdateLeavePolicyMutation,
+  useDeleteLeavePolicyMutation,
   useApplyLeaveForStaffMutation,
   useUpdateLeaveForStaffMutation,
   useLazyFetchLeaveApplicationOfTeachingStaffForAdminQuery,

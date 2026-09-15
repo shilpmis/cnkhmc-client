@@ -58,12 +58,7 @@ export interface StaffType {
   qualification: string | null;
   subject_specialization: string | null;
   joining_date: Date | null;
-  employment_status:
-  | "Permanent"
-  | "Trial_Period"
-  | "Resigned"
-  | "Contract_Based"
-  | "Notice_Period";
+  employment_status: string;
   experience_years: number | null;
   aadhar_no: number | null;
   pan_card_no: string | null;
@@ -77,6 +72,7 @@ export interface StaffType {
   category: "ST" | "SC" | "OBC" | "OPEN" | null;
   nationality: string | null;
   address: string | null;
+  permanent_address?: string | null;
   district: string | null;
   city: string | null;
   state: string | null;
@@ -104,12 +100,17 @@ export interface StaffType {
   university_appointment_date?: Date | string | null;
   university_approval_letter_no?: string | null;
   university_approval_date?: Date | string | null;
+  uni_approval_number?: string | null;
+  uni_approval_date?: Date | string | null;
   ug_degree?: string | null;
   ug_passing_university?: string | null;
   ug_passing_year?: number | null;
   pg_degree?: string | null;
   pg_passing_university?: string | null;
   pg_passing_year?: number | null;
+  diploma_degree?: string | null;
+  diploma_council?: string | null;
+  diploma_passing_year?: number | null;
   other_degree?: string | null;
   other_passing_university?: string | null;
   other_passing_year?: number | null;
@@ -120,7 +121,22 @@ export interface StaffType {
   staff_type?: string | null;
   staff_category?: string | null;
   designation?: string | null;
+  department_id?: number | null;
+  leave_policy_ids?: number[];
   staff_experiences?: StaffExperience[];
+  letters?: StaffLetter[];
+}
+
+export interface StaffLetter {
+  id?: number;
+  staff_id?: number;
+  letter_type: string;
+  letter_type_id?: number | null;
+  letter_no?: string | null;
+  letter_date?: Date | string | null;
+  remarks?: string | null;
+  created_at?: Date | string;
+  updated_at?: Date | string;
 }
 
 export interface StaffExperience {
@@ -142,7 +158,7 @@ export type EmploymentStatusType = "Permanent" | "Trial_Period" | "Resigned";
 export interface StaffConfiguration {
   id: number;
   school_id: number;
-  config_type: 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION';
+  config_type: 'STAFF_TYPE' | 'STAFF_CATEGORY' | 'DESIGNATION' | 'EMPLOYMENT_STATUS' | 'LETTER_TYPE' | 'SUBJECT_SPECIALIZATION' | 'QUALIFICATION';
   name: string;
   parent_id: number | null;
   parent?: StaffConfiguration;

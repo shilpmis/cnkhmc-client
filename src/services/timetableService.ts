@@ -57,11 +57,12 @@ export const TimeTableApi = createApi({
             invalidatesTags: ['LabConfig', 'TimeTableConfig'],
         }),
 
-        deleteLab: builder.query<labConfig, { lab_id: number }>({
+        deleteLab: builder.mutation<{ message: string }, { lab_id: number }>({
             query: ({ lab_id }) => ({
                 url: `/timetable/config/lab/${lab_id}`,
                 method: "DELETE",
             }),
+            invalidatesTags: ['LabConfig', 'TimeTableConfig'],
         }),
 
         createDayWiseTimeTableConfigForClass: builder.mutation<ClassDayConfigForTimeTable, { payload: Omit<ClassDayConfigForTimeTable, 'id' | 'period_config'> }>({
@@ -216,7 +217,7 @@ export const {
     useVerifyPeriodConfigurationForDayMutation,
     useAutoGenerateTimeTableForWeekMutation,
     useUpdateTimeTableConfigMutation,
-    useLazyDeleteLabQuery,
+    useDeleteLabMutation,
     useUpdateLabConfigMutation,
     useUpdateDayWiseTimeTableForDivisonMutation,
     useUpdateWeekWiseTimeTableForDivisionMutation,

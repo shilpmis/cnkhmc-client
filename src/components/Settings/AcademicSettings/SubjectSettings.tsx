@@ -56,9 +56,7 @@ const subjectFormSchema = z.object({
   name: z.string().min(2, {
     message: "Subject name must be at least 2 characters.",
   }),
-//   code: z.string().min(1, {
-//     message: "Subject code is required.",
-//   }),
+  code: z.string().optional(),
   description: z.string().optional(),
   academic_session_id: z.number({
     required_error: "Please select an academic session.",
@@ -101,6 +99,7 @@ export default function SubjectSettings() {
     resolver: zodResolver(subjectFormSchema),
     defaultValues: {
       name: "",
+      code: "",
       description: "",
       status: "Active",
       year: "",
@@ -141,6 +140,7 @@ export default function SubjectSettings() {
         await updateSubject({
           id: editingSubject.id,
           name: finalName,
+          code: data.code?.trim() || undefined,
           description: data.description || "",
           academic_session_id: selectedAcademicSession!,
           year: data.year,
@@ -153,6 +153,7 @@ export default function SubjectSettings() {
       } else {
         await createSubject({
           name: finalName,
+          code: data.code?.trim() || undefined,
           description: data.description || "",
           academic_session_id: currentAcademicSession!.id,
           year: data.year,
@@ -187,6 +188,7 @@ export default function SubjectSettings() {
     setEditingSubject(subject)
     form.reset({
       name: subject.name,
+      code: subject.code || "",
       description: subject.description || "",
       status: subject.status as any,
       year: subject.year || "",
@@ -293,13 +295,13 @@ export default function SubjectSettings() {
             setIsDialogOpen(open)
             if (!open) {
               setEditingSubject(null)
-              form.reset({ name: "", description: "", status: "Active" })
+              form.reset({ name: "", code: "", description: "", status: "Active", year: "" })
             }
           }}>
             <DialogTrigger asChild>
               <Button onClick={() => {
                 setEditingSubject(null)
-                form.reset({ name: "", description: "", status: "Active" })
+                form.reset({ name: "", code: "", description: "", status: "Active", year: "" })
               }}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t("add_new_subject")}
@@ -388,7 +390,7 @@ export default function SubjectSettings() {
                       </FormItem>
                     )}
                   />
-                  {/* <FormField
+                  <FormField
                     control={form.control}
                     name="code"
                     render={({ field }) => (
@@ -401,7 +403,7 @@ export default function SubjectSettings() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  /> */}
+                  />
                   <FormField
                     control={form.control}
                     name="description"
@@ -530,6 +532,7 @@ export default function SubjectSettings() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t("subject_name")}</TableHead>
+                        <TableHead>{t("subject_code")}</TableHead>
                         <TableHead>{t("year")}</TableHead>
                         <TableHead>{t("description")}</TableHead>
                         <TableHead>{t("status")}</TableHead>
@@ -540,6 +543,9 @@ export default function SubjectSettings() {
                       {paginatedSubjects.map((subject) => (
                         <TableRow key={subject.id}>
                           <TableCell className="font-medium">{subject.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{subject.code || "-"}</Badge>
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">{subject.year || "-"}</Badge>
                           </TableCell>

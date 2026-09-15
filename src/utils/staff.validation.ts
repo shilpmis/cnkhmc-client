@@ -462,6 +462,7 @@ export const staffSchema = z
 
     // Address details
     address: z.string().min(5, "Address is required").nullable(),
+    permanent_address: z.string().optional().nullable(),
 
     district: z
       .string()
@@ -515,9 +516,7 @@ export const staffSchema = z
       .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "IFSC code must be in format ABCD0123456")
       .nullable(),
 
-    employment_status: z.enum(["Permanent", "Trial_Period", "Resigned", "Contract_Based", "Notice_Period"], {
-      errorMap: () => ({ message: "Select Employment Status" }),
-    }),
+    employment_status: z.string().min(1, "Select Employment Status"),
 
     // Employment details
     joining_date: z
@@ -568,6 +567,9 @@ export const staffSchema = z
     pg_degree: z.string().optional().nullable(),
     pg_passing_university: z.string().optional().nullable(),
     pg_passing_year: z.number().int().optional().nullable(),
+    diploma_degree: z.string().optional().nullable(),
+    diploma_council: z.string().optional().nullable(),
+    diploma_passing_year: z.number().int().optional().nullable(),
     other_degree: z.string().optional().nullable(),
     other_passing_university: z.string().optional().nullable(),
     other_passing_year: z.number().int().optional().nullable(),
@@ -579,6 +581,19 @@ export const staffSchema = z
     staff_category: z.string().optional().nullable(),
     designation: z.string().optional().nullable(),
     department_id: z.number().nullable().optional(),
+    leave_policy_ids: z.array(z.number()).optional(),
+    letters: z
+      .array(
+        z.object({
+          id: z.number().optional(),
+          letter_type: z.string().min(1, "Letter type is required"),
+          letter_type_id: z.number().nullable().optional(),
+          letter_no: z.string().nullable().optional(),
+          letter_date: z.string().nullable().optional(),
+          remarks: z.string().nullable().optional(),
+        })
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
     // Conditional validation for teaching staff
@@ -598,23 +613,6 @@ export const staffSchema = z
           code: z.ZodIssueCode.custom,
           message: "Subject specialization is required for teaching staff",
           path: ["subject_specialization"],
-        })
-      }
-
-      // Validate NCH registration for teaching staff
-      if (!data.nch_registration_no || data.nch_registration_no.trim() === '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "NCH Registration No. is required for teaching staff",
-          path: ["nch_registration_no"],
-        })
-      }
-
-      if (!data.nch_registration_date || data.nch_registration_date.trim() === '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "NCH Registration Date is required for teaching staff",
-          path: ["nch_registration_date"],
         })
       }
     }

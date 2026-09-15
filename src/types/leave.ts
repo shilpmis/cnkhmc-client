@@ -34,17 +34,18 @@ export interface LeaveType {
 
 export interface LeavePolicy {
   id: number;
-  academic_session_id: number;
-  staff_role_id: number;
+  academic_session_id?: number;
+  academic_year?: number;
+  staff_role_id?: number | null;
   leave_type_id: number;
   annual_quota: number;
   can_carry_forward: boolean;
   max_carry_forward_days: number;
   max_consecutive_days: number;
-  requires_approval: number;
-  approval_hierarchy: Object;
-  deduction_rules: Object;
-  staff_role: StaffRole;
+  requires_approval: number | boolean;
+  approval_hierarchy?: Object;
+  deduction_rules?: Object;
+  staff_role?: StaffRole;
   leave_type: LeaveType;
 }
 
@@ -79,70 +80,79 @@ export interface LeaveApplication {
    email: string
 }
 
-// export interface LeaveApplication {
-//   id: number;
-//   academic_session_id: number;
-//   staff_id: number;
-//   leave_type_id: number;
-//   from_date: string;
-//   to_date: string;
-//   reason: string;
-//   is_half_day: boolean;
-//   half_day_type: "first_half" | "second_half" | "none";
-//   is_hourly_leave: boolean;
-//   total_hour: number | null;
-//   documents: object;
-//   uuid: string;
-//   status: "pending" | "approved" | "rejected" | "cancelled";
-//   number_of_days: number;
-//   applied_by_self: boolean;
-//   applied_by: number;
-//   leave_type: LeaveType;
-//   staff: StaffType;
-// }
-
 export interface CompOffRequest {
-  id: number
-  uuid: string
-  staff_id: number
-  school_id: number
-  academic_year: number | null
-  worked_date: string
-  day_type: "full_day" | "half_day"
-  credited_days: number
-  reason: string
-  description: string | null
-  status: "pending" | "approved" | "rejected" | "cancelled"
-  approved_by: number | null
-  admin_remarks: string | null
-  created_at: string
-  updated_at: string
-  staff?: {
-    id: number
-    first_name: string
-    middle_name: string | null
-    last_name: string
-    employee_id?: string
-  }
+  id: number;
+  uuid: string;
+  staff_id: number;
+  school_id: number;
+  academic_year: number;
+  worked_date: string;
+  day_type: "full_day" | "half_day";
+  credited_days: number;
+  reason: string;
+  description?: string | null;
+  status: "pending" | "approved" | "rejected";
+  approved_by?: number | null;
+  approved_at?: string | null;
+  admin_remarks?: string | null;
+  created_at: string;
+  updated_at: string;
+  staff?: StaffType;
   approved_by_user?: {
-    id: number
-    first_name: string
-    last_name: string
-  }
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
 }
 
 export interface CreateCompOffPayload {
-  worked_date: string
-  day_type: "full_day" | "half_day"
-  reason: string
-  description?: string
-  staff_id?: number
-  academic_year?: number
+  worked_date: string;
+  day_type: "full_day" | "half_day";
+  reason: string;
+  description?: string;
+  academic_year?: number;
+  staff_id?: number;
 }
 
 export interface ProcessCompOffPayload {
-  uuid: string
-  status: "approved" | "rejected"
-  admin_remarks?: string
+  uuid: string;
+  status: "approved" | "rejected";
+  admin_remarks?: string;
 }
 
+export interface LeaveReportSummaryItem {
+  staff_id: number;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  full_name: string;
+  employee_id: string;
+  role: string;
+  staff_type: string;
+  staff_category: string;
+  designation: string;
+  department: string;
+  total_leaves_taken: number;
+  total_leaves_available: number;
+  leave_breakdown: Record<string, { used: number; total: number; available: number }>;
+}
+
+export interface LeaveReportSummaryResponse {
+  leave_types: { id: number; name: string }[];
+  data: LeaveReportSummaryItem[];
+}
+
+export interface IndividualTeacherLeaveReportResponse {
+  staff: {
+    id: number;
+    first_name: string;
+    middle_name: string | null;
+    last_name: string;
+    full_name: string;
+    employee_id: string;
+    department: string;
+  };
+  balances: any[];
+  applications: any[];
+  comp_off_requests: any[];
+}

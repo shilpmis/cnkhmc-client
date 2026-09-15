@@ -90,8 +90,10 @@ export interface PeriodsConfig {
     subjects_division_masters_id : number | null ;
     staff_enrollment_id  : number | null
     lab_id : number | null
-    is_pt : boolean
+    is_pt? : boolean
     is_free_period : boolean
+    is_library? : boolean
+    is_seminar? : boolean
     batch_name?: string | null;
 }
 
@@ -107,8 +109,10 @@ export interface TypeForCretePeriodsConfigForADay {
         subjects_division_masters_id : number | null ;
         staff_enrollment_id  : number | null
         lab_id : number | null
-        is_pt : boolean
+        is_pt? : boolean
         is_free_period : boolean
+        is_library? : boolean
+        is_seminar? : boolean
         batch_name?: string | null;
     }[]
 }
@@ -137,8 +141,10 @@ export interface WeeklyTimeTableForDivision {
         subjects_division_masters_id : number | null ;
         staff_enrollment_id  : number | null
         lab_id : number | null
-        is_pt : boolean
+        is_pt? : boolean
         is_free_period : boolean
+        is_library? : boolean
+        is_seminar? : boolean
         batch_name: string | null;
     }[]
 }; 

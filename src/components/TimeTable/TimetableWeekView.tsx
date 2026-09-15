@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, Fragment } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock } from "lucide-react"
+import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock, Presentation } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
@@ -207,6 +207,8 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
                p1.lab_id !== p2.lab_id ||
                p1.is_pt !== p2.is_pt ||
                p1.is_free_period !== p2.is_free_period ||
+               p1.is_library !== p2.is_library ||
+               p1.is_seminar !== p2.is_seminar ||
                p1.batch_name !== p2.batch_name
            ) {
               allMatch = false;
@@ -258,13 +260,31 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
                     )}
                     
                     <div className="flex flex-col gap-0.5 items-center text-center">
-                      {period.subjects_division_masters_id && !period.is_free_period && (
+                      {period.is_library && (
+                        <Badge variant="outline" className="text-[10px] bg-sky-100 text-sky-800 border-sky-300 flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" /> {t("library") || "Library"}
+                        </Badge>
+                      )}
+
+                      {period.is_seminar && (
+                        <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-purple-300 flex items-center gap-1">
+                          <Presentation className="h-3 w-3" /> {t("seminar") || "Seminar"}
+                        </Badge>
+                      )}
+
+                      {period.is_free_period && (
+                        <Badge variant="outline" className="text-[10px] bg-gray-100 text-gray-800">
+                          {t("free") || "Free"}
+                        </Badge>
+                      )}
+
+                      {period.subjects_division_masters_id && !period.is_free_period && !period.is_library && !period.is_seminar && (
                         <span className="text-[11px] font-medium leading-tight text-center">
                           {getSubjectName(period)}
                         </span>
                       )}
                       
-                      {period.staff_enrollment_id && !period.is_free_period && (
+                      {period.staff_enrollment_id && !period.is_free_period && !period.is_library && !period.is_seminar && (
                         <span className="text-[10px] text-muted-foreground" title={getTeacherFullName(period)}>
                           Dr. {getTeacherName(period)}
                         </span>
@@ -276,7 +296,7 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
                         </span>
                       )}
                       
-                      {!period.is_free_period && period.subjects_division_masters_id && (
+                      {!period.is_free_period && !period.is_library && !period.is_seminar && period.subjects_division_masters_id && (
                         <button 
                           onClick={() => {
                             setSelectedPeriod(period);

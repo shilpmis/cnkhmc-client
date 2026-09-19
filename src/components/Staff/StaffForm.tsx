@@ -206,6 +206,28 @@ const StaffForm: React.FC<StaffFormProps> = ({
   useStaffFormReset(form, formType, initial_data)
 
   const handleSubmit: SubmitHandler<StaffFormData> = (data) => {
+    // Ensure letters and university approval fields are in sync
+    const approvalLetter = data.letters?.find((l) =>
+      l.letter_type?.toLowerCase().includes("approval")
+    )
+    if (approvalLetter) {
+      if (!data.university_approval_letter_no && approvalLetter.letter_no) {
+        data.university_approval_letter_no = approvalLetter.letter_no
+      }
+      if (!data.university_approval_date && approvalLetter.letter_date) {
+        data.university_approval_date = approvalLetter.letter_date
+      }
+    } else if (data.university_approval_letter_no || data.university_approval_date) {
+      data.letters = [
+        ...(data.letters || []),
+        {
+          letter_type: "University Approval Letter",
+          letter_no: data.university_approval_letter_no || "",
+          letter_date: data.university_approval_date || "",
+          remarks: "",
+        },
+      ]
+    }
     onSubmit(data)
   }
 

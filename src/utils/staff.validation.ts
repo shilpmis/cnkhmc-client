@@ -535,16 +535,6 @@ export const staffSchema = z
           message: "Joining date cannot be in the future",
         },
       )
-      .refine(
-        (date) => {
-          const parsedDate = new Date(date)
-          const dayOfWeek = new Date(date).getDay()
-          return dayOfWeek !== 0 // 0 is Sunday
-        },
-        {
-          message: "Joining date cannot be on Sunday",
-        },
-      )
       .nullable(),
 
     // New Fields
@@ -604,15 +594,6 @@ export const staffSchema = z
           code: z.ZodIssueCode.custom,
           message: "Qualification is required for teaching staff",
           path: ["qualification"],
-        })
-      }
-
-      // Validate subject specialization
-      if (!data.subject_specialization || data.subject_specialization.length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Subject specialization is required for teaching staff",
-          path: ["subject_specialization"],
         })
       }
     }

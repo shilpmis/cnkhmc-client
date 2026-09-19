@@ -59,6 +59,26 @@ export const useStaffFormReset = (
 ) => {
   useEffect(() => {
     if (formType !== "create" && initialData) {
+      const anyData = initialData as any
+      const uniApprovalNo =
+        initialData.university_approval_letter_no ||
+        initialData.uni_approval_number ||
+        anyData.uni_approval_no ||
+        null
+      const uniApprovalDate =
+        initialData.university_approval_date ||
+        initialData.uni_approval_date ||
+        anyData.uni_approval_date ||
+        null
+      const regDate = initialData.date_of_registration || anyData.registration_date || null
+      const regNo =
+        initialData.ayush_registration_no ||
+        anyData.registration_number ||
+        anyData.registration_no ||
+        null
+      const teacherCode = initialData.teacher_code || anyData.ayush_teacher_code || null
+      const branchName = initialData.bank_branch_name || anyData.branch_details || null
+
       form.reset({
         is_teaching_role: Boolean(initialData.is_teching_staff || initialData.is_teaching_role),
         staff_role_id: initialData.staff_role_id,
@@ -94,14 +114,14 @@ export const useStaffFormReset = (
         marital_status: normalizeMaritalStatus(initialData.marital_status),
         pan_card_no: initialData.pan_card_no ? initialData.pan_card_no.toString() : null,
         ayush_id_no: initialData.ayush_id_no || null,
-        teacher_code: initialData.teacher_code || null,
+        teacher_code: teacherCode,
         state_council_reg_no: initialData.state_council_reg_no || null,
-        ayush_registration_no: initialData.ayush_registration_no || null,
-        date_of_registration: initialData.date_of_registration ? formatData(initialData.date_of_registration) : null,
+        ayush_registration_no: regNo,
+        date_of_registration: regDate ? formatData(regDate) : null,
         university_appointment_letter_no: initialData.university_appointment_letter_no || null,
         university_appointment_date: initialData.university_appointment_date ? formatData(initialData.university_appointment_date) : null,
-        university_approval_letter_no: initialData.university_approval_letter_no || null,
-        university_approval_date: initialData.university_approval_date ? formatData(initialData.university_approval_date) : null,
+        university_approval_letter_no: uniApprovalNo,
+        university_approval_date: uniApprovalDate ? formatData(uniApprovalDate) : null,
         ug_degree: initialData.ug_degree || null,
         ug_passing_university: initialData.ug_passing_university || null,
         ug_passing_year: initialData.ug_passing_year || null,
@@ -115,7 +135,7 @@ export const useStaffFormReset = (
         other_passing_university: initialData.other_passing_university || null,
         other_passing_year: initialData.other_passing_year || null,
         area_of_expertise: initialData.area_of_expertise || null,
-        bank_branch_name: initialData.bank_branch_name || null,
+        bank_branch_name: branchName,
         pay_scale: initialData.pay_scale || null,
         retirement_age: initialData.retirement_age ?? null,
         staff_type: initialData.staff_type || null,
@@ -132,12 +152,12 @@ export const useStaffFormReset = (
               letter_date: l.letter_date ? formatData(l.letter_date) : "",
               remarks: l.remarks || "",
             }))
-          : (initialData.university_approval_letter_no || initialData.uni_approval_number
+          : (uniApprovalNo || uniApprovalDate
             ? [
                 {
                   letter_type: "University Approval Letter",
-                  letter_no: initialData.university_approval_letter_no || initialData.uni_approval_number || "",
-                  letter_date: formatData(initialData.university_approval_date || initialData.uni_approval_date),
+                  letter_no: uniApprovalNo || "",
+                  letter_date: formatData(uniApprovalDate),
                   remarks: "",
                 }
               ]

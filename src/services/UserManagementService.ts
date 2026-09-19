@@ -102,6 +102,12 @@ export const UserManagementApi = createApi({
         body: payload,
       }),
     }),
+    deleteUser: builder.mutation<{ message: string }, number>({
+      query: (user_id) => ({
+        url: `user/${user_id}`,
+        method: "DELETE",
+      }),
+    }),
   }),
 });
 
@@ -109,6 +115,7 @@ export const {
   useLazyFetchManagementUsersQuery,
   useAddUserMutation,
   useUpdateUserMutation,
+  useDeleteUserMutation,
 
   useUpdateOnBoardTeacherAsUserMutation,
   useOnBoardTeacherAsUserMutation,
@@ -116,3 +123,4 @@ export const {
   useLazyFetchOnBoardedUserQuery,
   useLazyFetchNonOnBoardedTeacherQuery,
 } = UserManagementApi;
+

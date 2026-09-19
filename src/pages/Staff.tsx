@@ -43,6 +43,7 @@ import {
   useUpdateStaffMutation,
   useBulkUploadStaffMutation,
   useDeleteStaffMutation,
+  useLazyGetStaffByIdQuery,
 } from "@/services/StaffService"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -262,6 +263,7 @@ export const Staff: React.FC = () => {
   const [updateStaff, { isLoading: isStaffGettingUpdate }] = useUpdateStaffMutation()
   const [getStaffRoles] = useLazyGetSchoolStaffRoleQuery()
   const [bulkUploadstaff] = useBulkUploadStaffMutation()
+  const [getStaffById] = useLazyGetStaffByIdQuery()
 
   const [activeTab, setActiveTab] = useState<string>("teaching")
 
@@ -948,7 +950,7 @@ export const Staff: React.FC = () => {
   }
 
   const handleEditStaff = useCallback(
-    (staff_id: number) => {
+    async (staff_id: number) => {
       const teacher = currentDisplayDataForTeachers?.satff?.find((t) => t.id === staff_id)
       if (teacher) {
         setOpenDialogForStaffForm({
@@ -957,13 +959,26 @@ export const Staff: React.FC = () => {
           selectedStaff: teacher,
         })
         setTeacherInitialData(teacher)
+        try {
+          const fullStaff = await getStaffById(staff_id).unwrap()
+          if (fullStaff) {
+            setOpenDialogForStaffForm({
+              isOpen: true,
+              type: "edit",
+              selectedStaff: fullStaff,
+            })
+            setTeacherInitialData(fullStaff)
+          }
+        } catch (e) {
+          console.error("Error fetching full staff details:", e)
+        }
       }
     },
-    [currentDisplayDataForTeachers],
+    [currentDisplayDataForTeachers, getStaffById],
   )
 
   const handleEditOtherStaff = useCallback(
-    (staff_id: number) => {
+    async (staff_id: number) => {
       const other = currentDisplayDataForOtherStaff?.satff?.find((t) => t.id === staff_id)
       if (other) {
         setOpenDialogForStaffForm({
@@ -972,13 +987,26 @@ export const Staff: React.FC = () => {
           selectedStaff: other,
         })
         setOtherInitialData(other)
+        try {
+          const fullStaff = await getStaffById(staff_id).unwrap()
+          if (fullStaff) {
+            setOpenDialogForStaffForm({
+              isOpen: true,
+              type: "edit",
+              selectedStaff: fullStaff,
+            })
+            setOtherInitialData(fullStaff)
+          }
+        } catch (e) {
+          console.error("Error fetching full staff details:", e)
+        }
       }
     },
-    [currentDisplayDataForOtherStaff],
+    [currentDisplayDataForOtherStaff, getStaffById],
   )
 
   const handleEditHospitalStaff = useCallback(
-    (staff_id: number) => {
+    async (staff_id: number) => {
       const hospital = currentDisplayDataForHospitalStaff?.satff?.find((t) => t.id === staff_id)
       if (hospital) {
         setOpenDialogForStaffForm({
@@ -987,9 +1015,22 @@ export const Staff: React.FC = () => {
           selectedStaff: hospital,
         })
         setHospitalInitialData(hospital)
+        try {
+          const fullStaff = await getStaffById(staff_id).unwrap()
+          if (fullStaff) {
+            setOpenDialogForStaffForm({
+              isOpen: true,
+              type: "edit",
+              selectedStaff: fullStaff,
+            })
+            setHospitalInitialData(fullStaff)
+          }
+        } catch (e) {
+          console.error("Error fetching full staff details:", e)
+        }
       }
     },
-    [currentDisplayDataForHospitalStaff],
+    [currentDisplayDataForHospitalStaff, getStaffById],
   )
 
   const handleAddStaffSubmit = async (data: StaffFormData) => {

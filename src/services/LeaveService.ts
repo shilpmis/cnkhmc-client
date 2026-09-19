@@ -238,6 +238,13 @@ export const LeaveApi = createApi({
       }),
       invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
     }),
+    deleteLeaveType: builder.mutation<{ message: string }, number>({
+      query: (leave_type_id) => ({
+        url: `/leave-type/${leave_type_id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["LeaveType", "LeavePolicies"],
+    }),
 
     getStaffsLeaveAppication: builder.query<
       { data: LeaveApplication[]; page: PageMeta },
@@ -443,6 +450,7 @@ export const {
   useLazyGetAllLeavePoliciesForUserQuery,
   useCreateLeaveTypeMutation,
   useUpdateLeaveTypeMutation,
+  useDeleteLeaveTypeMutation,
 
   useCreateLeavePolicyMutation,
   useUpdateLeavePolicyMutation,

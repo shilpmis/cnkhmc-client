@@ -759,13 +759,22 @@ export const Staff: React.FC = () => {
   }
 
   const handleFileUploadSubmit = async () => {
-    if (!fileName) return alert("Please select a file.")
-    if (!StaffRolesForSchool) return alert("Staff roles not loaded. Please try again later.")
+    if (!fileName) {
+      toast({ variant: "destructive", title: "No file selected", description: "Please select a file to upload." })
+      return
+    }
+    if (!StaffRolesForSchool) {
+      toast({ variant: "destructive", title: "Roles not ready", description: "Staff roles not loaded. Please try again later." })
+      return
+    }
 
     try {
       setIsUploading(true)
       const file = fileInputRef.current?.files?.[0]
-      if (!file) return alert("Please select a file.")
+      if (!file) {
+        toast({ variant: "destructive", title: "No file selected", description: "Please select a file to upload." })
+        return
+      }
 
       const fileData = await parseFile(file)
 
@@ -832,10 +841,10 @@ export const Staff: React.FC = () => {
       }
     } catch (error: any) {
       if (error?.errors) {
-        alert(`Validation error: ${error.errors.join(", ")}`)
+        toast({ variant: "destructive", title: "Validation Error", description: error.errors.join(", ") })
       } else {
         console.error("Upload error:", error)
-        alert("Upload failed! Try again.")
+        toast({ variant: "destructive", title: "Upload Failed", description: "Upload failed! Try again." })
       }
     } finally {
       setIsUploading(false)
@@ -1594,7 +1603,7 @@ export const Staff: React.FC = () => {
 
       {/* Add / Edit Staff dialog */}
       <Dialog open={openDialogForStaffForm.isOpen} onOpenChange={handleStaffFormOpenChange}>
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{openDialogForStaffForm.type === "add" ? "Add New Staff" : "Edit Staff"}</DialogTitle>
           </DialogHeader>

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { User } from "@/types/user"
 import { ChatRoom, ChatMessage } from "@/services/ChatService"
 import { getAvatarColor } from "./ChatSidebar"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface ChatWindowProps {
   room: ChatRoom | null
@@ -50,6 +51,7 @@ export default function ChatWindow({
   const [isSending, setIsSending] = useState(false)
   const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false)
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false)
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
   
   // Member add state
   const [memberSearch, setMemberSearch] = useState("")
@@ -163,14 +165,12 @@ export default function ChatWindow({
     }
   }
 
-  const handleLeaveGroup = async () => {
+  const handleLeaveGroup = () => {
+    setIsLeaveConfirmOpen(true)
+  }
+
+  const confirmLeaveGroup = async () => {
     if (!currentUser) return
-    const confirmText = isChatAdmin
-      ? "Are you sure you want to leave this group? If you are the last admin, you must promote another member first."
-      : "Are you sure you want to leave this group?"
-
-    if (!window.confirm(confirmText)) return
-
     try {
       await onRemoveMember(currentUser.id)
       setIsInfoDialogOpen(false)
@@ -598,6 +598,20 @@ export default function ChatWindow({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={isLeaveConfirmOpen}
+        onOpenChange={setIsLeaveConfirmOpen}
+        title="Leave Group"
+        description={
+          isChatAdmin
+            ? "Are you sure you want to leave this group? If you are the last admin, you must promote another member first."
+            : "Are you sure you want to leave this group?"
+        }
+        confirmText="Leave Group"
+        variant="destructive"
+        onConfirm={confirmLeaveGroup}
+      />
     </div>
   )
 }

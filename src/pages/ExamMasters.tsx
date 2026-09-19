@@ -1,11 +1,12 @@
 import { useState } from "react"
+import { Edit, Trash2 } from "lucide-react"
 import { useGetExamMastersQuery, useCreateExamMasterMutation, useUpdateExamMasterMutation, useDeleteExamMasterMutation, ExamMaster } from "@/services/ExamService"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { Trash2, Edit } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function ExamMasters() {
   const schoolId = useAppSelector((state) => state.auth.user?.school_id)
@@ -16,6 +17,7 @@ export default function ExamMasters() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [formData, setFormData] = useState({ name: "", description: "" })
 
   const exams = response?.data || []
@@ -40,10 +42,13 @@ export default function ExamMasters() {
     setIsOpen(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this exam type?")) {
-      await deleteExamMaster({ id })
-    }
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDeleteMaster = async () => {
+    if (!deleteConfirmId) return
+    await deleteExamMaster({ id: deleteConfirmId })
   }
 
   return (
@@ -97,6 +102,18 @@ export default function ExamMasters() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null)
+        }}
+        title="Delete Exam Type"
+        description="Are you sure you want to delete this exam type?"
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteMaster}
+      />
     </div>
   )
 }

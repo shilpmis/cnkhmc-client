@@ -12,8 +12,7 @@ import { useDownloadExcelTemplateMutation } from "@/services/StaffService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { staffHeaderMappings, formatKeyToHeader } from "@/utils/headerMappings"
-import * as XLSX from 'xlsx'
+import { useToast } from "@/hooks/use-toast"
 
 interface ExcelDownloadModalProps {
   onClose?: () => void; // Add onClose prop to communicate with parent
@@ -45,12 +44,13 @@ const fieldGroups = {
   ],
 }
 
-export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadModalProps) {
-  const [staffType, setStaffType] = useState<"teaching" | "non-teaching" | "hospital">("teaching")
+export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadModalProps = {}) {
+  const { toast } = useToast()
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({})
   const [isDownloading, setIsDownloading] = useState(false)
-  const {t} = useTranslation()
+  const [staffType, setStaffType] = useState<"teaching" | "non-teaching" | "hospital">("teaching")
 
+  const { t } = useTranslation()
   const authState = useAppSelector(selectAuthState)
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
 
@@ -81,52 +81,73 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
     }))
   }
 
-  // Add helper function to transform Excel headers client-side
-  const transformExcelHeaders = (excelBlob: Blob): Promise<Blob> => {
+  const handleSelectAll = (checked: boolean) => {
+    const newSelectedFields: Record<string, boolean> = {}
+    Object.entries(fieldGroups).forEach(([_, fields]) => {
+      fields.forEach((field) => {
+        newSelectedFields[field.id] = checked
+      })
+    })
+    setSelectedFields(newSelectedFields)
+  }
+
+  const isGroupFullySelected = (groupName: string) => {
+    return fieldGroups[groupName as keyof typeof fieldGroups].every((field) => selectedFields[field.id])
+  }
+
+  const isGroupPartiallySelected = (groupName: string) => {
+    const groupFields = fieldGroups[groupName as keyof typeof fieldGroups]
+    const selectedCount = groupFields.filter((field) => selectedFields[field.id]).length
+    return selectedCount > 0 && selectedCount < groupFields.length
+  }
+
+  const isAllSelected = () => {
+    return Object.values(fieldGroups)
+      .flat()
+      .every((field) => selectedFields[field.id])
+  }
+
+  // Transform Excel file headers on the client side using headerMappings
+  const transformExcelHeaders = async (excelBlob: Blob): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          
-          // Get the first sheet
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          
-          // Convert to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
-          // Transform the headers
-          const transformedData = jsonData.map((record: any) => {
-            const transformedRecord: Record<string, any> = {};
-            
-            Object.entries(record).forEach(([key, value]) => {
-              // Get friendly header from mapping or format the key
-              const friendlyHeader = staffHeaderMappings[key] || formatKeyToHeader(key);
-              transformedRecord[friendlyHeader] = value;
-            });
-            
-            return transformedRecord;
+
+          const sheetData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1 });
+
+          if (sheetData.length === 0) {
+            resolve(excelBlob);
+            return;
+          }
+
+          const originalHeaders = sheetData[0] as string[];
+          const transformedHeaders = originalHeaders.map((header) => {
+            return staffHeaderMappings[header] || formatKeyToHeader(header);
           });
-          
-          // Create new worksheet with transformed data
-          const newWorksheet = XLSX.utils.json_to_sheet(transformedData);
+
+          sheetData[0] = transformedHeaders;
+
+          const newWorksheet = XLSX.utils.aoa_to_sheet(sheetData);
           const newWorkbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Staff");
-          
-          // Generate Excel file
+          XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, firstSheetName);
+
           const excelBuffer = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'array' });
-          const transformedBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          
-          resolve(transformedBlob);
+          const newBlob = new Blob([excelBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+
+          resolve(newBlob);
         } catch (error) {
-          console.error("Error transforming Excel headers:", error);
-          reject(error);
+          console.error('Error transforming Excel headers:', error);
+          resolve(excelBlob);
         }
       };
-      
+
       reader.onerror = () => reject(new Error("Failed to read Excel file"));
       reader.readAsArrayBuffer(excelBlob);
     });
@@ -139,7 +160,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
       .map(([fieldId]) => fieldId)
 
     if (fieldsToInclude.length === 0) {
-      alert("Please select at least one field to include")
+      toast({ variant: "destructive", title: "No fields selected", description: "Please select at least one field to include" })
       setIsDownloading(false)
       return
     }
@@ -177,7 +198,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
       }
     } catch (error) {
       console.error("Error downloading Excel:", error)
-      alert("Failed to download Excel file. Please try again.")
+      toast({ variant: "destructive", title: "Download Failed", description: "Failed to download Excel file. Please try again." })
     } finally {
       setIsDownloading(false)
     }

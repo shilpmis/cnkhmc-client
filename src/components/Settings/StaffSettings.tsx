@@ -423,7 +423,7 @@ export default function StaffSettings() {
             payload: { role: formForStaffRole.getValues('role_name') }
           }))
         } else {
-          alert("Bug :: Role Id has not been provided!")
+          toast({ variant: "destructive", title: "Role ID Missing", description: "Role ID has not been provided." })
         }
         toast({
           title: "Role Updated",

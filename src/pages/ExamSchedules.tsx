@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Edit, Trash2 } from "lucide-react"
 import { useGetExamSchedulesQuery, useCreateExamScheduleMutation, useUpdateExamScheduleMutation, useDeleteExamScheduleMutation, useGetExamMastersQuery, ExamSchedule } from "@/services/ExamService"
 import { useGetAcademicClassesQuery } from "@/services/AcademicService"
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
-import { Trash2, Edit } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function ExamSchedules() {
   const schoolId = useAppSelector((state) => state.auth.user?.school_id)
@@ -26,6 +27,7 @@ export default function ExamSchedules() {
   // State
   const [isOpen, setIsOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [formData, setFormData] = useState({ 
     exam_master_id: "", 
     class_id: "", 
@@ -82,10 +84,13 @@ export default function ExamSchedules() {
     setIsOpen(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this exam schedule?")) {
-      await deleteExamSchedule({ id })
-    }
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDeleteSchedule = async () => {
+    if (!deleteConfirmId) return
+    await deleteExamSchedule({ id: deleteConfirmId })
   }
 
   return (
@@ -201,6 +206,18 @@ export default function ExamSchedules() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null)
+        }}
+        title="Delete Exam Schedule"
+        description="Are you sure you want to delete this exam schedule?"
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteSchedule}
+      />
     </div>
   )
 }

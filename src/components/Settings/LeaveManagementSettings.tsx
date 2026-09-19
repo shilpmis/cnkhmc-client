@@ -30,6 +30,7 @@ import {
   useDeleteLeavePolicyMutation,
   useCreateLeaveTypeMutation,
   useUpdateLeaveTypeMutation,
+  useDeleteLeaveTypeMutation,
 } from "@/services/LeaveService"
 import type { LeavePolicy, LeaveType } from "@/types/leave"
 import type { PageMeta } from "@/types/global"
@@ -40,6 +41,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { NumberInput } from "../ui/NumberInput"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 // Schema for leave type
 const leaveTypeSchema = z.object({
@@ -105,6 +107,7 @@ export function LeaveManagementSettings() {
 
   const [createLeaveType, { isLoading: loadingForLeaveTypeCreation }] = useCreateLeaveTypeMutation()
   const [updateLeaveType, { isLoading: loadingForLeaveTypeUpdation }] = useUpdateLeaveTypeMutation()
+  const [deleteLeaveType, { isLoading: loadingForLeaveTypeDeletion }] = useDeleteLeaveTypeMutation()
 
   const [createLeavePolicy, { isLoading: loadingForPolicyCreation }] = useCreateLeavePolicyMutation()
   const [updateLeavePolicy, { isLoading: loadingForPolicyUpdation }] = useUpdateLeavePolicyMutation()
@@ -241,6 +244,90 @@ export function LeaveManagementSettings() {
     }
   }
 
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    isOpen: boolean
+    type: "leave-type" | "leave-policy"
+    id: number | null
+    title: string
+    description: string
+  }>({
+    isOpen: false,
+    type: "leave-type",
+    id: null,
+    title: "",
+    description: "",
+  })
+
+  const handleDeleteLeaveType = (leaveTypeId: number) => {
+    setDeleteConfirmDialog({
+      isOpen: true,
+      type: "leave-type",
+      id: leaveTypeId,
+      title: "Delete Leave Type",
+      description: "Are you sure you want to delete this leave type? Associated leave policies will also be deleted.",
+    })
+  }
+
+  const handleDeletePolicy = (policyId: number) => {
+    setDeleteConfirmDialog({
+      isOpen: true,
+      type: "leave-policy",
+      id: policyId,
+      title: "Delete Leave Policy",
+      description: "Are you sure you want to delete this leave policy?",
+    })
+  }
+
+  const executeConfirmDelete = async () => {
+    if (!deleteConfirmDialog.id) return
+    if (deleteConfirmDialog.type === "leave-type") {
+      try {
+        const res = await deleteLeaveType(deleteConfirmDialog.id)
+        if ("error" in res) {
+          toast({
+            variant: "destructive",
+            title: "Error deleting leave type",
+          })
+        } else {
+          toast({
+            variant: "default",
+            title: "Leave type deleted successfully",
+          })
+          fetchDataForActiveTab("leave-types", currentlyDispalyedLeaveTypes?.page?.current_page)
+          if (CurrentAcademicSessionForSchool) {
+            getAllLeaveType({ academic_session_id: CurrentAcademicSessionForSchool.id })
+          }
+        }
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Error deleting leave type",
+        })
+      }
+    } else if (deleteConfirmDialog.type === "leave-policy") {
+      try {
+        const res = await deleteLeavePolicy(deleteConfirmDialog.id)
+        if ("error" in res) {
+          toast({
+            variant: "destructive",
+            title: "Error deleting policy",
+          })
+        } else {
+          toast({
+            variant: "default",
+            title: "Policy deleted successfully",
+          })
+          fetchDataForActiveTab("leave-policies", currentlyDispalyedLeavePolicy?.page?.current_page)
+        }
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Error deleting policy",
+        })
+      }
+    }
+  }
+
   // Handlers for Leave Policy
   const onLeavePolicySubmit: SubmitHandler<LeavePolicySchema> = async (data) => {
     try {
@@ -312,32 +399,6 @@ export function LeaveManagementSettings() {
         variant: "destructive",
         title: "An unexpected error occurred",
         description: "Please try again later",
-      })
-    }
-  }
-
-  const handleDeletePolicy = async (policyId: number) => {
-    if (!window.confirm("Are you sure you want to delete this leave policy?")) {
-      return
-    }
-    try {
-      const res = await deleteLeavePolicy(policyId)
-      if ("error" in res) {
-        toast({
-          variant: "destructive",
-          title: "Error deleting policy",
-        })
-      } else {
-        toast({
-          variant: "default",
-          title: "Policy deleted successfully",
-        })
-        fetchDataForActiveTab("leave-policies", currentlyDispalyedLeavePolicy?.page?.current_page)
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error deleting policy",
       })
     }
   }
@@ -538,9 +599,19 @@ export function LeaveManagementSettings() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => openLeaveTypeDialog("edit", leaveType)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openLeaveTypeDialog("edit", leaveType)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteLeaveType(leaveType.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -964,6 +1035,17 @@ export function LeaveManagementSettings() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirmDialog.isOpen}
+        onOpenChange={(open) => setDeleteConfirmDialog((prev) => ({ ...prev, isOpen: open }))}
+        title={deleteConfirmDialog.title}
+        description={deleteConfirmDialog.description}
+        confirmText="Delete"
+        variant="destructive"
+        isLoading={loadingForLeaveTypeDeletion || loadingForPolicyDeletion}
+        onConfirm={executeConfirmDelete}
+      />
     </div>
   )
 }

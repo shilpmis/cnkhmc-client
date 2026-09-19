@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Building, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+
 import { 
   useGetInventoryDepartmentsQuery, 
   useCreateInventoryDepartmentMutation,
@@ -33,6 +35,7 @@ export default function InventoryDepartments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<InventoryDepartment | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const openAdd = () => {
     setForm({ name: "" });
@@ -58,15 +61,18 @@ export default function InventoryDepartments() {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
+  const handleDelete = (e: React.MouseEvent, id: number) => {
     e.stopPropagation(); // prevent opening the view dialog
-    if (confirm("Are you sure you want to delete this department?")) {
-      try {
-        await deleteDepartment(id).unwrap();
-        toast({ title: "Department deleted successfully" });
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Failed to delete", description: error?.data?.message || "An error occurred" });
-      }
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDeleteDepartment = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await deleteDepartment(deleteConfirmId).unwrap();
+      toast({ title: "Department deleted successfully" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Failed to delete", description: error?.data?.message || "An error occurred" });
     }
   };
 
@@ -248,6 +254,18 @@ export default function InventoryDepartments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null);
+        }}
+        title="Delete Department"
+        description="Are you sure you want to delete this department?"
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteDepartment}
+      />
     </div>
   );
 }

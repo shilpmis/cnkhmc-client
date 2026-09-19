@@ -16,6 +16,7 @@ import { selectAccademicSessionsForSchool, selectActiveAccademicSessionsForSchoo
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { studentHeaderMappings, collegeStudentHeaderMappings, formatKeyToHeader } from "@/utils/headerMappings"
 import * as XLSX from 'xlsx'
+import { useToast } from "@/hooks/use-toast"
 import { selectCurrentSchool } from "@/redux/slices/authSlice"
 
 interface ExcelDownloadModalProps {
@@ -185,7 +186,7 @@ const collegeFieldGroups = {
 }
 
 export default function ExcelDownloadModalForStudents({ academicClasses , selctedDivisionFromParent  }: ExcelDownloadModalProps) {
-  
+  const { toast } = useToast()
   const currentSchool = useAppSelector(selectCurrentSchool)
   const isCollege = currentSchool?.school_type === 'COLLEGE'
   const activeFieldGroups = isCollege ? collegeFieldGroups : fieldGroups
@@ -326,7 +327,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
       })
 
     if (Object.keys(fieldsToInclude).length === 0) {
-      alert("Please select at least one field to include")
+      toast({ variant: "destructive", title: "No fields selected", description: "Please select at least one field to include" })
       setIsDownloading(false)
       return
     }
@@ -365,7 +366,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
       setIsOpen(false)
     } catch (error) {
       console.error("Error downloading Excel:", error)
-      alert("Failed to download Excel file. Please try again.")
+      toast({ variant: "destructive", title: "Download Failed", description: "Failed to download Excel file. Please try again." })
     } finally {
       setIsDownloading(false)
     }

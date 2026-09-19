@@ -279,7 +279,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit, handleInvalid)} className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-9">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-9 sticky top-0 z-10 bg-background pt-1 pb-2 shadow-xs">
             <TabsTrigger value="role">{t("role")}</TabsTrigger>
             <TabsTrigger value="personal">{t("personal")}</TabsTrigger>
             <TabsTrigger value="contact">{t("contact")}</TabsTrigger>

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Trash2, Edit } from "lucide-react"
 
 export default function CertificateTemplates() {
@@ -16,6 +17,7 @@ export default function CertificateTemplates() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [formData, setFormData] = useState({ name: "", type: "BONAFIDE", content: "" })
 
   const templates = response?.data || []
@@ -26,7 +28,7 @@ export default function CertificateTemplates() {
       setFormData({ name: template.name, type: template.type, content: template.content })
     } else {
       setEditId(null)
-      setFormData({ name: "", type: "BONAFIDE", content: "<h1>{{college_name}}</h1>\n<p>This is to certify that {{student_name}}...</p>" })
+      setFormData({ name: "", type: "BONAFIDE", content: "" })
     }
     setIsOpen(true)
   }
@@ -40,10 +42,13 @@ export default function CertificateTemplates() {
     setIsOpen(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this template?")) {
-      await deleteTemplate({ id })
-    }
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDeleteTemplate = async () => {
+    if (!deleteConfirmId) return
+    await deleteTemplate({ id: deleteConfirmId })
   }
 
   return (
@@ -103,6 +108,18 @@ export default function CertificateTemplates() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null)
+        }}
+        title="Delete Certificate Template"
+        description="Are you sure you want to delete this template?"
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteTemplate}
+      />
     </div>
   )
 }

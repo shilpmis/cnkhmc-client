@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
+import { Plus, Loader2, Home, Trash2, User } from "lucide-react";
 import { RootState } from "@/redux/store";
 import {
   useGetHostelsQuery,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, Home, Trash2, User } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function HostelManagement() {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export default function HostelManagement() {
 
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
+  const [deleteHostelId, setDeleteHostelId] = useState<number | null>(null);
   const [newRoom, setNewRoom] = useState({ room_number: "", floor: "Ground Floor", capacity: 0 });
   const [selectedFloors, setSelectedFloors] = useState<Record<number, string>>({});
 
@@ -76,15 +78,19 @@ export default function HostelManagement() {
     }
   };
 
-  const handleDeleteHostel = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this hostel? All rooms and allocations will be deleted.")) return;
+  const handleDeleteHostel = (id: number) => {
+    setDeleteHostelId(id);
+  };
+
+  const confirmDeleteHostel = async () => {
+    if (!deleteHostelId) return;
     try {
-      await deleteHostel(id).unwrap();
+      await deleteHostel(deleteHostelId).unwrap();
       toast({ title: "Success", description: "Hostel deleted successfully" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete hostel", variant: "destructive" });
     }
-  }
+  };
 
   if (isLoading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -359,6 +365,18 @@ export default function HostelManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteHostelId)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteHostelId(null);
+        }}
+        title="Delete Hostel"
+        description="Are you sure you want to delete this hostel? All rooms and allocations will be deleted."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDeleteHostel}
+      />
     </div>
   );
 }

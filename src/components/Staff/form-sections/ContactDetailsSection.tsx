@@ -73,87 +73,85 @@ export const ContactDetailsSection: React.FC<ContactDetailsSectionProps> = ({
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="qualification"
+          render={({ field }) => {
+            const qualValue = field.value || "";
+            const isQualCustom = qualValue && !availableQualifications.includes(qualValue) && qualValue !== "Others";
+            const qualSelectValue = isQualCustom ? "Others" : qualValue;
+
+            return (
+              <FormItem>
+                <FormLabel required={isTeachingRole}>{t("qualification")}</FormLabel>
+                <Select onValueChange={field.onChange} value={qualSelectValue}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Qualification" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availableQualifications.map((q) => (
+                      <SelectItem key={q} value={q}>{q}</SelectItem>
+                    ))}
+                    <SelectItem value="Others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+                {qualSelectValue === "Others" && (
+                  <FormControl>
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter qualification"
+                      value={qualValue === "Others" ? "" : qualValue}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  </FormControl>
+                )}
+                <FormMessage />
+              </FormItem>
+            )
+          }}
+        />
         {isTeachingRole && (
-          <>
-            <FormField
-              control={form.control}
-              name="qualification"
-              render={({ field }) => {
-                const qualValue = field.value || "";
-                const isQualCustom = qualValue && !availableQualifications.includes(qualValue) && qualValue !== "Others";
-                const qualSelectValue = isQualCustom ? "Others" : qualValue;
+          <FormField
+            control={form.control}
+            name="subject_specialization"
+            render={({ field }) => {
+              const subjectValue = field.value || "";
+              const isSubjectCustom = subjectValue && !availableSubjects.includes(subjectValue) && subjectValue !== "Others";
+              const subjectSelectValue = isSubjectCustom ? "Others" : subjectValue;
 
-                return (
-                  <FormItem>
-                    <FormLabel required>{t("qualification")}</FormLabel>
-                    <Select onValueChange={field.onChange} value={qualSelectValue}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Qualification" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableQualifications.map((q) => (
-                          <SelectItem key={q} value={q}>{q}</SelectItem>
-                        ))}
-                        <SelectItem value="Others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {qualSelectValue === "Others" && (
-                      <FormControl>
-                        <Input
-                          className="mt-2"
-                          placeholder="Enter qualification"
-                          value={qualValue === "Others" ? "" : qualValue}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
-            <FormField
-              control={form.control}
-              name="subject_specialization"
-              render={({ field }) => {
-                const subjectValue = field.value || "";
-                const isSubjectCustom = subjectValue && !availableSubjects.includes(subjectValue) && subjectValue !== "Others";
-                const subjectSelectValue = isSubjectCustom ? "Others" : subjectValue;
-
-                return (
-                  <FormItem>
-                    <FormLabel>{t("subject_specialization")}</FormLabel>
-                    <Select onValueChange={field.onChange} value={subjectSelectValue}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subject specialization" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableSubjects.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
-                        <SelectItem value="Others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {subjectSelectValue === "Others" && (
-                      <FormControl>
-                        <Input
-                          className="mt-2"
-                          placeholder="Enter subject specialization"
-                          value={subjectValue === "Others" ? "" : subjectValue}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
-          </>
+              return (
+                <FormItem>
+                  <FormLabel>{t("subject_specialization")}</FormLabel>
+                  <Select onValueChange={field.onChange} value={subjectSelectValue}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subject specialization" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableSubjects.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                      <SelectItem value="Others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {subjectSelectValue === "Others" && (
+                    <FormControl>
+                      <Input
+                        className="mt-2"
+                        placeholder="Enter subject specialization"
+                        value={subjectValue === "Others" ? "" : subjectValue}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    </FormControl>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )
+            }}
+          />
         )}
       </CardContent>
       <CardFooter className="flex justify-between">

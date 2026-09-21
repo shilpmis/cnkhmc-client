@@ -127,6 +127,11 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
         return
       }
 
+      // Respect maxLength if provided
+      if (props.maxLength !== undefined && inputValue.length > Number(props.maxLength)) {
+        return
+      }
+
       // For non-decimal mode, only allow digits
       if (!decimal) {
         if (/^\d*$/.test(inputValue)) {

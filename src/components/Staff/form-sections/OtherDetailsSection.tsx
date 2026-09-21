@@ -43,38 +43,10 @@ export const OtherDetailsSection: React.FC<OtherDetailsSectionProps> = ({
           />
           <FormField
             control={form.control}
-            name="religion_in_guj"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("religion")} (Gujarati)</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
             name="caste"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t("caste")}</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="caste_in_guj"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("caste")} (Gujarati)</FormLabel>
                 <FormControl>
                   <Input {...field} value={field.value ?? ""} />
                 </FormControl>

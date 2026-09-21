@@ -377,6 +377,7 @@ export default function StaffSettings() {
  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDialogForDeleteStaffOpen, setIsDialogForDeleteStaffOpen] = useState<boolean>(false)
+  const [roleToDelete, setRoleToDelete] = useState<StaffRole | null>(null)
   const { t } = useTranslation()
   const [roleSearchTerm, setRoleSearchTerm] = useState("")
 
@@ -470,13 +471,14 @@ export default function StaffSettings() {
         description: "The role has been removed from the list.",
       })
       setIsDialogForDeleteStaffOpen(false)
+      setRoleToDelete(null)
       getSchoolStaff(authState.user!.school_id);
       handleCloseDialog()
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: error.message || "Failed to delete role.",
-        description: "Failed to delete role."
+        title: "Failed to delete role",
+        description: error?.message || (typeof error === 'string' ? error : "Failed to delete role.")
       })
     }
   }
@@ -745,7 +747,7 @@ export default function StaffSettings() {
                                   variant="outline" 
                                   size="sm" 
                                   onClick={() => {
-                                    formForStaffRole.setValue('role_id', staff.id)
+                                    setRoleToDelete(staff)
                                     setIsDialogForDeleteStaffOpen(true)
                                   }}
                                   className="h-8 px-2.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
@@ -1074,7 +1076,10 @@ export default function StaffSettings() {
       </Dialog>
 
       {/* Legacy Staff Role Delete Dialog */}
-      <Dialog open={isDialogForDeleteStaffOpen} onOpenChange={setIsDialogForDeleteStaffOpen}>
+      <Dialog open={isDialogForDeleteStaffOpen} onOpenChange={(open) => {
+        setIsDialogForDeleteStaffOpen(open)
+        if (!open) setRoleToDelete(null)
+      }}>
         <DialogContent className="max-w-md rounded-2xl p-6 text-center">
           <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-3">
             <AlertTriangle className="w-6 h-6" />
@@ -1082,17 +1087,22 @@ export default function StaffSettings() {
           <DialogHeader className="text-center space-y-1">
             <DialogTitle className="text-lg font-bold">{t("delete_role_confirmation")}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              {t("are_you_sure_you_want_to_delete_this_role?_this_action_cannot_be_undone.")}
+              {roleToDelete
+                ? `Are you sure you want to delete the role "${roleToDelete.role}"? This action cannot be undone.`
+                : t("are_you_sure_you_want_to_delete_this_role?_this_action_cannot_be_undone.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-4 flex justify-center gap-2 sm:justify-center">
-            <Button variant="outline" onClick={() => setIsDialogForDeleteStaffOpen(false)} className="rounded-xl">
+            <Button variant="outline" onClick={() => {
+              setIsDialogForDeleteStaffOpen(false)
+              setRoleToDelete(null)
+            }} className="rounded-xl">
               {t("cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={() => {
-                const id = formForStaffRole.getValues('role_id')
+                const id = roleToDelete?.id || formForStaffRole.getValues('role_id')
                 if (id) {
                   handleDeleteRole(id)
                 }

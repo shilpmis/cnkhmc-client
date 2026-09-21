@@ -344,12 +344,12 @@ export const staffSchema = z
       .min(2, "Last name is required")
       .regex(/^[A-Za-z\s]+$/, "Last name is required"),
 
-    first_name_in_guj: z.string().min(2, "First name in Gujarati is required").nullable(),
+    first_name_in_guj: z.string().nullable().optional().or(z.literal("")),
 
     // Make middle name in Gujarati optional
-    middle_name_in_guj: z.string().nullable(),
+    middle_name_in_guj: z.string().nullable().optional().or(z.literal("")),
 
-    last_name_in_guj: z.string().min(2, "Last name in Gujarati is required").nullable(),
+    last_name_in_guj: z.string().nullable().optional().or(z.literal("")),
 
     gender: z.enum(["Male", "Female"], {
       required_error: "Gender is required",
@@ -407,7 +407,8 @@ export const staffSchema = z
           message: "Aadhar number must be exactly 12 digits",
         },
       )
-      .nullable(),
+      .nullable()
+      .optional(),
 
     // Contact details - Allow undefined during form editing but require for submission
     mobile_number: z
@@ -444,7 +445,7 @@ export const staffSchema = z
       .regex(/^[A-Za-z\s]+$/, "Religion should contain only alphabets and spaces")
       .nullable(),
 
-    religion_in_guj: z.string().min(2, "Religion in Gujarati is required").nullable(),
+    religion_in_guj: z.string().nullable().optional().or(z.literal("")),
 
     caste: z
       .string()
@@ -452,7 +453,7 @@ export const staffSchema = z
       .regex(/^[A-Za-z\s]+$/, "Caste should contain only alphabets and spaces")
       .nullable(),
 
-    caste_in_guj: z.string().min(2, "Caste in Gujarati is required").nullable(),
+    caste_in_guj: z.string().nullable().optional().or(z.literal("")),
 
     category: z
       .enum(["ST", "SC", "OBC", "OPEN"], {
@@ -541,7 +542,13 @@ export const staffSchema = z
     nch_registration_no: z.string().optional().nullable(),
     nch_registration_date: z.string().optional().nullable(),
     marital_status: z.enum(["Single", "Married", "Divorced", "Widowed"]).optional().nullable(),
-    pan_card_no: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN Card format").optional().nullable(),
+    pan_card_no: z
+      .string()
+      .max(10, "PAN Card number must not exceed 10 characters")
+      .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN Card format")
+      .optional()
+      .nullable()
+      .or(z.literal("")),
     ayush_id_no: z.string().optional().nullable(),
     teacher_code: z.string().optional().nullable(),
     state_council_reg_no: z.string().optional().nullable(),

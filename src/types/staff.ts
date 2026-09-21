@@ -118,9 +118,12 @@ export interface StaffType {
   bank_branch_name?: string | null;
   pay_scale?: string | null;
   retirement_age?: number | null;
+  resignation_date?: Date | string | null;
+  retirement_date?: Date | string | null;
   staff_type?: string | null;
   staff_category?: string | null;
   designation?: string | null;
+  department?: string | null;
   department_id?: number | null;
   leave_policy_ids?: number[];
   staff_experiences?: StaffExperience[];

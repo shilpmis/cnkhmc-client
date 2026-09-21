@@ -37,6 +37,7 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("overview")
+  const isTeachingStaff = Boolean(staff?.is_teaching_role ?? staff?.is_teching_staff ?? staff?.role_type?.is_teaching_role)
 
   // Format date function
   const formatDate = (dateString: string | null) => {
@@ -61,9 +62,13 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
             {t("back")}
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex items-center gap-1" onClick={() => setCertModalOpen(true)}>
+            <Button
+              variant="outline"
+              className="flex items-center gap-1.5 text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-200"
+              onClick={() => setCertModalOpen(true)}
+            >
               <FileText className="h-4 w-4" />
-              Experience Certificate
+              Generate Certificate / Letter
             </Button>
           </div>
         </div>

@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   X
 } from "lucide-react"
+import CertificateTemplateSettings from "./CertificateTemplateSettings"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -616,6 +617,16 @@ export default function StaffSettings() {
                 {qualifications.length}
               </Badge>
             </TabsTrigger>
+
+            <TabsTrigger 
+              value="certificate-templates" 
+              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="truncate">Certificates & Letters</span>
+              </div>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -876,6 +887,11 @@ export default function StaffSettings() {
               setIsConfigDeleteOpen(true)
             }}
           />
+        </TabsContent>
+
+        {/* Certificate Templates Tab */}
+        <TabsContent value="certificate-templates">
+          <CertificateTemplateSettings />
         </TabsContent>
       </Tabs>
 

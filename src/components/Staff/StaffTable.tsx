@@ -190,7 +190,8 @@ import { SaralPagination } from "../ui/common/SaralPagination"
 import type { StaffType } from "@/types/staff"
 import dynamic from "next/dynamic"
 import StaffPdfDilog from "./StaffPdfDilog"
-import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Trash2 } from "lucide-react"
+import ExperienceCertificateModal from "./ExperienceCertificateModal"
+import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Trash2, FileText } from "lucide-react"
 import type { PageMeta } from "@/types/global"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useLazyGetStaffByIdQuery } from "@/services/StaffService"
@@ -235,6 +236,8 @@ export default function StaffTable({
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<StaffType | null>(null)
+  const [certStaff, setCertStaff] = useState<StaffType | null>(null)
+  const [certModalOpen, setCertModalOpen] = useState(false)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [getStaffById] = useLazyGetStaffByIdQuery()
@@ -437,21 +440,40 @@ export default function StaffTable({
                   <TableCell>{staff.designation || staff.role || "N/A"}</TableCell>
                   <TableCell>{staff.employment_status}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => onEdit(staff.id)}>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCertStaff(staff)
+                          setCertModalOpen(true)
+                        }}
+                        title="Generate Experience Certificate / Letter"
+                        className="text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-200 h-8 px-2.5 gap-1"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="text-xs font-medium">Certificate</span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => onEdit(staff.id)} className="h-8 px-2.5 text-xs">
                         {t("edit")}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDownloadExperience(staff)} title="Download Experience">
-                        <Download className="h-4 w-4" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadExperience(staff)}
+                        title="Download Experience Excel"
+                        className="h-8 px-2 text-slate-600"
+                      >
+                        <Download className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onDelete(staff.id)}
                         title="Delete Staff"
-                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        className="h-8 px-2 text-red-600 hover:text-red-700 hover:border-red-300"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
@@ -465,6 +487,13 @@ export default function StaffTable({
               setDialogOpen={setDialogOpen}
               selectedStaff={selectedStaff}
               StaffDetailsPDF={StafftDetailsPDF}
+            />
+          )}
+          {certStaff && (
+            <ExperienceCertificateModal
+              open={certModalOpen}
+              onOpenChange={setCertModalOpen}
+              staff={certStaff}
             />
           )}
           <SaralPagination

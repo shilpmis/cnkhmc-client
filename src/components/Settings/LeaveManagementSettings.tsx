@@ -40,7 +40,6 @@ import { toast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { NumberInput } from "../ui/NumberInput"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 // Schema for leave type
@@ -52,46 +51,48 @@ const leaveTypeSchema = z.object({
 })
 
 // Schema for leave policy directly mapped to leave type
-export const leavePolicySchema = z
-  .object({
-    leave_type_id: z.string().min(1, { message: "Leave type is required" }),
-    annual_quota: z
+export const leavePolicySchema = z.object({
+  leave_type_id: z.string().min(1, { message: "Leave type is required" }),
+  annual_quota: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z
       .number({ invalid_type_error: "Annual allowance must be a number" })
       .min(1, { message: "Annual allowance must be at least 1" })
-      .max(100, { message: "Annual allowance cannot exceed 100" }),
-    max_consecutive_days: z
+      .max(100, { message: "Annual allowance cannot exceed 100" })
+  ),
+  max_consecutive_days_pct: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z
+      .number({ invalid_type_error: "Percentage must be a number" })
+      .min(1, { message: "Percentage must be at least 1%" })
+      .max(100, { message: "Percentage cannot exceed 100%" })
+      .optional()
+  ),
+  max_consecutive_days: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z
       .number({ invalid_type_error: "Max consecutive days must be a number" })
-      .min(1, { message: "Max consecutive days must be at least 1" }),
-    can_carry_forward: z.boolean(),
-    max_carry_forward_days: z
+      .min(1, { message: "Max consecutive days must be at least 1" })
+  ),
+  can_carry_forward: z.boolean(),
+  max_carry_forward_pct: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z
+      .number({ invalid_type_error: "Percentage must be a number" })
+      .min(0, { message: "Percentage must be 0% or greater" })
+      .max(100, { message: "Percentage cannot exceed 100%" })
+      .optional()
+  ),
+  max_carry_forward_days: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z
       .number({ invalid_type_error: "Max carryforward days must be a number" })
-      .min(0, { message: "Max carryforward days must be 0 or greater" }),
-    deduction_rules: z.record(z.string(), z.any()).optional(),
-    approval_hierarchy: z.record(z.string(), z.any()).optional(),
-    requires_approval: z.boolean().optional().default(false),
-  })
-  .superRefine((data, ctx) => {
-    const minConsecutiveDays = Math.floor(data.annual_quota * 0.3)
-    const maxConsecutiveDays = Math.ceil(data.annual_quota * 0.35)
-
-    if (data.max_consecutive_days < minConsecutiveDays || data.max_consecutive_days > maxConsecutiveDays) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["max_consecutive_days"],
-        message: `Max consecutive days should be between ${minConsecutiveDays} and ${maxConsecutiveDays} (30-35% of annual allowance)`,
-      })
-    }
-
-    const maxCarryForwardAllowed = Math.floor(data.annual_quota * 0.5)
-
-    if (data.can_carry_forward && data.max_carry_forward_days > maxCarryForwardAllowed) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["max_carry_forward_days"],
-        message: `Max carryforward days cannot exceed ${maxCarryForwardAllowed} (50% of annual allowance)`,
-      })
-    }
-  })
+      .min(0, { message: "Max carryforward days must be 0 or greater" })
+  ),
+  deduction_rules: z.record(z.string(), z.any()).optional(),
+  approval_hierarchy: z.record(z.string(), z.any()).optional(),
+  requires_approval: z.boolean().optional().default(false),
+})
 
 type LeaveTypeSchema = z.infer<typeof leaveTypeSchema>
 type LeavePolicySchema = z.infer<typeof leavePolicySchema>
@@ -132,18 +133,14 @@ export function LeaveManagementSettings() {
     defaultValues: {
       leave_type_id: "",
       annual_quota: 10,
+      max_consecutive_days_pct: 30,
       max_consecutive_days: 3,
       can_carry_forward: false,
+      max_carry_forward_pct: 50,
       max_carry_forward_days: 0,
       requires_approval: false,
     },
   })
-
-  // Dynamic limits calculation
-  const annualQuota = leavePolicyForm.watch("annual_quota")
-  const minConsecutiveDays = Math.floor(annualQuota * 0.3)
-  const maxConsecutiveDays = Math.ceil(annualQuota * 0.35)
-  const maxCarryForwardAllowed = Math.floor(annualQuota * 0.5)
 
   // Dialog states
   const [dialogForLeaveType, setDialogForLeaveType] = useState<{
@@ -444,20 +441,27 @@ export function LeaveManagementSettings() {
     })
 
     if (type === "edit" && leavePolicy) {
+      const quota = leavePolicy.annual_quota || 10
+      const consecDays = leavePolicy.max_consecutive_days || 3
+      const carryDays = leavePolicy.max_carry_forward_days || 0
       leavePolicyForm.reset({
-        annual_quota: leavePolicy.annual_quota || 10,
+        annual_quota: quota,
         leave_type_id: leavePolicy.leave_type_id.toString(),
+        max_consecutive_days_pct: quota > 0 ? Math.round((consecDays / quota) * 100) : 30,
+        max_consecutive_days: consecDays,
         can_carry_forward: leavePolicy.can_carry_forward || false,
-        max_carry_forward_days: leavePolicy.max_carry_forward_days || 0,
-        max_consecutive_days: leavePolicy.max_consecutive_days || 3,
+        max_carry_forward_pct: quota > 0 ? Math.round((carryDays / quota) * 100) : 50,
+        max_carry_forward_days: carryDays,
         requires_approval: leavePolicy.requires_approval === 1 || leavePolicy.requires_approval === true,
       })
     } else {
       leavePolicyForm.reset({
         leave_type_id: "",
         annual_quota: 10,
+        max_consecutive_days_pct: 30,
         max_consecutive_days: 3,
         can_carry_forward: false,
+        max_carry_forward_pct: 50,
         max_carry_forward_days: 0,
         requires_approval: false,
       })
@@ -882,28 +886,34 @@ export function LeaveManagementSettings() {
                   <FormItem>
                     <FormLabel required>{t("annual_allowance")}</FormLabel>
                     <FormControl>
-                      <NumberInput
-                        {...field}
+                      <Input
+                        type="number"
                         min={1}
                         max={100}
-                        value={field.value ? field.value.toString() : ""}
-                        onChange={(value) => {
-                          const numValue = Number(value)
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue)
-                            const minConsecutive = Math.floor(numValue * 0.3)
-                            const maxConsecutive = Math.ceil(numValue * 0.35)
-                            const currentConsecutive = leavePolicyForm.getValues("max_consecutive_days")
-                            if (currentConsecutive < minConsecutive || currentConsecutive > maxConsecutive) {
-                              leavePolicyForm.setValue("max_consecutive_days", minConsecutive)
-                            }
-                            if (leavePolicyForm.getValues("can_carry_forward")) {
-                              const maxCarryForward = Math.floor(numValue * 0.5)
-                              const currentCarryForward = leavePolicyForm.getValues("max_carry_forward_days")
-                              if (currentCarryForward > maxCarryForward) {
-                                leavePolicyForm.setValue("max_carry_forward_days", maxCarryForward)
-                              }
-                            }
+                        value={field.value !== undefined && field.value !== null ? field.value : ""}
+                        onChange={(e) => {
+                          const raw = e.target.value
+                          if (raw === "") {
+                            field.onChange("")
+                            return
+                          }
+                          let val = parseInt(raw, 10)
+                          if (isNaN(val)) {
+                            field.onChange("")
+                            return
+                          }
+                          if (val > 100) val = 100
+                          if (val < 1) val = 1
+                          field.onChange(val)
+
+                          const consecPct = Number(leavePolicyForm.getValues("max_consecutive_days_pct")) || 30
+                          const newConsec = Math.min(val, Math.max(1, Math.round(val * (consecPct / 100))))
+                          leavePolicyForm.setValue("max_consecutive_days", newConsec)
+
+                          if (leavePolicyForm.getValues("can_carry_forward")) {
+                            const carryPct = Number(leavePolicyForm.getValues("max_carry_forward_pct")) || 50
+                            const newCarry = Math.min(val, Math.max(0, Math.round(val * (carryPct / 100))))
+                            leavePolicyForm.setValue("max_carry_forward_days", newCarry)
                           }
                         }}
                       />
@@ -914,33 +924,93 @@ export function LeaveManagementSettings() {
                 )}
               />
 
-              <FormField
-                control={leavePolicyForm.control}
-                name="max_consecutive_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel required>{t("max_consecutive_days")}</FormLabel>
-                    <FormControl>
-                      <NumberInput
-                        {...field}
-                        min={minConsecutiveDays}
-                        max={maxConsecutiveDays}
-                        value={field.value ? field.value.toString() : ""}
-                        onChange={(value) => {
-                          const numValue = Number(value)
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue)
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {`Should be between ${minConsecutiveDays} and ${maxConsecutiveDays} days (30-35% of annual allowance)`}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={leavePolicyForm.control}
+                  name="max_consecutive_days_pct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Consecutive Days (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={field.value !== undefined && field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            if (raw === "") {
+                              field.onChange("")
+                              return
+                            }
+                            let val = parseInt(raw, 10)
+                            if (isNaN(val)) {
+                              field.onChange("")
+                              return
+                            }
+                            if (val > 100) val = 100
+                            if (val < 1) val = 1
+                            field.onChange(val)
+
+                            const quota = Number(leavePolicyForm.getValues("annual_quota")) || 10
+                            const calcDays = Math.min(quota, Math.max(1, Math.round(quota * (val / 100))))
+                            leavePolicyForm.setValue("max_consecutive_days", calcDays)
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Set % of annual allowance (1 - 100%)</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={leavePolicyForm.control}
+                  name="max_consecutive_days"
+                  render={({ field }) => {
+                    const quota = Number(leavePolicyForm.watch("annual_quota")) || 10
+                    return (
+                      <FormItem>
+                        <FormLabel required>{t("max_consecutive_days")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={quota}
+                            value={field.value !== undefined && field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const raw = e.target.value
+                              if (raw === "") {
+                                field.onChange("")
+                                return
+                              }
+                              let val = parseInt(raw, 10)
+                              if (isNaN(val)) {
+                                field.onChange("")
+                                return
+                              }
+                              if (val > quota) val = quota
+                              if (val < 1) val = 1
+                              field.onChange(val)
+
+                              if (quota > 0) {
+                                const calcPct = Math.min(100, Math.max(1, Math.round((val / quota) * 100)))
+                                leavePolicyForm.setValue("max_consecutive_days_pct", calcPct)
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {field.value !== undefined && field.value !== null && field.value !== ""
+                            ? `${field.value} days (${Math.min(100, Math.round((Number(field.value) / quota) * 100))}% of annual allowance)`
+                            : "Enter max consecutive days"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              </div>
 
               <FormField
                 control={leavePolicyForm.control}
@@ -960,9 +1030,12 @@ export function LeaveManagementSettings() {
                           field.onChange(checked)
                           if (!checked) {
                             leavePolicyForm.setValue("max_carry_forward_days", 0)
+                            leavePolicyForm.setValue("max_carry_forward_pct", 0)
                           } else {
-                            const maxAllowed = Math.floor(leavePolicyForm.getValues("annual_quota") * 0.5)
-                            leavePolicyForm.setValue("max_carry_forward_days", maxAllowed)
+                            const quota = Number(leavePolicyForm.getValues("annual_quota")) || 10
+                            const pct = Number(leavePolicyForm.getValues("max_carry_forward_pct")) || 50
+                            leavePolicyForm.setValue("max_carry_forward_pct", pct)
+                            leavePolicyForm.setValue("max_carry_forward_days", Math.min(quota, Math.round(quota * (pct / 100))))
                           }
                         }}
                       />
@@ -971,34 +1044,95 @@ export function LeaveManagementSettings() {
                 )}
               />
 
-              <FormField
-                control={leavePolicyForm.control}
-                name="max_carry_forward_days"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel required>{t("max_carry_forward")}</FormLabel>
-                    <FormControl>
-                      <NumberInput
-                        {...field}
-                        min={0}
-                        max={maxCarryForwardAllowed}
-                        value={field.value ? field.value.toString() : ""}
-                        disabled={!leavePolicyForm.watch("can_carry_forward")}
-                        onChange={(value) => {
-                          const numValue = Number(value)
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue)
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {`Cannot exceed ${maxCarryForwardAllowed} days (50% of annual allowance)`}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={leavePolicyForm.control}
+                  name="max_carry_forward_pct"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Carry Forward (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          disabled={!leavePolicyForm.watch("can_carry_forward")}
+                          value={field.value !== undefined && field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            if (raw === "") {
+                              field.onChange("")
+                              return
+                            }
+                            let val = parseInt(raw, 10)
+                            if (isNaN(val)) {
+                              field.onChange("")
+                              return
+                            }
+                            if (val > 100) val = 100
+                            if (val < 0) val = 0
+                            field.onChange(val)
+
+                            const quota = Number(leavePolicyForm.getValues("annual_quota")) || 10
+                            const calcDays = Math.min(quota, Math.round(quota * (val / 100)))
+                            leavePolicyForm.setValue("max_carry_forward_days", calcDays)
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Set % of annual allowance (0 - 100%)</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={leavePolicyForm.control}
+                  name="max_carry_forward_days"
+                  render={({ field }) => {
+                    const quota = Number(leavePolicyForm.watch("annual_quota")) || 10
+                    return (
+                      <FormItem>
+                        <FormLabel required>{t("max_carry_forward")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={quota}
+                            disabled={!leavePolicyForm.watch("can_carry_forward")}
+                            value={field.value !== undefined && field.value !== null ? field.value : ""}
+                            onChange={(e) => {
+                              const raw = e.target.value
+                              if (raw === "") {
+                                field.onChange("")
+                                return
+                              }
+                              let val = parseInt(raw, 10)
+                              if (isNaN(val)) {
+                                field.onChange("")
+                                return
+                              }
+                              if (val > quota) val = quota
+                              if (val < 0) val = 0
+                              field.onChange(val)
+
+                              if (quota > 0) {
+                                const calcPct = Math.min(100, Math.max(0, Math.round((val / quota) * 100)))
+                                leavePolicyForm.setValue("max_carry_forward_pct", calcPct)
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {field.value !== undefined && field.value !== null && field.value !== ""
+                            ? `${field.value} days (${Math.min(100, Math.round((Number(field.value) / quota) * 100))}% of annual allowance)`
+                            : "Enter max carry forward days"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              </div>
 
               <FormField
                 control={leavePolicyForm.control}

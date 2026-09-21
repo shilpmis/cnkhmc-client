@@ -227,9 +227,34 @@ export default function AcademicCalendar() {
     };
   }, []);
 
+  // Date calculation helpers for duration
+  const computeEndDate = (startStr: string, dur: number | string): string => {
+    if (!startStr) return "";
+    const numDur = Math.max(1, Number(dur) || 1);
+    const [y, m, d] = startStr.split("-").map(Number);
+    const target = new Date(y, m - 1, d + numDur - 1);
+    const yyyy = target.getFullYear();
+    const mm = String(target.getMonth() + 1).padStart(2, "0");
+    const dd = String(target.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const computeDuration = (startStr: string, endStr: string): number => {
+    if (!startStr || !endStr) return 1;
+    const [y1, m1, d1] = startStr.split("-").map(Number);
+    const [y2, m2, d2] = endStr.split("-").map(Number);
+    const t1 = new Date(y1, m1 - 1, d1).getTime();
+    const t2 = new Date(y2, m2 - 1, d2).getTime();
+    if (isNaN(t1) || isNaN(t2) || t2 < t1) return 1;
+    const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.max(1, diffDays);
+  };
+
   // Single Entry Form State
   const [eventForm, setEventForm] = useState<{
     dateStr: string; // YYYY-MM-DD
+    duration: number | ""; // in days
+    endDateStr: string; // YYYY-MM-DD
     title: string;
     category: string;
     isWorkingDay: boolean;
@@ -237,6 +262,8 @@ export default function AcademicCalendar() {
     applicableYear: AcademicYearLevel;
   }>({
     dateStr: new Date().toISOString().split("T")[0],
+    duration: 1,
+    endDateStr: new Date().toISOString().split("T")[0],
     title: "",
     category: "event",
     isWorkingDay: true,
@@ -460,6 +487,8 @@ export default function AcademicCalendar() {
     setEditingIndex(null);
     setEventForm({
       dateStr,
+      duration: 1,
+      endDateStr: dateStr,
       title: "",
       category: categories[0]?.id || "event",
       isWorkingDay: true,
@@ -481,6 +510,8 @@ export default function AcademicCalendar() {
     setEditingIndex(index);
     setEventForm({
       dateStr,
+      duration: 1,
+      endDateStr: dateStr,
       title: evt.title,
       category: evt.category,
       isWorkingDay: evt.isWorkingDay,
@@ -496,42 +527,44 @@ export default function AcademicCalendar() {
       return;
     }
 
-    const parts = eventForm.dateStr.split("-");
-    const yr = parseInt(parts[0], 10);
-    const mo = parseInt(parts[1], 10) - 1;
-    const dt = parseInt(parts[2], 10);
+    const [startY, startM, startD] = eventForm.dateStr.split("-").map(Number);
+    const durationCount = Math.max(1, eventForm.duration || 1);
+    const newEventsList: CalendarEvent[] = [];
 
-    const newEvt: CalendarEvent = {
-      date: dt,
-      month: mo,
-      year: yr,
-      title: eventForm.title.trim(),
-      category: eventForm.category,
-      isWorkingDay: eventForm.isWorkingDay,
-      description: eventForm.description.trim(),
-      applicableYear: eventForm.applicableYear,
-    };
+    for (let i = 0; i < durationCount; i++) {
+      const cur = new Date(startY, startM - 1, startD + i);
+      newEventsList.push({
+        date: cur.getDate(),
+        month: cur.getMonth(),
+        year: cur.getFullYear(),
+        title: eventForm.title.trim(),
+        category: eventForm.category,
+        isWorkingDay: eventForm.isWorkingDay,
+        description: eventForm.description.trim(),
+        applicableYear: eventForm.applicableYear,
+      });
+    }
 
     if (editingIndex !== null && editingIndex >= 0 && editingIndex < events.length) {
       setEvents((prev) => {
         const next = [...prev];
-        next[editingIndex] = newEvt;
+        next.splice(editingIndex, 1, ...newEventsList);
         return next;
       });
       toast({
         title: "Entry Updated",
-        description: `"${newEvt.title}" updated. Click Persist Changes to save.`,
+        description: `"${eventForm.title}" updated${durationCount > 1 ? ` for ${durationCount} days` : ""}. Click Persist Changes to save.`,
       });
     } else {
-      setEvents((prev) => [...prev, newEvt]);
+      setEvents((prev) => [...prev, ...newEventsList]);
       toast({
         title: "Entry Added",
-        description: `"${newEvt.title}" added under category "${getCategory(newEvt.category).label}".`,
+        description: `"${eventForm.title}" added${durationCount > 1 ? ` for ${durationCount} days (${eventForm.dateStr} to ${eventForm.endDateStr})` : ""} under category "${getCategory(eventForm.category).label}".`,
       });
     }
 
-    if (yr !== currentDate.getFullYear() || mo !== currentDate.getMonth()) {
-      setCurrentDate(new Date(yr, mo, 1));
+    if (startY !== currentDate.getFullYear() || (startM - 1) !== currentDate.getMonth()) {
+      setCurrentDate(new Date(startY, startM - 1, 1));
     }
 
     setIsEventDialogOpen(false);
@@ -1319,19 +1352,8 @@ export default function AcademicCalendar() {
           </DialogHeader>
 
           <div className="space-y-4 mt-3">
-            {/* Event Date & Category */}
+            {/* Event Category & Target Year Level */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="font-bold text-xs text-slate-700">Date *</Label>
-                <Input
-                  type="date"
-                  value={eventForm.dateStr}
-                  onChange={(e) => setEventForm((p) => ({ ...p, dateStr: e.target.value }))}
-                  className="h-10 rounded-lg border-slate-200 font-medium text-sm"
-                  required
-                />
-              </div>
-
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="font-bold text-xs text-slate-700">Category *</Label>
@@ -1362,6 +1384,25 @@ export default function AcademicCalendar() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1">
+                <Label className="font-bold text-xs text-slate-700">Target Year Level *</Label>
+                <Select
+                  value={eventForm.applicableYear}
+                  onValueChange={(v: AcademicYearLevel) => setEventForm((p) => ({ ...p, applicableYear: v }))}
+                >
+                  <SelectTrigger className="h-10 rounded-lg border-slate-200 font-medium text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    {YEAR_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Event Title */}
@@ -1376,38 +1417,76 @@ export default function AcademicCalendar() {
               />
             </div>
 
-            {/* Target Year Level */}
-            <div className="space-y-1">
-              <Label className="font-bold text-xs text-slate-700">Target Year Level *</Label>
-              <Select
-                value={eventForm.applicableYear}
-                onValueChange={(v: AcademicYearLevel) => setEventForm((p) => ({ ...p, applicableYear: v }))}
-              >
-                <SelectTrigger className="h-10 rounded-lg border-slate-200 font-medium text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg">
-                  {YEAR_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[10px] text-slate-400">
-                Choose &quot;All Years&quot; for general institution holidays, or a specific year for batch exams/events.
-              </p>
-            </div>
+            {/* Date, Duration & End Date */}
+            <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="font-bold text-xs text-slate-700">Start Date *</Label>
+                  <Input
+                    type="date"
+                    value={eventForm.dateStr}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setEventForm((p) => ({
+                        ...p,
+                        dateStr: newStart,
+                        endDateStr: computeEndDate(newStart, p.duration),
+                      }));
+                    }}
+                    className="h-10 rounded-lg border-slate-200 bg-white font-medium text-sm"
+                    required
+                  />
+                </div>
 
-            {/* Description */}
-            <div className="space-y-1">
-              <Label className="font-bold text-xs text-slate-700">Description / Guidelines (optional)</Label>
-              <Textarea
-                value={eventForm.description}
-                onChange={(e) => setEventForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Additional details, schedule notes, instructions..."
-                className="rounded-lg border-slate-200 font-medium text-sm min-h-[70px] resize-none"
-              />
+                <div className="space-y-1">
+                  <Label className="font-bold text-xs text-slate-700">Duration (Days) *</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={eventForm.duration}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        setEventForm((p) => ({
+                          ...p,
+                          duration: "",
+                          endDateStr: computeEndDate(p.dateStr, 1),
+                        }));
+                        return;
+                      }
+                      const parsed = parseInt(val, 10);
+                      const dur = isNaN(parsed) ? 1 : Math.max(1, parsed);
+                      setEventForm((p) => ({
+                        ...p,
+                        duration: dur,
+                        endDateStr: computeEndDate(p.dateStr, dur),
+                      }));
+                    }}
+                    className="h-10 rounded-lg border-slate-200 bg-white font-medium text-sm"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="font-bold text-xs text-slate-700">End Date</Label>
+                  <Input
+                    type="date"
+                    min={eventForm.dateStr}
+                    value={eventForm.endDateStr}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      const dur = computeDuration(eventForm.dateStr, newEnd);
+                      setEventForm((p) => ({
+                        ...p,
+                        endDateStr: newEnd,
+                        duration: dur,
+                      }));
+                    }}
+                    className="h-10 rounded-lg border-slate-200 bg-white font-medium text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Working Day vs Non-working Day toggle */}

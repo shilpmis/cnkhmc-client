@@ -80,7 +80,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
 
   const [isLeaveDetailDialogOpen, setIsLeaveDetailDialogOpen] = useState(false)
   const [selectedLeave, setSelectedLeave] = useState<LeaveApplication | null>(null)
-  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "cancelled">("pending")
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected" | "cancelled" | "all">("pending")
   const [activeTab, setActiveTab] = useState("balance")
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -162,11 +162,26 @@ const LeaveDashboardForTeachers: React.FC = () => {
     }
   }
 
-  // Format date
+  // Format date like "22 Sep 2026"
   const formatDate = (dateString: string) => {
-
+    if (!dateString) return ""
+    const cleanStr = dateString.split("T")[0]
+    const parts = cleanStr.split("-")
+    if (parts.length === 3) {
+      const year = parts[0]
+      const monthIndex = parseInt(parts[1], 10) - 1
+      const day = parseInt(parts[2], 10)
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      if (monthIndex >= 0 && monthIndex < 12 && !isNaN(day)) {
+        return `${day} ${monthNames[monthIndex]} ${year}`
+      }
+    }
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+    if (isNaN(date.getTime())) return dateString
+    const day = date.getDate()
+    const month = date.toLocaleDateString("en-US", { month: "short" })
+    const year = date.getFullYear()
+    return `${day} ${month} ${year}`
   }
 
   const handleDialog = (type: "create" | "edit", application: LeaveApplication | null) => {
@@ -278,7 +293,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
     handleCloseDialog()
   }
 
-  const handleStatusFilterChange = (value: "pending" | "approved" | "rejected" | "cancelled") => {
+  const handleStatusFilterChange = (value: "pending" | "approved" | "rejected" | "cancelled" | "all") => {
     setStatusFilter(value)
     if (authState.user?.staff_id) {
       getStaffsLeaveApplications({
@@ -565,6 +580,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
                   <SelectItem value="pending">{t("pending")}</SelectItem>
                   <SelectItem value="approved">{t("approved")}</SelectItem>
                   <SelectItem value="rejected">{t("rejected")}</SelectItem>
+                  <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>
@@ -605,7 +621,9 @@ const LeaveDashboardForTeachers: React.FC = () => {
                               {formatDate(application.from_date)} - {formatDate(application.to_date)}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge>
+                              <Badge variant={getStatusBadgeVariant(application.status)} className="capitalize">
+                                {application.status ? application.status.charAt(0).toUpperCase() + application.status.slice(1) : ""}
+                              </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
@@ -755,12 +773,9 @@ const LeaveDashboardForTeachers: React.FC = () => {
                 <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
                   <Award className="h-12 w-12 text-amber-500 mx-auto mb-3" />
                   <p className="font-semibold text-lg text-foreground mb-1">No Comp Off claims submitted yet</p>
-                  <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                    Have you worked on a college holiday or Sunday? Click below to request your Comp Off leave credit.
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Have you worked on a college holiday or Sunday? You can request your Comp Off leave credits using the button above.
                   </p>
-                  <Button onClick={() => setIsCompOffDialogOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
-                    <Plus className="mr-2 h-4 w-4" /> Request Comp Off
-                  </Button>
                 </div>
               )}
             </CardContent>
@@ -916,7 +931,9 @@ const LeaveDashboardForTeachers: React.FC = () => {
                     {formatDate(selectedLeave.from_date)} - {formatDate(selectedLeave.to_date)}
                   </p>
                 </div>
-                <Badge variant={getStatusBadgeVariant(selectedLeave.status)}>{selectedLeave.status}</Badge>
+                <Badge variant={getStatusBadgeVariant(selectedLeave.status)} className="capitalize">
+                  {selectedLeave.status ? selectedLeave.status.charAt(0).toUpperCase() + selectedLeave.status.slice(1) : ""}
+                </Badge>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/30">
@@ -944,16 +961,24 @@ const LeaveDashboardForTeachers: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    {selectedLeave.is_half_day && (
+                    {Boolean(selectedLeave.is_half_day) && (
                       <div className="flex items-start">
                         <Clock className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
                         <div>
                           <p className="text-sm text-muted-foreground">{t("half_day")}</p>
-                          <p>{selectedLeave.half_day_type === "first_half" ? t("first_half") : t("second_half")}</p>
+                          <p>
+                            {selectedLeave.half_day_type === "first_half"
+                              ? t("first_half")
+                              : selectedLeave.half_day_type === "second_half"
+                              ? t("second_half")
+                              : selectedLeave.half_day_type === "noon"
+                              ? (t("noon") || "Noon")
+                              : ""}
+                          </p>
                         </div>
                       </div>
                     )}
-                    {selectedLeave.is_hourly_leave && (
+                    {Boolean(selectedLeave.is_hourly_leave) && (
                       <div className="flex items-start">
                         <Clock className="h-4 w-4 mr-2 mt-1 text-muted-foreground" />
                         <div>

@@ -46,16 +46,67 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
     { skip: !school_id }
   )
 
-  // Pre-select all leave policies on create once when policies are loaded
+  const currentStaffType = form.watch("staff_type")
+
+  const isPolicyMatchingStaff = (policy: any, staffType: string | null | undefined): boolean => {
+    if (!policy.applicable_staff_type) return true
+    if (!staffType) return true
+
+    const pLower = policy.applicable_staff_type.trim().toLowerCase()
+    const sLower = staffType.trim().toLowerCase()
+
+    if (sLower.includes('hospital')) {
+      return pLower.includes('hospital')
+    }
+    if (sLower.includes('non-teaching') || sLower.includes('non teaching')) {
+      return pLower.includes('non-teaching') || pLower.includes('non teaching')
+    }
+    if (sLower.includes('teaching')) {
+      if (pLower.includes('hospital') || pLower.includes('non-teaching') || pLower.includes('non teaching')) {
+        return false
+      }
+      const isStaffNonVacational = sLower.includes('non vact') || sLower.includes('non-vact') || sLower.includes('non vacat')
+      const isPolicyNonVacational = pLower.includes('non vact') || pLower.includes('non-vact') || pLower.includes('non vacat')
+      const isStaffVacational = !isStaffNonVacational && (sLower.includes('vact') || sLower.includes('vacat'))
+      const isPolicyVacational = !isPolicyNonVacational && (pLower.includes('vact') || pLower.includes('vacat'))
+
+      if (isStaffNonVacational) return isPolicyNonVacational
+      if (isStaffVacational) return isPolicyVacational
+      return true
+    }
+
+    return pLower === sLower
+  }
+
+  const applicableLeavePolicies = useMemo(() => {
+    if (!leavePolicies) return []
+    const filtered = leavePolicies.filter((p) => isPolicyMatchingStaff(p, currentStaffType))
+    return filtered.length > 0 ? filtered : leavePolicies
+  }, [leavePolicies, currentStaffType])
+
+  // Pre-select applicable leave policies on create once when policies are loaded
   useEffect(() => {
-    if (!initializedPoliciesRef.current && formType === "create" && leavePolicies && leavePolicies.length > 0) {
+    if (!initializedPoliciesRef.current && formType === "create" && applicableLeavePolicies && applicableLeavePolicies.length > 0) {
       const currentVal = form.getValues("leave_policy_ids")
       if (!currentVal || currentVal.length === 0) {
-        form.setValue("leave_policy_ids", leavePolicies.map((p) => p.id))
+        form.setValue("leave_policy_ids", applicableLeavePolicies.map((p) => p.id))
       }
       initializedPoliciesRef.current = true
     }
-  }, [formType, leavePolicies, form])
+  }, [formType, applicableLeavePolicies, form])
+
+  // Whenever staff_type changes, automatically filter selected leave_policy_ids to only applicable ones
+  useEffect(() => {
+    if (leavePolicies && leavePolicies.length > 0 && currentStaffType) {
+      const currentVal = form.getValues("leave_policy_ids") || []
+      const applicableIds = new Set(applicableLeavePolicies.map((p) => p.id))
+      const filtered = currentVal.filter((id: number) => applicableIds.has(id))
+      const nextVal = filtered.length > 0 ? filtered : applicableLeavePolicies.map((p) => p.id)
+      if (JSON.stringify(currentVal) !== JSON.stringify(nextVal)) {
+        form.setValue("leave_policy_ids", nextVal)
+      }
+    }
+  }, [currentStaffType, applicableLeavePolicies, leavePolicies, form])
 
   const availableStatuses = useMemo(() => {
     return (
@@ -181,14 +232,14 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
           name="leave_policy_ids"
           render={({ field }) => {
             const selectedIds = field.value || []
-            const allSelected = (leavePolicies?.length || 0) > 0 && selectedIds.length === leavePolicies?.length
+            const allSelected = (applicableLeavePolicies?.length || 0) > 0 && selectedIds.length === applicableLeavePolicies?.length
 
             const handleToggleAll = () => {
-              if (!leavePolicies) return
+              if (!applicableLeavePolicies) return
               if (allSelected) {
                 field.onChange([])
               } else {
-                field.onChange(leavePolicies.map((p) => p.id))
+                field.onChange(applicableLeavePolicies.map((p) => p.id))
               }
             }
 
@@ -214,7 +265,7 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
                       Select which leave policies apply to this staff member.
                     </FormDescription>
                   </div>
-                  {leavePolicies && leavePolicies.length > 0 && formType !== "view" && (
+                  {applicableLeavePolicies && applicableLeavePolicies.length > 0 && formType !== "view" && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -232,14 +283,14 @@ export const EmploymentDetailsSection: React.FC<EmploymentDetailsSectionProps> =
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
                     <span className="text-xs text-muted-foreground">Loading leave policies...</span>
                   </div>
-                ) : !leavePolicies || leavePolicies.length === 0 ? (
+                ) : !applicableLeavePolicies || applicableLeavePolicies.length === 0 ? (
                   <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/20 text-xs text-muted-foreground">
                     <Info className="h-4 w-4 text-blue-500 shrink-0" />
                     <span>No leave policies configured for this academic year. Leave policies can be created under Settings &gt; Leave Management.</span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                    {leavePolicies.map((policy) => {
+                    {applicableLeavePolicies.map((policy) => {
                       const isChecked = selectedIds.includes(policy.id)
                       const checkboxId = `leave-policy-${policy.id}`
                       return (

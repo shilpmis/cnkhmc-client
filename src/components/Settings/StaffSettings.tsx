@@ -488,10 +488,10 @@ export default function StaffSettings() {
   }, [])
 
   const configTypeTitles: Record<ConfigType, string> = {
-    STAFF_TYPE: "Staff Type",
+    STAFF_TYPE: "Staff Option",
     STAFF_CATEGORY: "Staff Category",
     DESIGNATION: "Designation",
-    EMPLOYMENT_STATUS: "Employment Status",
+    EMPLOYMENT_STATUS: "Staff Type",
     LETTER_TYPE: "Letter Type",
     SUBJECT_SPECIALIZATION: "Subject Specialization",
     QUALIFICATION: "Qualification"
@@ -556,36 +556,10 @@ export default function StaffSettings() {
             >
               <div className="flex items-center gap-2 truncate">
                 <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate">Staff Types</span>
+                <span className="truncate">Staff</span>
               </div>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
                 {staffTypes.length}
-              </Badge>
-            </TabsTrigger>
-
-            <TabsTrigger 
-              value="staff-categories" 
-              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate">Staff Categories</span>
-              </div>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
-                {staffCategories.length}
-              </Badge>
-            </TabsTrigger>
-
-            <TabsTrigger 
-              value="designations" 
-              className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all w-full border border-transparent data-[state=active]:border-border/60"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <Briefcase className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate">Designations</span>
-              </div>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
-                {designations.length}
               </Badge>
             </TabsTrigger>
 
@@ -595,7 +569,7 @@ export default function StaffSettings() {
             >
               <div className="flex items-center gap-2 truncate">
                 <BadgeCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <span className="truncate">Employee Statuses</span>
+                <span className="truncate">Staff Types</span>
               </div>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center font-mono shrink-0">
                 {employmentStatuses.length}
@@ -779,11 +753,11 @@ export default function StaffSettings() {
           </Card>
         </TabsContent>
 
-        {/* Staff Types Tab */}
+        {/* Staff Options Tab */}
         <TabsContent value="staff-types">
           <ConfigTabPanel
-            title="Staff Types"
-            description="Configure primary staff categories (e.g., Teaching Staff, Administrative, Supporting)"
+            title="Staff Options"
+            description="Manage primary staff selections (e.g. Teaching, Non Teaching, Hospital, Mess, Hostel, Other)"
             icon={Users}
             configType="STAFF_TYPE"
             items={staffTypes}
@@ -800,11 +774,11 @@ export default function StaffSettings() {
         <TabsContent value="staff-categories">
           <ConfigTabPanel
             title="Staff Categories"
-            description="Organize designations under parent staff types"
+            description="Manage hospital staff categories (e.g. Medical, Para-Medical, Auxillary, Administrative)"
             icon={Layers}
             configType="STAFF_CATEGORY"
             items={staffCategories}
-            parentLabel="Parent Staff Type"
+            parentLabel="Parent Staff"
             onAdd={(type) => handleOpenConfigDialog(type, "add")}
             onEdit={(type, item) => handleOpenConfigDialog(type, "edit", item)}
             onDelete={(item) => {
@@ -832,11 +806,11 @@ export default function StaffSettings() {
           />
         </TabsContent>
 
-        {/* Employee Statuses Tab */}
+        {/* Staff Types Tab */}
         <TabsContent value="employment-statuses">
           <ConfigTabPanel
-            title="Employment Statuses"
-            description="Manage employment types (e.g., Permanent, Probation, Contract, Visiting)"
+            title="Staff Types"
+            description="Manage staff type selections (e.g. Full Time, Guest/Visiting, On Call, Part Time, Practising Consultant, Adhoc, Contractual)"
             icon={BadgeCheck}
             configType="EMPLOYMENT_STATUS"
             items={employmentStatuses}

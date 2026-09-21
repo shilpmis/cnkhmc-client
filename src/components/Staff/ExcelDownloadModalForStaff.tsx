@@ -13,6 +13,8 @@ import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useToast } from "@/hooks/use-toast"
+import { staffHeaderMappings, formatKeyToHeader } from "@/utils/headerMappings"
+import * as XLSX from "xlsx"
 
 interface ExcelDownloadModalProps {
   onClose?: () => void; // Add onClose prop to communicate with parent
@@ -20,8 +22,13 @@ interface ExcelDownloadModalProps {
 
 const fieldGroups = {
   role: [
-    // { id: "is_teaching_role", label: "Teaching Role" },
     { id: "staff_role", label: "Staff Role" },
+    { id: "employee_code", label: "Employee Code" },
+    { id: "joining_date", label: "Joining Date" },
+    { id: "employment_status", label: "Employment Status" },
+    { id: "staff_type", label: "Staff Type" },
+    { id: "staff_category", label: "Staff Category" },
+    { id: "designation", label: "Designation" },
   ],
   personal: [
     { id: "first_name", label: "First Name" },
@@ -29,18 +36,39 @@ const fieldGroups = {
     { id: "last_name", label: "Last Name" },
     { id: "gender", label: "Gender" },
     { id: "birth_date", label: "Birth Date" },
-    { id: "aadhar_no", label: "Aadhar Number" },
-  ],
-  contact: [
     { id: "mobile_number", label: "Mobile Number" },
     { id: "email", label: "Email" },
+    { id: "aadhar_no", label: "Aadhar Number" },
+    { id: "marital_status", label: "Marital Status" },
+    { id: "pan_card_no", label: "PAN Card No" },
+  ],
+  academic: [
     { id: "qualification", label: "Qualification" },
+    { id: "subject_specialization", label: "Subject Specialization" },
+    { id: "ug_degree", label: "UG Degree" },
+    { id: "ug_passing_university", label: "UG University" },
+    { id: "ug_passing_year", label: "UG Passing Year" },
+    { id: "pg_degree", label: "PG Degree" },
+    { id: "pg_passing_university", label: "PG University" },
+    { id: "pg_passing_year", label: "PG Passing Year" },
+  ],
+  professional: [
+    { id: "teacher_code", label: "AYUSH Teacher Code" },
+    { id: "state_council_reg_no", label: "State Council Reg No" },
+    { id: "ayush_registration_no", label: "AYUSH Reg No" },
+    { id: "nch_registration_no", label: "NCH Reg No" },
+    { id: "total_experience", label: "Total Experience" },
   ],
   address: [
     { id: "address", label: "Address" },
     { id: "city", label: "City" },
     { id: "state", label: "State" },
     { id: "postal_code", label: "Postal Code" },
+  ],
+  bank: [
+    { id: "bank_name", label: "Bank Name" },
+    { id: "account_no", label: "Account Number" },
+    { id: "IFSC_code", label: "IFSC Code" },
   ],
 }
 
@@ -118,7 +146,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
 
-          const sheetData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { header: 1 });
+          const sheetData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
 
           if (sheetData.length === 0) {
             resolve(excelBlob);

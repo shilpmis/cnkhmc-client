@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useNavigate } from "react-router-dom"
 import type { StaffType } from "@/types/staff"
+import ExperienceCertificateModal from "./ExperienceCertificateModal"
 
 interface StaffProfileViewProps {
   staff: StaffType
@@ -48,8 +49,7 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
     })
   }
 
-  // Boolean check for teaching staff
-  const isTeachingStaff = staff.is_teching_staff
+  const [certModalOpen, setCertModalOpen] = useState(false)
 
   return (
     <div className="container mx-auto py-6 space-y-8 max-w-7xl">
@@ -61,17 +61,19 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
             {t("back")}
           </Button>
           <div className="flex gap-2">
-            {/* <Button variant="outline" className="flex items-center gap-1">
-              <Printer className="h-4 w-4" />
-              {t("print_profile")}
-            </Button> */}
-            {/* <Button variant="outline" className="flex items-center gap-1">
-              <Download className="h-4 w-4" />
-              {t("export_data")}
-            </Button> */}
+            <Button variant="outline" className="flex items-center gap-1" onClick={() => setCertModalOpen(true)}>
+              <FileText className="h-4 w-4" />
+              Experience Certificate
+            </Button>
           </div>
         </div>
       )}
+
+      <ExperienceCertificateModal
+        open={certModalOpen}
+        onOpenChange={setCertModalOpen}
+        staff={staff}
+      />
 
       {/* Profile header */}
       <Card className="border-t-4 border-t-primary shadow-md">

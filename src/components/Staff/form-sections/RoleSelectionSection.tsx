@@ -10,42 +10,34 @@ import type { StaffRole } from "@/types/staff"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useGetStaffConfigurationsQuery } from "@/services/StaffService"
 
-const PRIMARY_STAFF_TYPES = [
-  "Teaching Staff",
-  "Non-Teaching Staff",
-  "Hospital Staff",
+const DEFAULT_STAFF_OPTIONS = [
+  "Teaching",
+  "Non Teaching",
+  "Hospital",
+  "Mess",
+  "Hostel",
+  "Other",
 ]
 
-const DEFAULT_CATEGORIES: Record<string, string[]> = {
-  "Teaching Staff": [
-    "Full Time",
-    "Regular",
-    "Contractual",
-    "Visiting / Guest",
-    "Practicing Consultants",
-    "Other",
-  ],
-  "Non-Teaching Staff": [
-    "Regular",
-    "Full Time",
-    "Contractual",
-    "Part Time",
-    "Daily Wages",
-    "Other",
-  ],
-  "Hospital Staff": [
-    "Regular",
-    "Full Time",
-    "Contractual",
-    "On Call",
-    "Visiting",
-    "Practicing Consultants",
-    "Other",
-  ],
-}
+const DEFAULT_STAFF_TYPES = [
+  "Full Time",
+  "Guest/Visiting",
+  "On Call",
+  "Part Time",
+  "Practising Consultant",
+  "Adhoc",
+  "Contractual",
+]
+
+const DEFAULT_STAFF_CATEGORIES = [
+  "Medical",
+  "Para-Medical",
+  "Auxillary",
+  "Administrative",
+]
 
 const DEFAULT_DESIGNATIONS: Record<string, string[]> = {
-  "Teaching Staff": [
+  "Teaching": [
     "Principal / Director",
     "Professor",
     "Associate Professor / Reader",
@@ -55,7 +47,7 @@ const DEFAULT_DESIGNATIONS: Record<string, string[]> = {
     "Guest Faculty",
     "Visiting Professor",
   ],
-  "Non-Teaching Staff": [
+  "Non Teaching": [
     "Administrative Officer",
     "Accountant",
     "Head Clerk",
@@ -73,7 +65,7 @@ const DEFAULT_DESIGNATIONS: Record<string, string[]> = {
     "Security Guard",
     "Sweeper",
   ],
-  "Hospital Staff": [
+  "Hospital": [
     "Medical Superintendent",
     "Deputy Medical Superintendent",
     "Resident Medical Officer (RMO)",
@@ -91,6 +83,25 @@ const DEFAULT_DESIGNATIONS: Record<string, string[]> = {
     "Ambulance Driver",
     "Cook / Mess Worker",
     "Sanitary Worker",
+  ],
+  "Mess": [
+    "Mess Manager",
+    "Head Cook",
+    "Cook",
+    "Mess Worker / Helper",
+    "Store Incharge",
+  ],
+  "Hostel": [
+    "Hostel Warden",
+    "Assistant Warden",
+    "Hostel Attendant",
+    "Caretaker",
+  ],
+  "Other": [
+    "Consultant",
+    "Supervisor",
+    "Assistant",
+    "Worker",
   ],
 }
 
@@ -113,63 +124,58 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
   const { data: allConfigs, isLoading: isLoadingConfigs } = useGetStaffConfigurationsQuery()
 
   // Get current form values
-  const currentStaffType = form.watch("staff_type")
-  const currentStaffCategory = form.watch("staff_category")
+  const currentStaffType = form.watch("staff_type") // First Selection: Staff (e.g. Teaching, Hospital, etc.)
+  const currentEmploymentStatus = form.watch("employment_status") // Second Selection: Staff Type (e.g. Full Time, On Call, etc.)
+  const currentStaffCategory = form.watch("staff_category") // Third Selection: Staff Category (Medical, Para-Medical, etc.)
   const currentDesignation = form.watch("designation")
   const isTeachingRole = form.watch("is_teaching_role")
 
-  // Combine standard staff types with any custom types from DB
-  const availableStaffTypes = useMemo(() => {
-    const customTypes = allConfigs
-      ?.filter((c) => c.config_type === "STAFF_TYPE" && !PRIMARY_STAFF_TYPES.includes(c.name))
+  // Check if "Hospital" is selected as the Staff option
+  const isHospitalSelected = useMemo(() => {
+    return currentStaffType?.toLowerCase() === "hospital"
+  }, [currentStaffType])
+
+  // 1. First Selection Options ("Staff"): Teaching, Non Teaching, Hospital, Mess, Hostel, Other + DB configs
+  const availableStaffOptions = useMemo(() => {
+    const dbTypes = allConfigs
+      ?.filter((c) => c.config_type === "STAFF_TYPE")
       .map((c) => c.name) || []
-    return [...PRIMARY_STAFF_TYPES, ...customTypes]
+    return Array.from(new Set([...DEFAULT_STAFF_OPTIONS, ...dbTypes]))
   }, [allConfigs])
 
-  // Get categories based on selected staff type
-  const availableCategories = useMemo(() => {
-    if (!currentStaffType) return []
+  // 2. Second Selection Options ("Staff Type"): Full Time, Guest/Visiting, On Call, Part Time, Practising Consultant, Adhoc, Contractual + DB configs
+  const availableStaffTypes = useMemo(() => {
+    const dbTypes = allConfigs
+      ?.filter((c) => c.config_type === "EMPLOYMENT_STATUS")
+      .map((c) => c.name) || []
+    return Array.from(new Set([...DEFAULT_STAFF_TYPES, ...dbTypes]))
+  }, [allConfigs])
 
-    // 1. Check parent-linked categories in DB
-    const selectedTypeObj = allConfigs?.find((t) => t.config_type === "STAFF_TYPE" && t.name === currentStaffType)
-    const linkedCategories = selectedTypeObj
-      ? allConfigs?.filter((c) => c.config_type === "STAFF_CATEGORY" && c.parent_id === selectedTypeObj.id).map(c => c.name) || []
-      : []
+  // 3. Third Selection Options ("Staff Category"): Medical, Para-Medical, Auxillary, Administrative + DB configs (Visible when Staff = Hospital)
+  const availableStaffCategories = useMemo(() => {
+    const dbCats = allConfigs
+      ?.filter((c) => c.config_type === "STAFF_CATEGORY")
+      .map((c) => c.name) || []
+    return Array.from(new Set([...DEFAULT_STAFF_CATEGORIES, ...dbCats]))
+  }, [allConfigs])
 
-    // 2. Default presets
-    const defaultCats = DEFAULT_CATEGORIES[currentStaffType] || ["Regular", "Full Time", "Contractual", "Other"]
-
-    // 3. Any additional DB categories
-    const allDbCats = allConfigs?.filter((c) => c.config_type === "STAFF_CATEGORY").map((c) => c.name) || []
-
-    const merged = Array.from(new Set([...linkedCategories, ...defaultCats, ...allDbCats]))
-    return merged
-  }, [currentStaffType, allConfigs])
-
-  // Get designations based on selected staff type and category
+  // 4. Designations based on selected staff selection
   const availableDesignations = useMemo(() => {
     if (!currentStaffType) return []
 
-    // 1. Check parent-linked designations in DB
-    const selectedCategoryObj = allConfigs?.find((c) => c.config_type === "STAFF_CATEGORY" && c.name === currentStaffCategory)
-    const linkedDesignations = selectedCategoryObj
-      ? allConfigs?.filter((d) => d.config_type === "DESIGNATION" && d.parent_id === selectedCategoryObj.id).map(d => d.name) || []
-      : []
+    // DB designations linked to parent or general
+    const dbDesignations = allConfigs
+      ?.filter((c) => c.config_type === "DESIGNATION")
+      .map((c) => c.name) || []
 
-    // 2. Default presets for the staff type
-    const defaultDes = DEFAULT_DESIGNATIONS[currentStaffType] || []
+    const defaultDes = DEFAULT_DESIGNATIONS[currentStaffType] || DEFAULT_DESIGNATIONS["Other"] || []
+    return Array.from(new Set([...defaultDes, ...dbDesignations]))
+  }, [currentStaffType, allConfigs])
 
-    // 3. All DB designations
-    const allDbDes = allConfigs?.filter((c) => c.config_type === "DESIGNATION").map((c) => c.name) || []
-
-    const merged = Array.from(new Set([...linkedDesignations, ...defaultDes, ...allDbDes]))
-    return merged
-  }, [currentStaffType, currentStaffCategory, allConfigs])
-
-  // Auto-set is_teaching_role based on staff type
+  // Auto-set is_teaching_role based on selected staff
   useEffect(() => {
     if (currentStaffType && !isEdit) {
-      const isTeaching = currentStaffType.toLowerCase().includes("teaching") && !currentStaffType.toLowerCase().includes("non-teaching")
+      const isTeaching = currentStaffType.toLowerCase() === "teaching" || currentStaffType.toLowerCase().includes("teaching") && !currentStaffType.toLowerCase().includes("non")
       if (form.getValues("is_teaching_role") !== isTeaching) {
         form.setValue("is_teaching_role", isTeaching)
       }
@@ -192,9 +198,6 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
           if (match) {
             targetRoleId = match.id
           }
-        } else if (currentStaffType === "Hospital Staff") {
-          const hospRole = rolesList.find((r) => r.role.toLowerCase().includes("hospital")) || rolesList[0]
-          targetRoleId = hospRole.id
         }
 
         if (form.getValues("staff_role_id") !== targetRoleId) {
@@ -207,37 +210,39 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("role_selection")}</CardTitle>
+        <CardTitle>{t("role_selection") || "Role & Classification Selection"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoadingConfigs ? (
           <div className="text-sm text-gray-500 py-2">Loading configurations...</div>
         ) : (
           <>
-            {/* Staff Type */}
+            {/* 1. First Selection: Staff */}
             <FormField
               control={form.control}
               name="staff_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel required>{t("staff_type") || "Staff Type"}</FormLabel>
+                  <FormLabel required>Staff</FormLabel>
                   <Select
                     onValueChange={(val) => {
                       field.onChange(val)
-                      form.setValue("staff_category", null)
-                      form.setValue("designation", null)
+                      // If selected staff is not Hospital, reset staff_category
+                      if (val?.toLowerCase() !== "hospital") {
+                        form.setValue("staff_category", null)
+                      }
                     }}
                     value={field.value || undefined}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select Staff Type (e.g. Teaching, Non-Teaching, Hospital)" />
+                        <SelectValue placeholder="Select Staff (Teaching, Non Teaching, Hospital, Mess, Hostel, Other)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableStaffTypes.map((typeName) => (
-                        <SelectItem key={typeName} value={typeName}>
-                          {typeName}
+                      {availableStaffOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -247,30 +252,26 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
               )}
             />
 
-            {/* Staff Category */}
+            {/* 2. Second Selection: Staff Type */}
             <FormField
               control={form.control}
-              name="staff_category"
+              name="employment_status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel required>{t("staff_category") || "Staff Category / Appointment Type"}</FormLabel>
+                  <FormLabel required>Staff Type</FormLabel>
                   <Select
-                    onValueChange={(val) => {
-                      field.onChange(val)
-                      form.setValue("designation", null)
-                    }}
+                    onValueChange={field.onChange}
                     value={field.value || undefined}
-                    disabled={!currentStaffType}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={currentStaffType ? "Select Category (e.g. Regular, Full Time, Contractual)" : "Select Staff Type first"} />
+                        <SelectValue placeholder="Select Staff Type (Full Time, Guest/Visiting, On Call, Part Time, etc.)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableCategories.map((catName) => (
-                        <SelectItem key={catName} value={catName}>
-                          {catName}
+                      {availableStaffTypes.map((typeOption) => (
+                        <SelectItem key={typeOption} value={typeOption}>
+                          {typeOption}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -280,21 +281,52 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
               )}
             />
 
-            {/* Designation */}
+            {/* 3. Third Selection: Staff Category (ONLY visible when Staff = Hospital) */}
+            {isHospitalSelected && (
+              <FormField
+                control={form.control}
+                name="staff_category"
+                render={({ field }) => (
+                  <FormItem className="animate-in fade-in slide-in-from-top-2 duration-200">
+                    <FormLabel required>Staff Category</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Staff Category (Medical, Para-Medical, Auxillary, Administrative)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableStaffCategories.map((catName) => (
+                          <SelectItem key={catName} value={catName}>
+                            {catName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* 4. Designation Selection */}
             <FormField
               control={form.control}
               name="designation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel required>{t("designation") || "Designation"}</FormLabel>
+                  <FormLabel>Designation</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || undefined}
-                    disabled={!currentStaffCategory}
+                    disabled={!currentStaffType}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={currentStaffCategory ? "Select Designation" : "Select Staff Category first"} />
+                        <SelectValue placeholder={currentStaffType ? "Select Designation" : "Select Staff first"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -316,7 +348,11 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
         <Button
           type="button"
           onClick={onNext}
-          disabled={!currentStaffType || !currentStaffCategory || !currentDesignation}
+          disabled={
+            !currentStaffType ||
+            !currentEmploymentStatus ||
+            (isHospitalSelected && !currentStaffCategory)
+          }
         >
           {t("next")}
         </Button>
@@ -324,4 +360,3 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
     </Card>
   )
 }
-

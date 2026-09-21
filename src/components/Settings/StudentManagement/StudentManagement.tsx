@@ -89,7 +89,6 @@ const migrationSchema = z.object({
   status: z.literal("migrated"),
   remarks: z.string().min(1, "Remarks are required for migration").max(500, "Remarks must be less than 500 characters"),
   class_id: z.number().min(1, "Class selection is required"),
-  new_division_id: z.number().min(1, "Division selection is required"),
   is_migration_for_class: z.number().default(1),
 })
 
@@ -124,7 +123,6 @@ const ManageStudents: React.FC = () => {
   const AcademicDivisions = useAppSelector(selectAllAcademicClasses)
 
   const [currentPage, setCurrentPage] = useState(1)
-  const [requireDivision, setRequireDivision] = useState(false)
 
   // Filter states
   const [selectedClass, setSelectedClass] = useState<string>("")
@@ -146,7 +144,6 @@ const ManageStudents: React.FC = () => {
 
   // Migration state variables
   const [migrationSelectedClass, setMigrationSelectedClass] = useState<string>("")
-  const [migrationAvailableDivisions, setMigrationAvailableDivisions] = useState<any[]>([])
 
   // API mutation hooks
   const [migrateStudent, { isLoading: isMigratingStudent }] = useMigrateStudentMutation()
@@ -175,7 +172,6 @@ const ManageStudents: React.FC = () => {
       status: "migrated",
       remarks: "",
       class_id: 0,
-      new_division_id: 0,
       is_migration_for_class: 1,
     },
   })
@@ -211,31 +207,21 @@ const ManageStudents: React.FC = () => {
   })
 
   // Load students based on filters
-  const handleDivisionChange = useCallback(
-    async (value: string) => {
-      if (AcademicClasses && currentAcademicSession) {
-        const selectedClassObj = AcademicClasses.find((cls) => cls.id.toString() === selectedClass)
-
-        if (selectedClassObj) {
-          const selectedDiv = selectedClassObj.divisions.find((div) => div.id.toString() === value)
-
-          if (selectedDiv) {
-            setSelectedDivision(value)
-            setRequireDivision(false)
-            setCurrentPage(1)
-
-            // Division selection will trigger refetch via dependency change
-          }
-        }
-      }
-    },
-    [AcademicClasses, currentAcademicSession, selectedClass],
-  )
-
   const handleClassChange = useCallback((value: string) => {
-    setSelectedClass(value === "_empty" ? "" : value)
-    setSelectedDivision("") // Reset division when class changes
-  }, [])
+    const classId = value === "_empty" ? "" : value
+    setSelectedClass(classId)
+    setCurrentPage(1)
+    if (classId && AcademicClasses) {
+      const clsObj = AcademicClasses.find((cls) => cls.id.toString() === classId)
+      if (clsObj && clsObj.divisions && clsObj.divisions.length > 0) {
+        setSelectedDivision(clsObj.divisions[0].id.toString())
+      } else {
+        setSelectedDivision("")
+      }
+    } else {
+      setSelectedDivision("")
+    }
+  }, [AcademicClasses])
 
   // Add the RTK query hook after the useState declarations
   const {
@@ -270,27 +256,13 @@ const ManageStudents: React.FC = () => {
     }
   }, [AcademicClasses, authState.user, getAcademicClasses])
 
-  // Effect to reset requireDivision flag when division is selected
-  useEffect(() => {
-    if (selectedDivision) {
-      setRequireDivision(false)
-    }
-  }, [selectedDivision])
-
   // Auto-select the first class and division when data is loaded
   useEffect(() => {
     if (AcademicClasses && AcademicClasses.length > 0 && !selectedClass && currentAcademicSession) {
-      // Find first class with divisions
-      const firstClassWithDivisions = AcademicClasses.find((cls) => cls.divisions.length > 0)
-      if (firstClassWithDivisions) {
-        // Set the first class
-        setSelectedClass(firstClassWithDivisions.id.toString())
-
-        // Set the first division of that class if it exists
-        if (firstClassWithDivisions.divisions.length > 0) {
-          const firstDivision = firstClassWithDivisions.divisions[0]
-          setSelectedDivision(firstDivision.id.toString())
-        }
+      const firstClass = AcademicClasses[0]
+      setSelectedClass(firstClass.id.toString())
+      if (firstClass.divisions && firstClass.divisions.length > 0) {
+        setSelectedDivision(firstClass.divisions[0].id.toString())
       }
     }
   }, [AcademicClasses, selectedClass, currentAcademicSession])
@@ -356,12 +328,10 @@ const ManageStudents: React.FC = () => {
         status: "migrated",
         remarks: "",
         class_id: 0,
-        new_division_id: 0,
         is_migration_for_class: 1,
       })
 
       setMigrationSelectedClass("")
-      setMigrationAvailableDivisions([])
       setSelectedStudent(student)
       setShowMigrationDialog(true)
       return
@@ -420,14 +390,15 @@ const ManageStudents: React.FC = () => {
     if (!selectedStudent) return
 
     try {
-      // Find the target class
+      // Find the target class and its default division
       const targetClass = AcademicClasses?.find((c) => c.id === data.class_id)
+      const targetDivisionId = targetClass?.divisions?.[0]?.id || 0
 
       // Prepare payload for migration
       const payload: ReqBodyForStundetMigration = {
         reason: data.remarks,
         migrated_class: data.class_id,
-        migrated_division: data.new_division_id,
+        migrated_division: targetDivisionId,
         is_migration_for_class: data.is_migration_for_class,
       }
 
@@ -601,16 +572,8 @@ const ManageStudents: React.FC = () => {
     const selectedClassObj = AcademicClasses.find((cls) => cls.id.toString() === classId)
 
     if (selectedClassObj) {
-      // Set available divisions for this class
-      setMigrationAvailableDivisions(selectedClassObj.divisions)
-
-      // Reset the division selection in the form
-      migrationForm.setValue("new_division_id", 0)
-
       // Set the class_id in the form
       migrationForm.setValue("class_id", selectedClassObj.id)
-    } else {
-      setMigrationAvailableDivisions([])
     }
   }
 
@@ -739,15 +702,8 @@ const ManageStudents: React.FC = () => {
             </AlertDescription>
           </Alert>
 
-          {requireDivision && (
-            <div className="mb-4 p-4 border rounded-md bg-amber-50 text-amber-800 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              <p>{t("please_select_a_division_to_view_students")}</p>
-            </div>
-          )}
-
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
               <Label htmlFor="class-filter">{t("class")}</Label>
               <Select value={selectedClass} onValueChange={handleClassChange}>
@@ -765,35 +721,6 @@ const ManageStudents: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="division-filter" className={requireDivision ? "text-amber-800 font-medium" : ""}>
-                {t("division")} {requireDivision && <span className="text-red-500">*</span>}
-              </Label>
-              <Select
-                value={selectedDivision}
-                onValueChange={handleDivisionChange}
-                disabled={!getFilteredDivisions().length}
-              >
-                <SelectTrigger
-                  id="division-filter"
-                  className={requireDivision ? "border-amber-500 ring-1 ring-amber-500" : ""}
-                >
-                  <SelectValue placeholder={t("select_division")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_empty" disabled>
-                    {t("select_division")}
-                  </SelectItem>
-                  {getFilteredDivisions().map((division) => (
-                    <SelectItem key={division.id} value={division.id.toString()}>
-                      {`${division.division} ${division.aliases ? "-" + division.aliases : ""}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {requireDivision && <p className="text-xs text-amber-800 mt-1">{t("division_selection_is_required")}</p>}
             </div>
 
             <div>
@@ -832,7 +759,7 @@ const ManageStudents: React.FC = () => {
             <div className="flex items-end">
               <Button
                 variant="outline"
-                disabled={!selectedDivision || isAutoAssigningRollNumbers}
+                disabled={!selectedClass || !selectedDivision || isAutoAssigningRollNumbers}
                 onClick={async () => {
                   if (selectedDivision) {
                     try {
@@ -962,9 +889,7 @@ const ManageStudents: React.FC = () => {
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">{t("no_students_found")}</h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                {!selectedDivision
-                  ? t("please_select_a_division_to_view_students")
-                  : t("no_students_match_your_current_filters")}
+                {t("no_students_match_your_current_filters")}
               </p>
             </div>
           )}
@@ -1035,53 +960,6 @@ const ManageStudents: React.FC = () => {
                 )}
               />
 
-              {/* Division Selection - Only enabled if class is selected */}
-              <FormField
-                control={migrationForm.control}
-                name="new_division_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("target_division")}</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(Number.parseInt(value))}
-                      value={field.value ? field.value.toString() : ""}
-                      disabled={!migrationSelectedClass || migrationAvailableDivisions.length === 0}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("select_target_division")} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="_empty" disabled>
-                          {t("select_division")}
-                        </SelectItem>
-                        {migrationAvailableDivisions
-                          .filter((division) => {
-                            // Don't allow migration to the same division
-                            if (!selectedStudent) return true
-                            return division.id !== selectedStudent.division_id
-                          })
-                          .map((division) => (
-                            <SelectItem key={division.id} value={division.id.toString()}>
-                              {`${division.division} ${division.aliases ? "-" + division.aliases : ""}`}
-                            </SelectItem>
-                          ))}
-                        {migrationAvailableDivisions.length > 0 &&
-                          migrationAvailableDivisions.filter((d) => d.id !== selectedStudent?.division_id).length ===
-                            0 && (
-                            <SelectItem value="none" disabled>
-                              {t("no_available_divisions_for_migration")}
-                            </SelectItem>
-                          )}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>{t("select_the_division_to_which_the_student_is_migrating")}</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={migrationForm.control}
                 name="remarks"
@@ -1110,7 +988,7 @@ const ManageStudents: React.FC = () => {
                   type="submit"
                   disabled={
                     isMigratingStudent ||
-                    !migrationForm.getValues().new_division_id ||
+                    !migrationSelectedClass ||
                     !migrationForm.getValues().class_id
                   }
                 >

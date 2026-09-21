@@ -47,7 +47,7 @@ const TeacherClassSelection: React.FC<TeacherClassSelectionProps> = ({ classes }
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">
-                      {cls.class.class} - {cls.division}
+                      {cls.class.class}
                     </CardTitle>
                     <CardDescription>{cls.id}</CardDescription>
                   </div>

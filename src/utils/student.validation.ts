@@ -162,9 +162,9 @@ export const studentSchema = z.object({
     .nullable(),
 
   class: z.string().min(1, "Class is required"),
-  division: z.string().min(1, "Division is required"),
+  division: z.string().nullable().optional().or(z.literal("")),
   admission_class: z.string().min(1, "Admission Class is required").nullable(),
-  admission_division: z.string().nullable(),
+  admission_division: z.string().nullable().optional().or(z.literal("")),
   // .min(1, "Admission Division is required")
 
   privious_school: z.string().nullable().optional().or(z.literal("")),
@@ -286,9 +286,21 @@ export const StudentSchemaForUploadData = z.object({
   "Mobile No": z
     .string()
     .regex(/^\d{10}$/, "Mobile No must be exactly 10 digits"),
-  Gender: z.enum(["Male", "Female", "Other"], {
-    errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
-  }).nullable().or(z.literal("")),
+  Gender: z.preprocess(
+    (val) => {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "string") {
+        const str = val.trim().toLowerCase();
+        if (["male", "m"].includes(str)) return "Male";
+        if (["female", "f"].includes(str)) return "Female";
+        if (["other", "o"].includes(str)) return "Other";
+      }
+      return val;
+    },
+    z.enum(["Male", "Female", "Other"], {
+      errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
+    }).nullable().optional().or(z.literal(""))
+  ),
   "GR No": z.string().nullable().or(z.literal("")),
 
   // Optional fields with validation if provided
@@ -373,59 +385,25 @@ export const StudentSchemaForUploadData = z.object({
       message: "Admission date cannot be in the future",
     })
     .nullable(),
-  "Previous School": z
-    .string()
-    .min(3, "Previous school name should be more than 3 characters")
-    .nullable(),
-  "Previous School In Gujarati": z
-    .string()
-    .min(3, "Previous school name in Gujarati should be more than 3 characters")
-    .nullable(),
+  "Previous School": z.string().nullable().optional().or(z.literal("")),
+  "Previous School In Gujarati": z.string().nullable().optional().or(z.literal("")),
 
-  Religion: z
-    .string()
-    .min(2, "Religion is required")
-    .regex(/^[A-Za-z\s]+$/, "Religion should contain only alphabets and spaces")
-    .nullable(),
-  "Religion In Gujarati": z
-    .string()
-    .min(2, "Religion in Gujarati is required")
-    .nullable(),
-  Caste: z
-    .string()
-    .min(2, "Caste is required")
-    // .regex(/^[A-Za-z\s]+$/, "Caste should contain only alphabets and spaces")
-    .nullable(),
-  "Caste In Gujarati": z
-    .string()
-    .min(2, "Caste in Gujarati is required")
-    .nullable(),
+  Religion: z.string().nullable().optional().or(z.literal("")),
+  "Religion In Gujarati": z.string().nullable().optional().or(z.literal("")),
+  Caste: z.string().nullable().optional().or(z.literal("")),
+  "Caste In Gujarati": z.string().nullable().optional().or(z.literal("")),
   Category: z.string().nullable().optional().or(z.literal("")),
-  Address: z.string().min(5, "Address is required").nullable(),
-  District: z
-    .string()
-    .min(2, "District is required")
-    // .regex(/^[A-Za-z\s]+$/, "District should contain only alphabets and spaces")
-    .nullable(),
-  City: z
-    .string()
-    .min(2, "City is required")
-    // .regex(/^[A-Za-z\s]+$/, "City should contain only alphabets and spaces")
-    .nullable(),
-  State: z
-    .string()
-    .min(2, "State is required")
-    // .regex(/^[A-Za-z\s]+$/, "State should contain only alphabets and spaces")
-    .nullable(),
+  Address: z.string().nullable().optional().or(z.literal("")),
+  District: z.string().nullable().optional().or(z.literal("")),
+  City: z.string().nullable().optional().or(z.literal("")),
+  State: z.string().nullable().optional().or(z.literal("")),
   "Postal Code": z
     .string()
     .regex(/^\d{6}$/, "Postal Code must be exactly 6 digits")
-    .nullable(),
-  "Bank Name": z
-    .string()
-    .min(2, "Bank name is required")
-    // .regex(/^[A-Za-z\s]+$/, "Bank name should contain only alphabets and spaces")
-    .nullable(),
+    .nullable()
+    .optional()
+    .or(z.literal("")),
+  "Bank Name": z.string().nullable().optional().or(z.literal("")),
   "Account Number": z
     .string()
     .refine((val) => val.length >= 9 && val.length <= 18, {
@@ -444,9 +422,21 @@ export const CollegeStudentSchemaForUploadData = z.object({
   "FIRST_NAME": z.string().min(1, "First Name is required"),
   "MIDDLE_NAME": z.string().nullable().or(z.literal("")),
   "LAST_NAME": z.string().min(1, "Last Name is required"),
-  "GENDER": z.enum(["Male", "Female", "Other"], {
-    errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
-  }).nullable().or(z.literal("")),
+  "GENDER": z.preprocess(
+    (val) => {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "string") {
+        const str = val.trim().toLowerCase();
+        if (["male", "m"].includes(str)) return "Male";
+        if (["female", "f"].includes(str)) return "Female";
+        if (["other", "o"].includes(str)) return "Other";
+      }
+      return val;
+    },
+    z.enum(["Male", "Female", "Other"], {
+      errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
+    }).nullable().optional().or(z.literal(""))
+  ),
   "DATE_OF_BIRTH": z.string().nullable().or(z.literal("")),
   "STANDARD": z.string().nullable().or(z.literal("")),
   "DIVISION": z.string().nullable().or(z.literal("")),

@@ -411,7 +411,7 @@ const onboardingSchema = z.object({
     invalid_type_error: "Birth date must be a valid date",
   }),
   class: z.string().min(1, "Class is required"),
-  division: z.string().min(1, "Division is required"),
+  division: z.string().optional().nullable().or(z.literal("")),
   primary_mobile: z
     .string()
     .min(10, "Mobile number must be 10 digits")
@@ -498,7 +498,7 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
         birth_date: format(values.birth_date, "yyyy-MM-dd"),
         primary_mobile: Number(values.primary_mobile),
         father_name: values.father_name,
-        division_id: Number(values.division),
+        division_id: values.division ? Number(values.division) : (availableDivisions?.divisions?.[0]?.id ?? null) as any,
         academic_session_id: academic_session_id,
       }
 

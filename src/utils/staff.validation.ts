@@ -385,10 +385,10 @@ export const staffSchema = z
             age--
           }
 
-          return age >= 18 && age <= 70
+          return age >= 18 && age <= 90
         },
         {
-          message: "Staff must be between 18 and 70 years old",
+          message: "Staff must be between 18 and 90 years old",
         },
       )
       .nullable(),

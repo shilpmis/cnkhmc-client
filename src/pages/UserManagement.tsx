@@ -793,8 +793,7 @@ export const UserManagement: React.FC = () => {
                                     className="bg-blue-50 text-blue-700 border-blue-200"
                                   >
                                     {academicClasses?.find((academicClass) => academicClass.id === cls.class?.class_id)
-                                      ?.class || "N/A"}{" "}
-                                    {cls.class?.division || ""}
+                                      ?.class || "N/A"}
                                     {cls.class?.aliases && <span className="ml-1 text-xs">({cls.class.aliases})</span>}
                                   </Badge>
                                 ))
@@ -1104,8 +1103,7 @@ export const UserManagement: React.FC = () => {
                           />
                           <Label htmlFor={`class-${cls.id}`} className="text-sm">
                             {academicClasses?.find((academicClass) => academicClass.id === cls.class_id)?.class ||
-                              "N/A"}{" "}
-                            {cls.division}
+                              "N/A"}
                           </Label>
                         </div>
                       ))}
@@ -1181,8 +1179,7 @@ export const UserManagement: React.FC = () => {
                           onCheckedChange={() => toggleClassSelection(cls.id)}
                         />
                         <Label htmlFor={`class-alloc-${cls.id}`} className="text-sm">
-                          {academicClasses?.find((academicClass) => academicClass.id === cls.class_id)?.class || "N/A"}{" "}
-                          {cls.division}
+                          {academicClasses?.find((academicClass) => academicClass.id === cls.class_id)?.class || "N/A"}
                         </Label>
                       </div>
                     ))}
@@ -1201,8 +1198,7 @@ export const UserManagement: React.FC = () => {
                     {selectedTeacher.assigend_classes.map((cls) => (
                       <Badge key={cls.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                         {academicClasses?.find((academicClass) => academicClass.id === cls.class?.class_id)?.class ||
-                          "N/A"}{" "}
-                        {cls.class?.division}
+                          "N/A"}
                         {cls.class?.aliases && <span className="ml-1 text-xs">({cls.class.aliases})</span>}
                       </Badge>
                     ))}

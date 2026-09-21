@@ -40,10 +40,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 5,
     color: "#333333",
   },
   profileSection: {
@@ -106,16 +105,22 @@ const styles = StyleSheet.create({
 });
 
 
-const StaffDetailsPDF = ({ staff }:any) => {
+const StaffDetailsPDF = ({ staff, school }: any) => {
+  const schoolName = school?.name || "C. N. Kothari Homoeopathic Medical College & Research Centre"
+  const schoolAddress = school?.address 
+    ? `Address: ${school.address}${school?.city ? `, ${school.city}` : ""}${school?.pincode ? ` - ${school.pincode}` : ""}` 
+    : "Address: Vyara, Dist. Tapi, Gujarat - 394650"
+  const logoUrl = school?.organization?.organization_logo || school?.logo || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSe7Ba2aq-TTW-H_ieh4nDoE_23MZ1qs0TOxg&s"
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* School Header */}
         <View style={styles.header}>
-                <Image src={"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSe7Ba2aq-TTW-H_ieh4nDoE_23MZ1qs0TOxg&s"} style={{ width: 130, height: 100 }} />
-          <View style={{ marginLeft: 7}}>
-            <Text style={styles.title}>Pragti Gujrat Goverment School</Text>
-            <Text style={{fontSize: 10, fontWeight: 8}}>Address : 123 Education Lane, Knowledge City, KC 12345</Text>
+          <Image src={logoUrl} style={{ width: 80, height: 70 }} />
+          <View style={{ marginLeft: 12, flex: 1 }}>
+            <Text style={styles.title}>{schoolName}</Text>
+            <Text style={{ fontSize: 9, color: "#555555" }}>{schoolAddress}</Text>
           </View>
         </View>
 

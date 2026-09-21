@@ -87,18 +87,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
   const customStudentSchema = studentSchema
     .refine(
       (data) => {
-        if (data.class) {
-          return data.division !== undefined && data.division !== null && data.division !== ""
-        }
-        return true
-      },
-      {
-        message: "Division cannot be null if class is selected",
-        path: ["division"],
-      },
-    )
-    .refine(
-      (data) => {
         if (data.admission_date && data.birth_date) {
           const admissionDate = new Date(data.admission_date)
           const birthDate = new Date(data.birth_date)
@@ -447,17 +435,18 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
   const handleClassChange = useCallback(
     (class_id: string, type: "admission_Class" | "class") => {
+      const clsObj = AcademicClasses?.find((c) => c.id.toString() === class_id)
+      const defaultDivId = clsObj?.divisions?.[0]?.id?.toString() || ""
+
       if (type === "admission_Class") {
         setselectedAdmissionClass(class_id)
-        // setselectedAdmissionDivision(null)
-        form.setValue("admission_division", "") // Reset division when class changes
+        form.setValue("admission_division", defaultDivId)
       } else {
         setSelectedClass(class_id)
-        // setSelectedDivision(null)
-        form.setValue("division", "") // Reset division when class changes
+        form.setValue("division", defaultDivId)
       }
     },
-    [setSelectedClass, form.setValue],
+    [AcademicClasses, setSelectedClass, setselectedAdmissionClass, form.setValue],
   )
 
   const handleDivisionChange = useCallback(
@@ -491,9 +480,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
     if (form_type === "create") {
 
-      const CurrentClass = available_division?.filter(
-        (division) => division.class_id == Number(values?.class) && division.id == Number(values.division),
-      )[0]
+      const CurrentClass = values.division 
+        ? available_division?.find((division) => division.class_id == Number(values?.class) && division.id == Number(values.division))
+        : available_division?.find((division) => division.class_id == Number(values?.class))
       // const AdmissionClass = available_division?.filter(
       //   (division) => division.class_id == Number(values?.admission_class) && division.id == Number(values.admission_division),
       // )[0]
@@ -1770,8 +1759,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                             </SelectItem>
 
                             {AcademicClasses.map(
-                              (cls, index) =>
-                                cls.divisions.length > 0 && (
+                              (cls, index) => (
                                   <SelectItem key={index} value={cls.id.toString()}>
                                     {cls.class}
                                   </SelectItem>
@@ -1846,8 +1834,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               {t("classes")}
                             </SelectItem>
                             {AcademicClasses.map(
-                              (cls, index) =>
-                                cls.divisions.length > 0 && (
+                              (cls, index) => (
                                   <SelectItem
                                     key={index}
                                     value={cls.id.toString()}
@@ -1856,49 +1843,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                                   </SelectItem>
                                 )
                             )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="division"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel required>{t("current_division")}</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            handleDivisionChange(value, "class");
-                          }}
-                          disabled={form_type === "view"} // Disable selection in view mode
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("select_division")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value=" " disabled>
-                              {t("divisions")}
-                            </SelectItem>
-                            {availableDivisions &&
-                              availableDivisions.divisions.map(
-                                (division, index) => (
-                                  <SelectItem
-                                    key={index}
-                                    value={division.id.toString()}
-                                  >
-                                    {`${division.division} ${division.aliases
-                                        ? "- " + division.aliases
-                                        : ""
-                                      }`}
-                                  </SelectItem>
-                                )
-                              )}
                           </SelectContent>
                         </Select>
                         <FormMessage />

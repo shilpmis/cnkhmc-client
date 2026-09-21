@@ -303,6 +303,9 @@ import { PDFDownloadLink } from "@react-pdf/renderer"
 import type { ComponentType } from "react"
 import type { StaffType } from "@/types/staff"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import { useAppSelector } from "@/redux/hooks/useAppSelector"
+import { selectCurrentUser } from "@/redux/slices/authSlice"
+import { selectSchool } from "@/redux/slices/schoolSlice"
 
 interface StaffDetailsDialogProps {
   dialogOpen: boolean
@@ -318,6 +321,9 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
   StaffDetailsPDF,
 }) => {
   const { t } = useTranslation()
+  const currentUser = useAppSelector(selectCurrentUser)
+  const schoolCredential = useAppSelector(selectSchool)
+  const school = schoolCredential || currentUser?.school
   const [pdfKey, setPdfKey] = useState(Date.now())
 
   const formatData = useCallback((value: any): string => {
@@ -361,7 +367,7 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                     {typeof window !== "undefined" && (
                       <PDFDownloadLink
                         key={pdfKey}
-                        document={<StaffDetailsPDF staff={selectedStaff} />}
+                        document={<StaffDetailsPDF staff={selectedStaff} school={school} />}
                         fileName={`${selectedStaff.first_name}_${selectedStaff.last_name}_details.pdf`}
                       >
                         {({ loading }) => (

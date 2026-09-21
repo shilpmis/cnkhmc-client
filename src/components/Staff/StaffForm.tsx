@@ -24,7 +24,6 @@ import { Loader2 } from "lucide-react"
 
 import { RoleSelectionSection } from "./form-sections/RoleSelectionSection"
 import { PersonalDetailsSection } from "./form-sections/PersonalDetailsSection"
-import { ContactDetailsSection } from "./form-sections/ContactDetailsSection"
 import { ProfessionalDetailsSection } from "./form-sections/ProfessionalDetailsSection"
 import { AcademicDetailsSection } from "./form-sections/AcademicDetailsSection"
 import { OtherDetailsSection } from "./form-sections/OtherDetailsSection"
@@ -140,6 +139,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
     is_teaching_role: "role",
     staff_role_id: "role",
     staff_type: "role",
+    employment_status: "role",
     staff_category: "role",
     designation: "role",
     first_name: "personal",
@@ -151,10 +151,10 @@ const StaffForm: React.FC<StaffFormProps> = ({
     gender: "personal",
     birth_date: "personal",
     aadhar_no: "personal",
-    mobile_number: "contact",
-    email: "contact",
-    qualification: "contact",
-    subject_specialization: "contact",
+    mobile_number: "personal",
+    email: "personal",
+    qualification: "academic",
+    subject_specialization: "academic",
     religion: "other",
     religion_in_guj: "other",
     caste: "other",
@@ -170,7 +170,6 @@ const StaffForm: React.FC<StaffFormProps> = ({
     account_no: "bank",
     IFSC_code: "bank",
     joining_date: "employment",
-    employment_status: "employment",
     marital_status: "personal",
     pan_card_no: "personal",
     ayush_id_no: "professional",
@@ -232,19 +231,15 @@ const StaffForm: React.FC<StaffFormProps> = ({
   }
 
   const handleNextTab = useCallback(() => {
-    const tabs = ["role", "personal", "contact", "professional", "academic", "other", "address", "bank", "employment"]
-    if (formType === "update" && activeTab === "personal") {
-      setActiveTab("contact")
-      return
-    }
+    const tabs = ["role", "personal", "professional", "academic", "other", "address", "bank", "employment"]
     const currentIndex = tabs.indexOf(activeTab)
     if (currentIndex < tabs.length - 1) {
       setActiveTab(tabs[currentIndex + 1])
     }
-  }, [activeTab, formType])
+  }, [activeTab])
 
   const handlePreviousTab = useCallback(() => {
-    const tabs = ["role", "personal", "contact", "professional", "academic", "other", "address", "bank", "employment"]
+    const tabs = ["role", "personal", "professional", "academic", "other", "address", "bank", "employment"]
     const currentIndex = tabs.indexOf(activeTab)
     if (currentIndex > 0) {
       setActiveTab(tabs[currentIndex - 1])
@@ -279,10 +274,9 @@ const StaffForm: React.FC<StaffFormProps> = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit, handleInvalid)} className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-9 sticky top-0 z-10 bg-background pt-1 pb-2 shadow-xs">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 sticky top-0 z-10 bg-background pt-1 pb-2 shadow-xs">
             <TabsTrigger value="role">{t("role")}</TabsTrigger>
             <TabsTrigger value="personal">{t("personal")}</TabsTrigger>
-            <TabsTrigger value="contact">{t("contact")}</TabsTrigger>
             <TabsTrigger value="professional">Professional</TabsTrigger>
             <TabsTrigger value="academic">Academic</TabsTrigger>
             <TabsTrigger value="other">{t("other")}</TabsTrigger>
@@ -305,21 +299,17 @@ const StaffForm: React.FC<StaffFormProps> = ({
             <PersonalDetailsSection form={form} onNext={handleNextTab} onPrevious={handlePreviousTab} />
           </TabsContent>
 
-          <TabsContent value="contact">
-            <ContactDetailsSection
-              form={form}
-              onNext={handleNextTab}
-              onPrevious={handlePreviousTab}
-              isTeachingRole={form.watch("is_teaching_role")}
-            />
-          </TabsContent>
-
           <TabsContent value="professional">
             <ProfessionalDetailsSection form={form} onNext={handleNextTab} onPrevious={handlePreviousTab} />
           </TabsContent>
 
           <TabsContent value="academic">
-            <AcademicDetailsSection form={form} onNext={handleNextTab} onPrevious={handlePreviousTab} />
+            <AcademicDetailsSection
+              form={form}
+              onNext={handleNextTab}
+              onPrevious={handlePreviousTab}
+              isTeachingRole={form.watch("is_teaching_role")}
+            />
           </TabsContent>
 
           <TabsContent value="other">

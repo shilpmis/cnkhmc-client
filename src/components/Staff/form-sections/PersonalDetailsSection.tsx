@@ -110,6 +110,39 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
             )}
           />
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="mobile_number"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("mobile_no")}</FormLabel>
+                <FormControl>
+                  <NumberInput
+                    value={field.value}
+                    onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                    allowEmpty={true}
+                    placeholder="Enter mobile number"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("email")}</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} value={field.value ?? ""} placeholder="Enter email address" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}

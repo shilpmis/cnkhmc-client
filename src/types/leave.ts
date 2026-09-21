@@ -45,6 +45,7 @@ export interface LeavePolicy {
   requires_approval: number | boolean;
   approval_hierarchy?: Object;
   deduction_rules?: Object;
+  applicable_staff_type?: string | null;
   staff_role?: StaffRole;
   leave_type: LeaveType;
 }

@@ -31,14 +31,13 @@ const leaveApplicationSchema = z
         reason: z.string().min(1, "Reason is required"),
         is_half_day: z.boolean(),
         half_day_type: z.enum(["first_half", "second_half", "none"]),
-        is_hourly_leave: z.boolean(),
-        total_hours: z.number().nullable(),
+        is_hourly_leave: z.boolean().optional(),
+        total_hours: z.number().nullable().optional(),
     })
     .refine((data) => {
         const startDate = DateTime.fromISO(data.from_date);
         const endDate = DateTime.fromISO(data.to_date);
         const today = DateTime.now().startOf("day");
-        const twoMonthsFromNow = today.plus({ months: 2 });
 
         return startDate >= today;
     }, {
@@ -68,27 +67,6 @@ const leaveApplicationSchema = z
         const startDate = DateTime.fromISO(data.from_date);
         const endDate = DateTime.fromISO(data.to_date);
 
-        return !data.is_hourly_leave || startDate.equals(endDate);
-    }, {
-        message: "Hourly leave must be for a single day",
-        path: ["to_date"],
-    })
-    .refine((data) => {
-        return !(data.is_hourly_leave && (data.is_half_day || data.half_day_type !== "none"));
-    }, {
-        message: "Hourly leave cannot be combined with half-day leave",
-        path: ["is_hourly_leave"],
-    })
-    .refine((data) => {
-        return !data.is_hourly_leave || (data.total_hours && data.total_hours >= 1 && data.total_hours <= 4);
-    }, {
-        message: "Hourly leave must be between 1 and 4 hours",
-        path: ["total_hours"],
-    })
-    .refine((data) => {
-        const startDate = DateTime.fromISO(data.from_date);
-        const endDate = DateTime.fromISO(data.to_date);
-
         return !data.is_half_day || startDate.equals(endDate);
     }, {
         message: "Half-day leave must be for a single day",
@@ -99,12 +77,6 @@ const leaveApplicationSchema = z
     }, {
         message: "Please select half-day type",
         path: ["half_day_type"],
-    })
-    .refine((data) => {
-        return data.is_hourly_leave || data.total_hours === null;
-    }, {
-        message: "Total hours should only be set for hourly leave",
-        path: ["total_hours"],
     });
 
 type LeaveApplicationFormData = z.infer<typeof leaveApplicationSchema>
@@ -152,9 +124,9 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                     reason: data.reason,
                     is_half_day: data.is_half_day,
                     half_day_type: data.half_day_type,
-                    is_hourly_leave: data.is_hourly_leave,
-                    total_hour: data.total_hours != null ? String(data.total_hours) : null,
-                }) // Fix this
+                    is_hourly_leave: false,
+                    total_hour: null,
+                })
 
                 if (response.error) {
                     toast({
@@ -182,8 +154,8 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                         reason: data.reason,
                         is_half_day: data.is_half_day,
                         half_day_type: data.half_day_type,
-                        is_hourly_leave: data.is_hourly_leave,
-                        total_hour: data.total_hours != null ? String(data.total_hours) : null,
+                        is_hourly_leave: false,
+                        total_hour: null,
                     },
                     application_id: initialData.uuid
                 })  
@@ -221,8 +193,8 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                 reason: initialData.reason,
                 is_half_day: Boolean(initialData.is_half_day),
                 half_day_type: initialData.half_day_type,
-                is_hourly_leave: Boolean(initialData.is_hourly_leave),
-                total_hours: initialData.total_hour ? Number(initialData.total_hour) : null,
+                is_hourly_leave: false,
+                total_hours: null,
             })
         }
     }, [initialData, form])
@@ -247,7 +219,7 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                     name="leave_type"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t("leave_type")}</FormLabel>
+                            <FormLabel className="!text-foreground">{t("leave_type")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
@@ -273,7 +245,7 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                     name="from_date"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t("from_date")}</FormLabel>
+                            <FormLabel className="!text-foreground">{t("from_date")}</FormLabel>
                             <FormControl>
                                 <Input type="date" {...field} />
                             </FormControl>
@@ -287,7 +259,7 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                     name="to_date"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t("to_date")}</FormLabel>
+                            <FormLabel className="!text-foreground">{t("to_date")}</FormLabel>
                             <FormControl>
                                 <Input type="date" {...field} />
                             </FormControl>
@@ -301,7 +273,7 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                     name="reason"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>{t("reason")}</FormLabel>
+                            <FormLabel className="!text-foreground">{t("reason")}</FormLabel>
                             <FormControl>
                                 <Textarea {...field} />
                             </FormControl>
@@ -320,9 +292,8 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                                     checked={field.value}
                                     onCheckedChange={(checked) => {
                                         field.onChange(checked)
-                                        if (checked) {
-                                            form.setValue("is_hourly_leave", false)
-                                            form.setValue("total_hours", null)
+                                        if (!checked) {
+                                            form.setValue("half_day_type", "none")
                                         }
                                     }}
                                 />
@@ -353,62 +324,6 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                                         <SelectItem value="second_half">{t("second_half")}</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                )}
-
-                <FormField
-                    control={form.control}
-                    name="is_hourly_leave"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                                <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={(checked) => {
-                                        field.onChange(checked)
-                                        if (checked) {
-                                            form.setValue("is_half_day", false)
-                                            form.setValue("half_day_type", "none")
-                                        } else {
-                                            form.setValue("total_hours", null)
-                                        }
-                                    }}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>{t("hourly_leave")}</FormLabel>
-                                <FormDescription>{t("check_if_this_is_an_hourly_leave")}</FormDescription>
-                            </div>
-                        </FormItem>
-                    )}
-                />
-
-                {form.watch("is_hourly_leave") && (
-                    <FormField
-                        control={form.control}
-                        name="total_hours"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{t("total_hours")}</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="number"
-                                        {...field}
-                                        value={field.value ?? ""}
-                                        onChange={(e) => {
-                                            if (e.target.value) {
-                                                field.onChange(Number(e.target.value));
-                                            } else {
-                                                field.onChange(null); // Handle clearing input
-                                            }
-                                        }}
-                                        min={1}
-                                        max={4}
-                                    />
-                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

@@ -72,80 +72,6 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}
-            name="first_name_in_guj"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("first_name")} (Gujarati)</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="middle_name_in_guj"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("middle_name")} (Gujarati)</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="last_name_in_guj"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("last_name")} (Gujarati)</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="mobile_number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel required>{t("mobile_no")}</FormLabel>
-                <FormControl>
-                  <NumberInput
-                    value={field.value}
-                    onChange={(value) => field.onChange(value ? Number(value) : undefined)}
-                    allowEmpty={true}
-                    placeholder="Enter mobile number"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("email")}</FormLabel>
-                <FormControl>
-                  <Input type="email" {...field} value={field.value ?? ""} placeholder="Enter email address" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
             name="gender"
             render={({ field }) => (
               <FormItem>
@@ -187,7 +113,8 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
                 <FormControl>
                   <NumberInput
                     value={field.value}
-                    onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                    maxLength={12}
+                    onChange={(value) => field.onChange(value ? Number(value) : null)}
                     allowEmpty={true}
                   />
                 </FormControl>
@@ -227,7 +154,15 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
               <FormItem>
                 <FormLabel>PAN Card No</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value ?? ""} placeholder="ABCDE1234F" />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    placeholder="ABCDE1234F"
+                    maxLength={10}
+                    onChange={(e) => {
+                      field.onChange(e.target.value.toUpperCase().slice(0, 10))
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -47,11 +47,28 @@ const EmployeeLeaves: React.FC<EmployeeProps> = ({ employee }) => {
   const applications = leaveReportData?.applications || []
   const compOffRequests = leaveReportData?.comp_off_requests || []
 
-  // Format date helper
+  // Format date helper like "22 Sep 2026"
   const formatDate = (dateString?: string | Date | null) => {
     if (!dateString) return "-"
+    if (typeof dateString === "string") {
+      const cleanStr = dateString.split("T")[0]
+      const parts = cleanStr.split("-")
+      if (parts.length === 3) {
+        const year = parts[0]
+        const monthIndex = parseInt(parts[1], 10) - 1
+        const day = parseInt(parts[2], 10)
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        if (monthIndex >= 0 && monthIndex < 12 && !isNaN(day)) {
+          return `${day} ${monthNames[monthIndex]} ${year}`
+        }
+      }
+    }
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+    if (isNaN(date.getTime())) return "-"
+    const day = date.getDate()
+    const month = date.toLocaleDateString("en-US", { month: "short" })
+    const year = date.getFullYear()
+    return `${day} ${month} ${year}`
   }
 
   // Status badge styling helper

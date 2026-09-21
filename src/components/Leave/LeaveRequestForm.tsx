@@ -84,7 +84,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onClose, onSubmit, 
               name="startDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("start_date")}</FormLabel>
+                  <FormLabel className="!text-foreground">{t("start_date")}</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -97,7 +97,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onClose, onSubmit, 
               name="endDate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("end_date")}</FormLabel>
+                  <FormLabel className="!text-foreground">{t("end_date")}</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -111,7 +111,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onClose, onSubmit, 
               name="leaveTypes"
               render={() => (
                 <FormItem>
-                  <FormLabel>{t("leave_types")}</FormLabel>
+                  <FormLabel className="!text-foreground">{t("leave_types")}</FormLabel>
                   <div className="space-y-2">
                     {Object.entries(leavesBalance).map(([leaveType, balance]) => (
                       <div key={leaveType} className="flex items-center space-x-2">
@@ -145,7 +145,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onClose, onSubmit, 
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t("reason")}</FormLabel>
+                  <FormLabel className="!text-foreground">{t("reason")}</FormLabel>
                   <FormControl>
                     <Textarea {...field} />
                   </FormControl>

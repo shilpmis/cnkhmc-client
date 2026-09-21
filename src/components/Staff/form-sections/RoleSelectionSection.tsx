@@ -174,13 +174,13 @@ export const RoleSelectionSection: React.FC<RoleSelectionSectionProps> = ({
 
   // Auto-set is_teaching_role based on selected staff
   useEffect(() => {
-    if (currentStaffType && !isEdit) {
-      const isTeaching = currentStaffType.toLowerCase() === "teaching" || currentStaffType.toLowerCase().includes("teaching") && !currentStaffType.toLowerCase().includes("non")
+    if (currentStaffType) {
+      const isTeaching = currentStaffType.toLowerCase().includes("teaching") && !currentStaffType.toLowerCase().includes("non-teaching")
       if (form.getValues("is_teaching_role") !== isTeaching) {
         form.setValue("is_teaching_role", isTeaching)
       }
     }
-  }, [currentStaffType, isEdit, form])
+  }, [currentStaffType, form])
 
   // Auto-match system role if designation matches a role name or set default
   useEffect(() => {

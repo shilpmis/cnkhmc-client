@@ -250,10 +250,10 @@ export const updateStaffRole = createAsyncThunk(
 
 export const deleteStaffRole = createAsyncThunk("staff-role/delete", async (staff_id: number, { rejectWithValue }) => {
   try {
-    const deleted_role = await ApiService.delete(`staff/${staff_id}`)
+    const deleted_role = await ApiService.delete(`staff-role/${staff_id}`)
     return deleted_role.data
   } catch (error: any) {
-    console.log("Error while deleting staff", error)
+    console.log("Error while deleting staff role", error)
     return rejectWithValue(error.response?.data || "Failed to delete staff role")
   }
 })

@@ -251,7 +251,7 @@ export const LeaveApi = createApi({
       {
         academic_session_id: number;
         staff_id: number;
-        status: "pending" | "approved" | "rejected" | "cancelled";
+        status: "pending" | "approved" | "rejected" | "cancelled" | "all";
         page: number;
       }
     >({

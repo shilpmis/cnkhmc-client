@@ -325,7 +325,7 @@ import { Badge } from "@/components/ui/badge"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useUpdateStatusForStaffLeaveApplicationMutation } from "@/services/LeaveService"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -567,13 +567,13 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
         </TableHeader>
         <TableBody>
           {leaveRequests && leaveRequests.applications && leaveRequests.applications.length > 0 ? (
-            leaveRequests.applications.map((request) => {
+            leaveRequests.applications.map((request, index) => {
               const canModify = isDateTodayOrFuture(request.from_date) && request.status === "pending"
               const isProcessing = processingRequestId === request.uuid
               const leaveDays = calculateLeaveDays(request.from_date, request.to_date)
 
               return (
-                <TableRow key={request.id}>
+                <TableRow key={request.uuid || request.id || index}>
                   <TableCell>
                     {request
                       ? `${request.first_name || ""} ${request.middle_name || ""} ${request.last_name || ""}`.trim()
@@ -635,6 +635,11 @@ const LeaveRequestsTable: React.FC<LeaveRequestsTableProps> = ({
             <DialogTitle>
               {pendingAction.status === "approved" ? t("approve_leave_request") : t("reject_leave_request")}
             </DialogTitle>
+            <DialogDescription>
+              {pendingAction.status === "approved"
+                ? "Review and confirm approving this leave request."
+                : "Provide a reason for rejecting this leave request."}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">

@@ -343,7 +343,15 @@ export default function RootRoute() {
               path="leaves"
               element={
                 <PrivateRoute
-                  allowedRoles={[UserRole.ADMIN, UserRole.HEAD_TEACHER, UserRole.PRINCIPAL, UserRole.CLERK]}
+                  allowedRoles={[
+                    UserRole.ADMIN,
+                    UserRole.SUPER_ADMIN,
+                    UserRole.DEVELOPER,
+                    UserRole.HEAD_TEACHER,
+                    UserRole.PRINCIPAL,
+                    UserRole.CLERK,
+                    UserRole.SCHOOL_TEACHER,
+                  ]}
                 >
                   <AdminLeaveManagement />
                 </PrivateRoute>

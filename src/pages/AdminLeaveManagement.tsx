@@ -1,6 +1,6 @@
 "use client"
 import type React from "react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,6 +20,8 @@ import {
   useGetAdminCompOffRequestsQuery,
   useProcessCompOffRequestMutation,
 } from "@/services/LeaveService"
+import { useAuth } from "@/redux/hooks/useAuth"
+import { UserRole } from "@/types/user"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -32,6 +34,27 @@ import LeaveReportsPanel from "@/components/Leave/LeaveReportsPanel"
 
 
 const AdminLeaveManagement: React.FC = () => {
+  const { user, hasRole } = useAuth()
+  const isAdminOrSuperAdmin = useMemo(() => {
+    if (!user) return false
+    const roleId = Number(user.role_id)
+    const sysRole = String(user.system_role || user.role || "").toUpperCase()
+    const roleStr = String(user.role || "").toLowerCase()
+    return (
+      hasRole(UserRole.SUPER_ADMIN) ||
+      hasRole(UserRole.ADMIN) ||
+      hasRole(UserRole.ORG_ADMIN) ||
+      hasRole(UserRole.DEVELOPER) ||
+      hasRole(UserRole.PRINCIPAL) ||
+      hasRole(UserRole.HEAD_TEACHER) ||
+      [1, 2, 3, 5, 7, 8, 11].includes(roleId) ||
+      ["ADMIN", "SUPER_ADMIN", "PRINCIPAL", "ORG_ADMIN", "DEVELOPER", "HEAD_TEACHER", "IT_ADMIN"].includes(sysRole) ||
+      roleStr.includes("admin") ||
+      roleStr.includes("super") ||
+      roleStr.includes("principal") ||
+      roleStr.includes("dev")
+    )
+  }, [user, hasRole])
 
   const { t } = useTranslation()
   const [getLeaveApplicationsForTeachingStaff, { data: leaveRequestsForTeacher, isLoading: loadingForTeachersLeave }] =
@@ -408,15 +431,17 @@ const AdminLeaveManagement: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsList className={`grid w-full ${isAdminOrSuperAdmin ? "grid-cols-4" : "grid-cols-3"} mb-4`}>
               <TabsTrigger value="teacher">{t("teacher_leave_requests")}</TabsTrigger>
               <TabsTrigger value="other">{t("other_staff_leave_requests")}</TabsTrigger>
               <TabsTrigger value="compoff" className="flex items-center gap-1.5">
                 <Award className="h-4 w-4 text-amber-500" /> Comp Off Approvals
               </TabsTrigger>
-              <TabsTrigger value="reports" className="flex items-center gap-1.5">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Leave Reports & Exports
-              </TabsTrigger>
+              {isAdminOrSuperAdmin && (
+                <TabsTrigger value="reports" className="flex items-center gap-1.5">
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Leave Reports & Exports
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Filter Controls - only for request tabs */}
@@ -496,12 +521,9 @@ const AdminLeaveManagement: React.FC = () => {
               {LeaveRequestsForTeachingStaff && LeaveRequestsForTeachingStaff.applications.length > 0 && (
                 <LeaveRequestsTable
                   leaveRequests={LeaveRequestsForTeachingStaff}
-                  handleStatusChange={(id, status) =>
-                    openStatusChangeDialog(
-                      LeaveRequestsForTeachingStaff.applications.find((app) => app.id.toString() === id)!,
-                      status === "approved" ? "approve" : "reject",
-                    )
-                  }
+                  handleStatusChange={() => {
+                    fetchLeaveApplication("teacher", statusFilter, 1)
+                  }}
                   staff_type="teacher"
                   onPageChange={onPageChange}
                   statusFilter={statusFilter}
@@ -513,12 +535,9 @@ const AdminLeaveManagement: React.FC = () => {
               {LeaveRequestsForOtherStaff && LeaveRequestsForOtherStaff.applications.length > 0 && (
                 <LeaveRequestsTable
                   leaveRequests={LeaveRequestsForOtherStaff}
-                  handleStatusChange={(id, status) =>
-                    openStatusChangeDialog(
-                      LeaveRequestsForOtherStaff.applications.find((app) => app.id.toString() === id)!,
-                      status === "approved" ? "approve" : "reject",
-                    )
-                  }
+                  handleStatusChange={() => {
+                    fetchLeaveApplication("other", statusFilter, 1)
+                  }}
                   staff_type="other"
                   onPageChange={onPageChange}
                   statusFilter={statusFilter}
@@ -616,9 +635,11 @@ const AdminLeaveManagement: React.FC = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="reports" className="mt-0 pt-2">
-              <LeaveReportsPanel />
-            </TabsContent>
+            {isAdminOrSuperAdmin && (
+              <TabsContent value="reports" className="mt-0 pt-2">
+                <LeaveReportsPanel />
+              </TabsContent>
+            )}
 
           </Tabs>
         </CardContent>

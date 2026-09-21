@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -32,15 +32,39 @@ import {
   useSubmitCompOffRequestMutation,
 } from "@/services/LeaveService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
+import { useAuth } from "@/redux/hooks/useAuth"
+import { UserRole } from "@/types/user"
 import { selectActiveAccademicSessionsForSchool, selectAuthState } from "@/redux/slices/authSlice"
 import { selectLeavePolicyForUser } from "@/redux/slices/leaveSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw, AlertCircle, Award } from "lucide-react"
+import { Calendar, Plus, FileText, Clock, CalendarDays, User, RefreshCw, AlertCircle, Award, FileSpreadsheet } from "lucide-react"
 import { Label } from "@radix-ui/react-label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import LeaveReportsPanel from "@/components/Leave/LeaveReportsPanel"
 
 const LeaveDashboardForTeachers: React.FC = () => {
+  const { user, hasRole } = useAuth()
+  const isAdminOrSuperAdmin = useMemo(() => {
+    if (!user) return false
+    const roleId = Number(user.role_id)
+    const sysRole = String(user.system_role || user.role || "").toUpperCase()
+    const roleStr = String(user.role || "").toLowerCase()
+    return (
+      hasRole(UserRole.SUPER_ADMIN) ||
+      hasRole(UserRole.ADMIN) ||
+      hasRole(UserRole.ORG_ADMIN) ||
+      hasRole(UserRole.DEVELOPER) ||
+      hasRole(UserRole.PRINCIPAL) ||
+      hasRole(UserRole.HEAD_TEACHER) ||
+      [1, 2, 3, 5, 7, 8, 11].includes(roleId) ||
+      ["ADMIN", "SUPER_ADMIN", "PRINCIPAL", "ORG_ADMIN", "DEVELOPER", "HEAD_TEACHER", "IT_ADMIN"].includes(sysRole) ||
+      roleStr.includes("admin") ||
+      roleStr.includes("super") ||
+      roleStr.includes("principal") ||
+      roleStr.includes("dev")
+    )
+  }, [user, hasRole])
 
   const authState = useAppSelector(selectAuthState)
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -436,7 +460,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${isAdminOrSuperAdmin ? "grid-cols-4" : "grid-cols-3"}`}>
           <TabsTrigger value="balance" className="flex items-center">
             <Calendar className="mr-2 h-4 w-4" /> {t("leave_balance")}
           </TabsTrigger>
@@ -446,6 +470,11 @@ const LeaveDashboardForTeachers: React.FC = () => {
           <TabsTrigger value="compoff" className="flex items-center">
             <Award className="mr-2 h-4 w-4 text-amber-500" /> Comp Off
           </TabsTrigger>
+          {isAdminOrSuperAdmin && (
+            <TabsTrigger value="reports" className="flex items-center gap-1.5">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Leave Reports & Exports
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Leave Balance Tab */}
@@ -781,6 +810,12 @@ const LeaveDashboardForTeachers: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdminOrSuperAdmin && (
+          <TabsContent value="reports" className="space-y-6 mt-6">
+            <LeaveReportsPanel />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Request Comp Off Dialog */}

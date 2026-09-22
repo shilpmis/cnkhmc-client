@@ -9,6 +9,12 @@ import type {
   CompOffRequest,
   CreateCompOffPayload,
   ProcessCompOffPayload,
+  LeaveApprovalHierarchyResponse,
+  LeaveApprovalHierarchyRule,
+  StaffHierarchyMapping,
+  EligibleApprover,
+  UpdateStaffApproverPayload,
+  BulkAssignApproverPayload,
 } from "@/types/leave";
 import { PageMeta } from "@/types/global";
 import { setLeavePolicy, setLeave } from "@/redux/slices/leaveSlice";
@@ -76,7 +82,7 @@ interface ApiErrorResponse {
  */
 export const LeaveApi = createApi({
   reducerPath: "leaveApi",
-  tagTypes: ["LeaveBalances", "CompOff", "LeaveReports", "LeavePolicies"],
+  tagTypes: ["LeaveBalances", "CompOff", "LeaveReports", "LeavePolicies", "LeaveHierarchy", "StaffHierarchy"],
   baseQuery: fetchBaseQuery({
 
 
@@ -434,6 +440,97 @@ export const LeaveApi = createApi({
       }),
       providesTags: ["LeaveReports"],
     }),
+
+    // Leave Approval Hierarchy Endpoints
+    getLeaveApprovalHierarchy: builder.query<
+      LeaveApprovalHierarchyResponse,
+      { academic_year?: number }
+    >({
+      query: ({ academic_year } = {}) => ({
+        url: `/leaves/hierarchy/rules${academic_year ? `?academic_year=${academic_year}` : ""}`,
+        method: "GET",
+      }),
+      providesTags: ["LeaveHierarchy"],
+    }),
+
+    createOrUpdateHierarchyRule: builder.mutation<
+      { message: string; data: LeaveApprovalHierarchyRule },
+      Partial<LeaveApprovalHierarchyRule>
+    >({
+      query: (payload) => ({
+        url: "/leaves/hierarchy/rules",
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["LeaveHierarchy"],
+    }),
+
+    deleteHierarchyRule: builder.mutation<{ message: string }, number>({
+      query: (id) => ({
+        url: `/leaves/hierarchy/rules/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["LeaveHierarchy"],
+    }),
+
+    getStaffHierarchyMappings: builder.query<
+      { data: StaffHierarchyMapping[]; meta?: PageMeta } | StaffHierarchyMapping[],
+      {
+        page?: number | string;
+        limit?: number;
+        search?: string;
+        department_id?: string | number;
+        role_id?: string | number;
+        caliber_level?: string | number;
+        has_approver?: string;
+      }
+    >({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            queryParams.append(key, String(value));
+          }
+        });
+        return {
+          url: `/leaves/hierarchy/staff-mappings?${queryParams.toString()}`,
+          method: "GET",
+        };
+      },
+      providesTags: ["StaffHierarchy"],
+    }),
+
+    updateStaffApprover: builder.mutation<
+      { message: string; data: StaffHierarchyMapping },
+      UpdateStaffApproverPayload
+    >({
+      query: (payload) => ({
+        url: "/leaves/hierarchy/staff-mappings",
+        method: "PUT",
+        body: payload,
+      }),
+      invalidatesTags: ["StaffHierarchy"],
+    }),
+
+    bulkAssignApprover: builder.mutation<
+      { message: string; count: number },
+      BulkAssignApproverPayload
+    >({
+      query: (payload) => ({
+        url: "/leaves/hierarchy/bulk-assign",
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["StaffHierarchy"],
+    }),
+
+    getEligibleApprovers: builder.query<EligibleApprover[], void>({
+      query: () => ({
+        url: "/leaves/hierarchy/eligible-approvers",
+        method: "GET",
+      }),
+      providesTags: ["StaffHierarchy"],
+    }),
   }),
 });
 
@@ -471,6 +568,18 @@ export const {
   useGetTeachersLeaveSummaryReportQuery,
   useLazyGetIndividualTeacherLeaveReportQuery,
   useGetIndividualTeacherLeaveReportQuery,
+
+  // Hierarchy Hooks
+  useGetLeaveApprovalHierarchyQuery,
+  useLazyGetLeaveApprovalHierarchyQuery,
+  useCreateOrUpdateHierarchyRuleMutation,
+  useDeleteHierarchyRuleMutation,
+  useGetStaffHierarchyMappingsQuery,
+  useLazyGetStaffHierarchyMappingsQuery,
+  useUpdateStaffApproverMutation,
+  useBulkAssignApproverMutation,
+  useGetEligibleApproversQuery,
+  useLazyGetEligibleApproversQuery,
 } = LeaveApi;
 
 

@@ -20,7 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Plus, Edit, Trash2, AlertCircle, RefreshCw, ShieldCheck, FileSpreadsheet } from "lucide-react"
+import { Plus, Edit, Trash2, AlertCircle, RefreshCw, ShieldCheck, FileSpreadsheet, GitBranch } from "lucide-react"
+import { LeaveApprovalHierarchyTab } from "./LeaveApprovalHierarchyTab"
 import {
   useLazyGetLeavePolicyForSchoolPageWiseQuery,
   useLazyGetAllLeaveTypeForSchoolQuery,
@@ -545,7 +546,7 @@ export function LeaveManagementSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="leave-types" className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" />
             {t("leave_type")}
@@ -553,6 +554,10 @@ export function LeaveManagementSettings() {
           <TabsTrigger value="leave-policies" className="flex items-center gap-2">
             <FileSpreadsheet className="h-4 w-4" />
             {t("leave_policies")}
+          </TabsTrigger>
+          <TabsTrigger value="approval-hierarchy" className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4" />
+            Approval Hierarchy
           </TabsTrigger>
         </TabsList>
 
@@ -722,6 +727,11 @@ export function LeaveManagementSettings() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* 3. APPROVAL HIERARCHY TAB */}
+        <TabsContent value="approval-hierarchy" className="mt-6">
+          <LeaveApprovalHierarchyTab />
         </TabsContent>
       </Tabs>
 

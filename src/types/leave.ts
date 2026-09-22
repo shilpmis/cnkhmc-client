@@ -157,3 +157,82 @@ export interface IndividualTeacherLeaveReportResponse {
   applications: any[];
   comp_off_requests: any[];
 }
+
+export interface CaliberDefinition {
+  level: number;
+  name: string;
+  description: string;
+}
+
+export interface LeaveApprovalHierarchyRule {
+  id: number;
+  school_id: number;
+  academic_year: number | null;
+  applicant_role_id: number | null;
+  approver_role_id: number | null;
+  department_id: number | null;
+  require_same_department: boolean;
+  min_approver_caliber: number;
+  priority: number;
+  is_active: boolean;
+  applicant_role?: { id: number; role: string; is_teaching_role: boolean } | null;
+  approver_role?: { id: number; role: string; is_teaching_role: boolean } | null;
+  department?: { id: number; name: string; code: string } | null;
+}
+
+export interface LeaveApprovalHierarchyResponse {
+  rules: LeaveApprovalHierarchyRule[];
+  caliber_definitions: CaliberDefinition[];
+}
+
+export interface StaffHierarchyMapping {
+  id: number;
+  employee_code: string;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  email: string | null;
+  designation: string | null;
+  staff_role_id: number;
+  department_id: number | null;
+  caliber_level: number | null;
+  reporting_to_staff_id: number | null;
+  department_details?: { id: number; name: string; code: string } | null;
+  role_type?: { id: number; role: string; is_teaching_role: boolean } | null;
+  reporting_manager?: {
+    id: number;
+    first_name: string;
+    middle_name: string | null;
+    last_name: string;
+    employee_code: string;
+    designation: string | null;
+    caliber_level: number | null;
+    role_type?: { id: number; role: string } | null;
+    department_details?: { id: number; name: string } | null;
+  } | null;
+}
+
+export interface EligibleApprover {
+  id: number;
+  full_name: string;
+  employee_code: string;
+  email: string | null;
+  designation: string;
+  caliber_level: number;
+  department_id: number | null;
+  department_name: string;
+}
+
+export interface UpdateStaffApproverPayload {
+  staff_id: number;
+  reporting_to_staff_id: number | null;
+  caliber_level?: number | null;
+}
+
+export interface BulkAssignApproverPayload {
+  approver_staff_id: number;
+  department_id?: number | string;
+  staff_role_id?: number | string;
+  staff_ids?: number[];
+}
+

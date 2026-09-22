@@ -15,13 +15,37 @@ import {
   useGetTeachersLeaveSummaryReportQuery,
   useLazyGetIndividualTeacherLeaveReportQuery,
 } from "@/services/LeaveService"
+import { useAuth } from "@/redux/hooks/useAuth"
+import { UserRole } from "@/types/user"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { FileSpreadsheet, Search, User, Users, Calendar, RefreshCw, Award, Clock } from "lucide-react"
+import { FileSpreadsheet, Search, User, Users, Calendar, RefreshCw, Award, Clock, AlertCircle } from "lucide-react"
 
 export const LeaveReportsPanel: React.FC = () => {
   const { toast } = useToast()
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const { user, hasRole } = useAuth()
+
+  const isAdminOrSuperAdmin = useMemo(() => {
+    if (!user) return false
+    const roleId = Number(user.role_id)
+    const sysRole = String(user.system_role || user.role || "").toUpperCase()
+    const roleStr = String(user.role || "").toLowerCase()
+    return (
+      hasRole(UserRole.SUPER_ADMIN) ||
+      hasRole(UserRole.ADMIN) ||
+      hasRole(UserRole.ORG_ADMIN) ||
+      hasRole(UserRole.DEVELOPER) ||
+      hasRole(UserRole.PRINCIPAL) ||
+      hasRole(UserRole.HEAD_TEACHER) ||
+      [1, 2, 3, 5, 7, 8, 11].includes(roleId) ||
+      ["ADMIN", "SUPER_ADMIN", "PRINCIPAL", "ORG_ADMIN", "DEVELOPER", "HEAD_TEACHER", "IT_ADMIN"].includes(sysRole) ||
+      roleStr.includes("admin") ||
+      roleStr.includes("super") ||
+      roleStr.includes("principal") ||
+      roleStr.includes("dev")
+    )
+  }, [user, hasRole])
 
   const [activeReportTab, setActiveReportTab] = useState<"summary" | "individual">("summary")
   const [searchQuery, setSearchQuery] = useState("")
@@ -32,9 +56,14 @@ export const LeaveReportsPanel: React.FC = () => {
     data: summaryReport,
     isLoading: isSummaryLoading,
     refetch: refetchSummary,
-  } = useGetTeachersLeaveSummaryReportQuery({
-    academic_session_id: CurrentAcademicSessionForSchool?.id,
-  })
+  } = useGetTeachersLeaveSummaryReportQuery(
+    {
+      academic_session_id: CurrentAcademicSessionForSchool?.id,
+    },
+    {
+      skip: !isAdminOrSuperAdmin || !CurrentAcademicSessionForSchool?.id,
+    }
+  )
 
   // Lazy query individual staff report
   const [
@@ -47,6 +76,20 @@ export const LeaveReportsPanel: React.FC = () => {
     if (staffIdStr) {
       getIndividualReport({ staff_id: Number(staffIdStr) })
     }
+  }
+
+  if (!isAdminOrSuperAdmin) {
+    return (
+      <Card className="border-destructive/30 shadow-sm">
+        <CardContent className="py-12 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 mb-3 text-destructive" />
+          <h3 className="text-xl font-bold text-destructive">Access Restricted</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            Leave Reports & Exports are only visible to Admin or Super Admin users.
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   // Filtered summary data

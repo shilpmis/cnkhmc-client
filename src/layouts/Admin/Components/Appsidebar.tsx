@@ -61,7 +61,7 @@ const SideBarItems: SidebarItem[] = [
   { title: "subjects", url: "/d/subjects", icon: FileText, requiredPermission: Permission.MANAGE_SUBJECTS },
   { title: "academic_calendar", url: "/d/calendar", icon: Calendar },
   { title: "my_leaves", url: "/d/leave-applications", icon: Bed, requiredPermission: Permission.MARK_LEAVES },
-  { title: "leave_management", url: "/d/leaves", icon: Bed, requiredPermission: Permission.MANAGE_LEAVES },
+  { title: "leave_management", url: "/d/leaves", icon: Bed },
   {
     title: "attendance_management",
     url: "/d/attendance",

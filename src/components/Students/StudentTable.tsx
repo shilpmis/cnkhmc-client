@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import dynamic from "next/dynamic"
 import { useLazyFetchSingleStudentDataInDetailQuery } from "@/services/StudentServices"
 import StudentProfileView from "./StudentProfileView"
-import { CertificateDialog } from "./CertificateDialog"
+import StudentCertificateModal from "./StudentCertificateModal"
 
 
 interface StudentTableProps {
@@ -58,6 +58,7 @@ export default function StudentTable({
   
   const [certDialogOpen, setCertDialogOpen] = useState(false)
   const [certStudentId, setCertStudentId] = useState<number | null>(null)
+  const [selectedStudentForCert, setSelectedStudentForCert] = useState<Student | null>(null)
   
   const [showHostelModal, setShowHostelModal] = useState(false)
   const [selectedStudentForHostel, setSelectedStudentForHostel] = useState<Student | null>(null)
@@ -249,6 +250,7 @@ export default function StudentTable({
                       <Edit className="h-4 w-4 mr-1" /> {t("edit")}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => {
+                      setSelectedStudentForCert(student)
                       setCertStudentId(student.id)
                       setCertDialogOpen(true)
                     }}>
@@ -340,10 +342,11 @@ export default function StudentTable({
             </DialogContent>
           </Dialog>
 
-          <CertificateDialog 
+          <StudentCertificateModal 
             open={certDialogOpen} 
             onOpenChange={setCertDialogOpen} 
-            studentId={certStudentId} 
+            studentId={certStudentId}
+            student={selectedStudentForCert}
           />
 
       {showHostelModal && selectedStudentForHostel && (

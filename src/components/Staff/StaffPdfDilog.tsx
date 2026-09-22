@@ -1,295 +1,6 @@
-// import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-// import { Button } from "@/components/ui/button";
-// import { FileText, X } from "lucide-react";
-// import { Card, CardContent } from "@/components/ui/card"
-// import { Badge } from "@/components/ui/badge"
-// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-// import { Separator } from "@radix-ui/react-separator";
-// import { PDFDownloadLink } from "@react-pdf/renderer";
-// import { ComponentType } from "react";
-// import { StaffType } from "@/types/staff";
-
-// interface StaffPdfDilogProps {
-//     dialogOpen: boolean;
-//     setDialogOpen: (open: boolean) => void;
-//     selectedStaff: StaffType;
-//     StafftDetailsPDF: ComponentType<any>;
-//   }
-
-//   const formatData = (value: any): string => {
-//     return  value ? new Date(value).toISOString().split("T")[0] : " "
-//   }
-  
-//   const StaffPdfDilog: React.FC<StaffPdfDilogProps> = ({ dialogOpen, setDialogOpen, selectedStaff, StafftDetailsPDF }) => {
-
-
-//     return (
-//      <>
-//       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-//              <DialogContent className="max-w-4xl p-0 overflow-hidden">
-//                <div className="flex justify-between items-center p-4 md:p-6 sticky top-0 bg-background z-10 border-b">
-//                  <DialogTitle className="text-xl md:text-2xl font-bold">Staff Details</DialogTitle>
-//                  <div className="flex items-center gap-2">
-//                  {selectedStaff && (
-//                      <TooltipProvider>
-//                        <Tooltip>
-//                          <TooltipTrigger asChild>
-//                            <div>
-//                              {typeof window !== "undefined" && (
-//                                <PDFDownloadLink
-//                                  document={<StafftDetailsPDF staff={selectedStaff} />}
-//                                  fileName={`${selectedStaff.first_name}_${selectedStaff.last_name}_details.pdf`}
-//                                >
-//                                  {({ blob, url, loading, error }: { blob: Blob | null; url: string | null; loading: boolean; error: Error | null }) => (
-//                                    <Button
-//                                      variant="outline"
-//                                      size="icon"
-//                                      disabled={loading}
-//                                      aria-label="Download PDF"
-//                                    >
-//                                      <FileText className="h-4 w-4" />
-//                                    </Button>
-//                                  )}
-//                                </PDFDownloadLink>
-//                              )}
-//                            </div>
-//                          </TooltipTrigger>
-//                          <TooltipContent>
-//                            <p>Download PDF</p>
-//                          </TooltipContent>
-//                        </Tooltip>
-//                      </TooltipProvider>
-//                    )}
-//                    <Button variant="ghost" size="icon" onClick={() => setDialogOpen(false)} aria-label="Close">
-//                      <X className="h-4 w-4" />
-//                    </Button>
-//                  </div>
-//                </div>
-     
-//                <div className="max-h-[80vh] overflow-y-auto p-4 md:p-6">
-//                  {selectedStaff && (
-//                    <div className="space-y-6">
-//                      {/* Staff Profile Section */}
-//                      <div className="flex flex-col items-start justify-start">
-//                        <div className="bg-primary/10 rounded-full p-6 mb-4 border-4 border-primary/20">
-//                          {selectedStaff.gender.toLowerCase() === "male" ? (
-//                           <img 
-//                           src="https://img.freepik.com/premium-vector/man-professional-business-casual-young-avatar-icon-illustration_1277826-623.jpg?w=900"
-//                           alt="Male Student"
-//                           className="h-24 w-24 md:h-32 md:w-32 rounded-full"
-//                         />
-//                          ) : (
-//                            <img 
-//                            src="https://img.freepik.com/free-vector/woman-with-long-brown-hair-pink-shirt_90220-2940.jpg?t=st=1741346084~exp=1741349684~hmac=8fb79fbe2b8651184e68b2303365403937006e7dc31d5335f32abf58e7e2b083&w=900" // Replace with your male image path
-//                            alt="Male Student"
-//                            className="h-24 w-24 md:h-32 md:w-32 rounded-full"
-//                          />
-//                          )}
-//                        </div>
-//                        <h2 className="text-2xl md:text-3xl font-bold text-center">
-//                          {selectedStaff.first_name} {selectedStaff.middle_name} {selectedStaff.last_name}
-//                        </h2>
-//                        <div className="flex flex-wrap gap-2 mt-2 justify-center">
-//                          <Badge variant="outline" className="text-sm">
-//                            Id: {selectedStaff.id}
-//                          </Badge>
-//                          <Badge variant="outline" className="text-sm">
-//                            Role: {selectedStaff.role}
-//                          </Badge>
-//                        </div>
-//                      </div>
-     
-//                      <Separator />
-     
-//                      {/* Details Section */}
-//                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                        {/* Basic Information */}
-//                        <Card>
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Personal Information</h3>
-//                            <div className="space-y-2">
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">First Name:</p>
-//                                <p className="font-medium">{selectedStaff.first_name}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Middle Name:</p>
-//                                <p className="font-medium">{selectedStaff.middle_name}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Last Name:</p>
-//                                <p className="font-medium">{selectedStaff.last_name}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">First Name (Guj):</p>
-//                                <p className="font-medium">{selectedStaff.first_name_in_guj}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">middle Name(Guj)</p>
-//                                <p className="font-medium">{selectedStaff.middle_name_in_guj}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Last Name(Guj)</p>
-//                                <p className="font-medium">{selectedStaff.last_name_in_guj}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Gender:</p>
-//                                <p className="font-medium">{selectedStaff.gender}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Dob:</p>
-//                                <p className="font-medium">{selectedStaff.birth_date ? formatData(selectedStaff.birth_date) : '-' }</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Place</p>
-//                                <p className="font-medium">{selectedStaff.city}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">District</p>
-//                                <p className="font-medium">{selectedStaff.district}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Adhar No:</p>
-//                                <p className="font-medium">{selectedStaff.aadhar_no}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Adhar Dise No:</p>
-//                                <p className="font-medium">{null}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-     
-//                        {/* Contact Details */}
-//                        <Card>
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Contact Details</h3>
-//                            <div className="space-y-2">
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Mobile No:</p>
-//                                <p className="font-medium">{selectedStaff.mobile_number}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Email:</p>
-//                                <p className="font-medium">{selectedStaff.email}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-     
-//                        {/* Other Information */}
-//                        <Card>
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Other Information</h3>
-//                            <div className="space-y-2">
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Religion:</p>
-//                                <p className="font-medium">{selectedStaff.religion}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Religion(Guj):</p>
-//                                <p className="font-medium">{selectedStaff.religion_in_guj}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Caste:</p>
-//                                <p className="font-medium">{selectedStaff.caste}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Caste(Guj):</p>
-//                                <p className="font-medium">{selectedStaff.caste_in_guj}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Category:</p>
-//                                <p className="font-medium">{selectedStaff.category}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-     
-//                         {/* Address Information */}
-//                         <Card>
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Address Information</h3>
-//                            <div className="space-y-2">
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Address:</p>
-//                                <p className="font-medium">{selectedStaff.address}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">District:</p>
-//                                <p className="font-medium">{selectedStaff.district}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">City:</p>
-//                                <p className="font-medium">{selectedStaff.city}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">Postal Code:</p>
-//                                <p className="font-medium">{selectedStaff.postal_code}</p>
-//                              </div>
-//                              <div className="grid grid-cols-2 gap-2">
-//                                <p className="text-muted-foreground">State:</p>
-//                                <p className="font-medium">{selectedStaff.state}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-     
-//                        {/* bank Details */}
-//                        <Card className="md:col-span-2">
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Bank Details</h3>
-//                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                              <div className="space-y-2">
-//                                <p className="text-muted-foreground">Bank Name:</p>
-//                                <p className="font-medium">{selectedStaff.bank_name}</p>
-//                              </div>
-//                              <div className="space-y-2">
-//                                <p className="text-muted-foreground">Account Name:</p>
-//                                <p className="font-medium">{selectedStaff.account_no}</p>
-//                              </div>
-//                              <div className="space-y-2">
-//                                <p className="text-muted-foreground">IFSC Code:</p>
-//                                <p className="font-medium">{selectedStaff.IFSC_code}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-     
-//                          {/* Employment Details */}
-//                          <Card className="md:col-span-2">
-//                          <CardContent className="p-4 md:p-6">
-//                            <h3 className="text-lg font-semibold mb-4 text-primary">Employment Details</h3>
-//                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//                              <div className="space-y-2">
-//                                <p className="text-muted-foreground">Joining Date:</p>
-//                                <p className="font-medium">{selectedStaff.joining_date ? formatData(selectedStaff.joining_date) : '-' }</p>
-//                              </div>
-//                              <div className="space-y-2">
-//                                <p className="text-muted-foreground">Employment Status:</p>
-//                                <p className="font-medium">{selectedStaff.employment_status}</p>
-//                              </div>
-//                            </div>
-//                          </CardContent>
-//                        </Card>
-//                      </div>
-//                    </div>
-//                  )}
-//                </div>
-//              </DialogContent>
-//            </Dialog>
-//      </>
-//     );
-//   }
-  
-//   export default StaffPdfDilog
-
-
-
 "use client"
 
 import type React from "react"
-
 import { useState, useCallback } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -298,7 +9,21 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Download, X, User, Phone, MapPin, Building, CreditCard } from "lucide-react"
+import {
+  Download,
+  X,
+  User,
+  Phone,
+  MapPin,
+  Building,
+  CreditCard,
+  GraduationCap,
+  Award,
+  FileCheck,
+  Briefcase,
+  History,
+  FileText,
+} from "lucide-react"
 import { PDFDownloadLink } from "@react-pdf/renderer"
 import type { ComponentType } from "react"
 import type { StaffType } from "@/types/staff"
@@ -306,6 +31,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectCurrentUser } from "@/redux/slices/authSlice"
 import { selectSchool } from "@/redux/slices/schoolSlice"
+import { useGetStaffByIdQuery } from "@/services/StaffService"
 
 interface StaffDetailsDialogProps {
   dialogOpen: boolean
@@ -326,6 +52,14 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
   const school = schoolCredential || currentUser?.school
   const [pdfKey, setPdfKey] = useState(Date.now())
 
+  // Fetch full details including experiences, letters, qualifications, and department
+  const { data: fullStaff, isLoading: isFullStaffLoading } = useGetStaffByIdQuery(
+    selectedStaff?.id,
+    { skip: !selectedStaff?.id || !dialogOpen }
+  )
+
+  const staff = fullStaff || selectedStaff
+
   const formatData = useCallback((value: any): string => {
     if (!value) return "N/A"
     if (value instanceof Date || typeof value === "string") {
@@ -343,7 +77,8 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
   }, [])
 
   const getDisplayValue = useCallback((value: any): string => {
-    return value || "N/A"
+    if (value === null || value === undefined || value === "") return "N/A"
+    return value.toString()
   }, [])
 
   const handlePDFDownload = useCallback(() => {
@@ -351,14 +86,19 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
     setTimeout(() => setPdfKey(Date.now()), 100)
   }, [])
 
-  if (!selectedStaff) return null
+  if (!staff) return null
+
+  const experiences: any[] = staff.experiences || staff.staff_experiences || []
+  const letters: any[] = staff.letters || []
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[92vh] p-0 overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b bg-gray-50">
-          <DialogTitle className="text-2xl font-bold text-gray-900">{t("staff_details")}</DialogTitle>
+        <div className="flex justify-between items-center p-5 border-b bg-gray-50">
+          <DialogTitle className="text-xl md:text-2xl font-bold text-gray-900">
+            {t("staff_details")}
+          </DialogTitle>
           <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
@@ -367,19 +107,19 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                     {typeof window !== "undefined" && (
                       <PDFDownloadLink
                         key={pdfKey}
-                        document={<StaffDetailsPDF staff={selectedStaff} school={school} />}
-                        fileName={`${selectedStaff.first_name}_${selectedStaff.last_name}_details.pdf`}
+                        document={<StaffDetailsPDF staff={staff} school={school} />}
+                        fileName={`${staff.first_name}_${staff.last_name}_details.pdf`}
                       >
                         {({ loading }) => (
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            disabled={loading}
+                            disabled={loading || isFullStaffLoading}
                             onClick={handlePDFDownload}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white"
                           >
                             <Download className="h-4 w-4" />
-                            {loading ? t("generating") : t("download_pdf")}
+                            {loading || isFullStaffLoading ? t("generating") : t("download_pdf")}
                           </Button>
                         )}
                       </PDFDownloadLink>
@@ -391,231 +131,417 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)}>
+            <Button variant="ghost" size="icon" onClick={() => setDialogOpen(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          <div className="p-6 space-y-6">
-            {/* Profile Header */}
-            <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-6">
-                  <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-                    <AvatarImage
-                      src={
-                        selectedStaff.gender?.toLowerCase() === "male"
-                          ? "https://img.freepik.com/premium-vector/man-professional-business-casual-young-avatar-icon-illustration_1277826-623.jpg"
-                          : "https://img.freepik.com/free-vector/woman-with-long-brown-hair-pink-shirt_90220-2940.jpg"
-                      }
-                      alt={`${selectedStaff.first_name} ${selectedStaff.last_name}`}
-                    />
-                    <AvatarFallback className="text-2xl bg-primary/10">
-                      {selectedStaff.first_name?.[0]}
-                      {selectedStaff.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto max-h-[calc(92vh-75px)] p-6 space-y-6">
+          {/* Profile Header */}
+          <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 via-slate-50 to-indigo-50">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                <Avatar className="h-20 w-20 border-4 border-white shadow-md">
+                  <AvatarImage
+                    src={
+                      staff.gender?.toLowerCase() === "male"
+                        ? "https://img.freepik.com/premium-vector/man-professional-business-casual-young-avatar-icon-illustration_1277826-623.jpg"
+                        : "https://img.freepik.com/free-vector/woman-with-long-brown-hair-pink-shirt_90220-2940.jpg"
+                    }
+                    alt={`${staff.first_name} ${staff.last_name}`}
+                  />
+                  <AvatarFallback className="text-xl bg-primary/10">
+                    {staff.first_name?.[0]}
+                    {staff.last_name?.[0]}
+                  </AvatarFallback>
+                </Avatar>
 
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <h2 className="text-3xl font-bold text-gray-900">
-                        {getDisplayValue(selectedStaff.first_name)} {getDisplayValue(selectedStaff.middle_name)}{" "}
-                        {getDisplayValue(selectedStaff.last_name)}
-                      </h2>
-                      <p className="text-lg text-gray-600 mt-1">
-                        {getDisplayValue(selectedStaff.first_name_in_guj)}{" "}
-                        {getDisplayValue(selectedStaff.middle_name_in_guj)}{" "}
-                        {getDisplayValue(selectedStaff.last_name_in_guj)}
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {getDisplayValue(staff.first_name)} {getDisplayValue(staff.middle_name)}{" "}
+                      {getDisplayValue(staff.last_name)}
+                    </h2>
+                    {(staff.first_name_in_guj || staff.last_name_in_guj) && (
+                      <p className="text-base text-gray-600">
+                        {getDisplayValue(staff.first_name_in_guj)}{" "}
+                        {getDisplayValue(staff.middle_name_in_guj)}{" "}
+                        {getDisplayValue(staff.last_name_in_guj)}
                       </p>
-                    </div>
+                    )}
+                  </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="default" className="text-sm">
-                        {t("id")}: {selectedStaff.id}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="default">ID: {staff.id}</Badge>
+                    {staff.employee_code && (
+                      <Badge variant="outline">Code: {staff.employee_code}</Badge>
+                    )}
+                    <Badge variant="secondary">Staff: {getDisplayValue(staff.staff_type)}</Badge>
+                    <Badge variant="outline">Type: {getDisplayValue(staff.employment_status)}</Badge>
+                    {staff.staff_category && (
+                      <Badge variant="secondary">Category: {staff.staff_category}</Badge>
+                    )}
+                    {Boolean(staff.designation || staff.role) && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+                        {staff.designation || staff.role}
                       </Badge>
-                      <Badge variant="outline" className="text-sm">
-                        {t("role")}: {getDisplayValue(selectedStaff.role)}
-                      </Badge>
-                      <Badge variant="secondary" className="text-sm">
-                        {getDisplayValue(selectedStaff.gender)}
-                      </Badge>
-                    </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Grid of details */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 1. Personal Information */}
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <User className="h-4 w-4 text-primary" />
+                  {t("personal_information")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("gender")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.gender)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("date_of_birth")}</p>
+                    <p className="font-medium">{formatData(staff.birth_date)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Marital Status</p>
+                    <p className="font-medium">{getDisplayValue(staff.marital_status)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Blood Group</p>
+                    <p className="font-medium">{getDisplayValue(staff.blood_group)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("aadhar_number")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.aadhar_no)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">PAN Card No</p>
+                    <p className="font-medium">{getDisplayValue(staff.pan_card_no)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("religion")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.religion)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("caste")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.caste)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("category")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.category)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Information Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Personal Information */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5 text-primary" />
-                    {t("personal_information")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("date_of_birth")}</p>
-                      <p className="text-sm text-gray-900">{formatData(selectedStaff.birth_date)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("place")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.city)}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("aadhar_number")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.aadhar_no)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("district")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.district)}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("religion")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.religion)}</p>
-                      <p className="text-xs text-gray-500">{getDisplayValue(selectedStaff.religion_in_guj)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("caste")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.caste)}</p>
-                      <p className="text-xs text-gray-500">{getDisplayValue(selectedStaff.caste_in_guj)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("category")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.category)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Contact Information */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Phone className="h-5 w-5 text-primary" />
-                    {t("contact_information")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">{t("mobile_number")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.mobile_number)}</p>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">{t("email_address")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.email)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Address Information */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MapPin className="h-5 w-5 text-primary" />
-                    {t("address_information")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">{t("address")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.address)}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("city")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.city)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("district")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.district)}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("state")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.state)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("postal_code")}</p>
-                      <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.postal_code)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Employment Details */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Building className="h-5 w-5 text-primary" />
-                    {t("employment_details")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("joining_date")}</p>
-                      <p className="text-sm text-gray-900">{formatData(selectedStaff.joining_date)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{t("employment_status")}</p>
-                      <Badge variant="outline" className="text-xs">
-                        {getDisplayValue(selectedStaff.employment_status)}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Bank Details */}
+            {/* 2. Contact & Address Details */}
             <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  {t("bank_details")}
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <Phone className="h-4 w-4 text-primary" />
+                  Contact & Address Information
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">{t("bank_name")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.bank_name)}</p>
+                    <p className="text-xs text-muted-foreground">{t("mobile_number")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.mobile_number)}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">{t("account_number")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.account_no)}</p>
+                    <p className="text-xs text-muted-foreground">{t("email_address")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.email)}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Emergency Contact</p>
+                  <p className="font-medium">
+                    {staff.emergency_contact_name
+                      ? `${staff.emergency_contact_name} (${getDisplayValue(staff.emergency_contact_number)})`
+                      : "N/A"}
+                  </p>
+                </div>
+                <Separator />
+                <div>
+                  <p className="text-xs text-muted-foreground">Current Address</p>
+                  <p className="font-medium">
+                    {[staff.address, staff.city, staff.district, staff.state, staff.postal_code]
+                      .filter(Boolean)
+                      .join(", ") || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Permanent Address</p>
+                  <p className="font-medium">{getDisplayValue(staff.permanent_address || staff.address)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. Academic Details */}
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <GraduationCap className="h-4 w-4 text-primary" />
+                  Academic Qualifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("qualification")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.qualification)}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">{t("ifsc_code")}</p>
-                    <p className="text-sm text-gray-900">{getDisplayValue(selectedStaff.IFSC_code)}</p>
+                    <p className="text-xs text-muted-foreground">{t("subject_specialization")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.subject_specialization)}</p>
+                  </div>
+                </div>
+                <div className="space-y-2 pt-1">
+                  {staff.ug_degree && (
+                    <div className="p-2 bg-slate-50 rounded border text-xs">
+                      <span className="font-semibold text-slate-700">UG: </span>
+                      {staff.ug_degree} — {staff.ug_passing_university || "N/A"} ({staff.ug_passing_year || "N/A"})
+                    </div>
+                  )}
+                  {staff.pg_degree && (
+                    <div className="p-2 bg-slate-50 rounded border text-xs">
+                      <span className="font-semibold text-slate-700">PG: </span>
+                      {staff.pg_degree} — {staff.pg_passing_university || "N/A"} ({staff.pg_passing_year || "N/A"})
+                    </div>
+                  )}
+                  {staff.diploma_degree && (
+                    <div className="p-2 bg-slate-50 rounded border text-xs">
+                      <span className="font-semibold text-slate-700">Diploma: </span>
+                      {staff.diploma_degree} — {staff.diploma_council || "N/A"} ({staff.diploma_passing_year || "N/A"})
+                    </div>
+                  )}
+                  {staff.other_degree && (
+                    <div className="p-2 bg-slate-50 rounded border text-xs">
+                      <span className="font-semibold text-slate-700">Other: </span>
+                      {staff.other_degree} — {staff.other_passing_university || "N/A"} ({staff.other_passing_year || "N/A"})
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 4. Professional & Council Registration */}
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <Award className="h-4 w-4 text-primary" />
+                  Professional & Council Registration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">AYUSH Teacher Code</p>
+                    <p className="font-medium">{getDisplayValue(staff.teacher_code)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">AYUSH Reg / ID No</p>
+                    <p className="font-medium">{getDisplayValue(staff.ayush_registration_no || staff.ayush_id_no)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">State Council Reg No</p>
+                    <p className="font-medium">{getDisplayValue(staff.state_council_reg_no)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">NCH Reg No & Date</p>
+                    <p className="font-medium">
+                      {getDisplayValue(staff.nch_registration_no)}{" "}
+                      {staff.nch_registration_date ? `(${formatData(staff.nch_registration_date)})` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Area of Expertise</p>
+                  <p className="font-medium">{getDisplayValue(staff.area_of_expertise)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 5. Employment & Service Details */}
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <Building className="h-4 w-4 text-primary" />
+                  Employment & Service Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("joining_date")}</p>
+                    <p className="font-medium">{formatData(staff.joining_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("employment_status")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.employment_status)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Department</p>
+                    <p className="font-medium">{getDisplayValue(staff.department || staff.department_details?.name)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Pay Scale</p>
+                    <p className="font-medium">{getDisplayValue(staff.pay_scale)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Retirement Age</p>
+                    <p className="font-medium">{staff.retirement_age ? `${staff.retirement_age} Yrs` : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Retirement Date</p>
+                    <p className="font-medium">{formatData(staff.retirement_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Resignation / Last Date</p>
+                    <p className="font-medium">{formatData(staff.resignation_date)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 6. Bank & Statutory Details */}
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  Bank & Statutory Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("bank_name")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.bank_name)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Branch</p>
+                    <p className="font-medium">{getDisplayValue(staff.bank_branch_name)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("account_number")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.account_no)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("ifsc_code")}</p>
+                    <p className="font-medium">{getDisplayValue(staff.IFSC_code)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">EPF Number</p>
+                    <p className="font-medium">{getDisplayValue(staff.epf_no)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">EPF UAN Number</p>
+                    <p className="font-medium">{getDisplayValue(staff.epf_uan_no)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* 7. Previous Experiences Table */}
+          {experiences.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <History className="h-4 w-4 text-primary" />
+                  Previous Professional Experiences
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="p-2 font-semibold">Institute</th>
+                      <th className="p-2 font-semibold">Designation</th>
+                      <th className="p-2 font-semibold">Department</th>
+                      <th className="p-2 font-semibold">Regulation</th>
+                      <th className="p-2 font-semibold text-right">Period</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {experiences.map((exp: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0 hover:bg-slate-50">
+                        <td className="p-2 font-medium">{exp.institute_name || "-"}</td>
+                        <td className="p-2">{exp.post_name || "-"}</td>
+                        <td className="p-2">{exp.department || "-"}</td>
+                        <td className="p-2">{exp.appointment_regulation || "-"}</td>
+                        <td className="p-2 text-right">
+                          {formatData(exp.from_date)} - {formatData(exp.to_date)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 8. University Letters & Orders */}
+          {letters.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <FileText className="h-4 w-4 text-primary" />
+                  University Letters & Orders Log
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="p-2 font-semibold">Letter Type</th>
+                      <th className="p-2 font-semibold">Letter No</th>
+                      <th className="p-2 font-semibold">Letter Date</th>
+                      <th className="p-2 font-semibold">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {letters.map((l: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0 hover:bg-slate-50">
+                        <td className="p-2 font-medium">{l.letter_type || "-"}</td>
+                        <td className="p-2">{l.letter_no || "-"}</td>
+                        <td className="p-2">{formatData(l.letter_date)}</td>
+                        <td className="p-2">{l.remarks || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>

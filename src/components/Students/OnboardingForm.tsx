@@ -677,7 +677,7 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
                       <FormLabel>{t("division")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value || undefined}
                         disabled={!selectedClass || !availableDivisions?.divisions?.length}
                       >
                         <FormControl>

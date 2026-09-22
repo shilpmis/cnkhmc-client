@@ -513,7 +513,7 @@ export const UserManagement: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="staff" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            {t("teaching_staff")}
+            {t("staff")}
           </TabsTrigger>
         </TabsList>
 
@@ -701,8 +701,8 @@ export const UserManagement: React.FC = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                {t("teaching_staff")}
+                <Users className="h-5 w-5 text-primary" />
+                {t("staff")}
               </CardTitle>
               <CardDescription>{t("manage_teaching_staff_access_and_class_allocations")}</CardDescription>
             </CardHeader>

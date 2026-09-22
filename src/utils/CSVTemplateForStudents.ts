@@ -171,6 +171,13 @@ export const downloadCSVTemplate = (type: 'SCHOOL' | 'COLLEGE' = 'SCHOOL') => {
     if (h === "Gender" || h === "GENDER") return "Male";
     if (h === "Mobile No" || h === "MOBILE_NO1") return "9876543210";
     if (h === "GR No" || h === "GR No.") return "GR12345";
+    if (h === "Date of Birth" || h === "DATE_OF_BIRTH") return "15/08/2005";
+    if (h === "Admission Date" || h === "ADMISSION_DATE") return "01/06/2023";
+    if (h === "STUDENT_LC_DATE") return "31/05/2024";
+    if (h === "Internship Provisional Date" || h === "INTERNSHIP_PROVISIONAL_DATE") return "01/04/2024";
+    if (h === "Internship Starting Date" || h === "INTERNSHIP_STARTING_DATE") return "15/04/2024";
+    if (h === "Internship Completion Date" || h === "INTERNSHIP_COMPLETION_DATE") return "14/04/2025";
+    if (h === "Final BHMS Date of Passing" || h === "FINAL_BHMS_DATE_OF_PASSING") return "31/03/2024";
     return "";
   });
 

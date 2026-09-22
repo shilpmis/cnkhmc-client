@@ -17,6 +17,7 @@ import {
   CalendarDays,
   FileText,
   Tag,
+  ScrollText,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -161,6 +162,16 @@ const navigationSections: NavSection[] = [
             href: "manage/batches",
           },
         ],
+      },
+      {
+        title: "certificate_templates",
+        icon: ScrollText,
+        href: "certificate-templates",
+      },
+      {
+        title: "hostel_management",
+        icon: Building2,
+        href: "hostels",
       },
     ],
   },

@@ -35,6 +35,10 @@ export const AcademicDetailsSection: React.FC<AcademicDetailsSectionProps> = ({
     .map((c) => c.name)
     .filter(Boolean)
 
+  const currentStaffType = form.watch("staff_type")
+  const isHospital = currentStaffType?.toLowerCase() === "hospital" || currentStaffType?.toLowerCase()?.includes("hospital")
+  const showSubjectSpecialization = isTeachingRole || isHospital
+
   return (
     <Card>
       <CardHeader>
@@ -84,7 +88,7 @@ export const AcademicDetailsSection: React.FC<AcademicDetailsSectionProps> = ({
                 )
               }}
             />
-            {isTeachingRole && (
+            {showSubjectSpecialization && (
               <FormField
                 control={form.control}
                 name="subject_specialization"

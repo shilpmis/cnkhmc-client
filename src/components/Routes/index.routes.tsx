@@ -10,6 +10,7 @@ import Students from "@/pages/Students"
 import GeneralSettings from "../Settings/GeneralSettings"
 import AcademicSettings from "../Settings/AcademicSettings/AcademicSettings"
 import StaffSettings from "../Settings/StaffSettings"
+import CertificateTemplateSettings from "../Settings/CertificateTemplateSettings"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectIsAuthenticated } from "@/redux/slices/authSlice"
 import PrivateRoute from "./private.routes"
@@ -240,11 +241,7 @@ export default function RootRoute() {
 
             <Route
               path="hostels"
-              element={
-                <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]}>
-                  <HostelManagement />
-                </PrivateRoute>
-              }
+              element={<Navigate to="/d/settings/hostels" replace />}
             />
 
             <Route
@@ -620,6 +617,14 @@ export default function RootRoute() {
                 }
               />
               <Route
+                path="certificate-templates"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <CertificateTemplateSettings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="leave"
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
@@ -648,6 +653,14 @@ export default function RootRoute() {
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
                     <SeatsManagement />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="hostels"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]}>
+                    <HostelManagement />
                   </PrivateRoute>
                 }
               />

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +11,25 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Edit, Trash2, FileText, Eye, CheckCircle, Sparkles, Loader2, BookOpen, Layers, X } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Plus,
+  Edit,
+  Trash2,
+  FileText,
+  Eye,
+  CheckCircle,
+  Sparkles,
+  Loader2,
+  BookOpen,
+  Layers,
+  X,
+  ScrollText,
+  Users,
+  GraduationCap,
+  Award,
+  Check,
+} from "lucide-react"
 import ApiService from "@/services/ApiService"
 import { toast } from "@/hooks/use-toast"
 
@@ -30,13 +48,13 @@ export interface CertificateTemplate {
   updated_at: string
 }
 
-const MERGE_TAGS = [
+const STAFF_MERGE_TAGS = [
   { tag: "{{full_name}}", label: "Staff Full Name", color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" },
-  { tag: "{{prefix}}", label: "Prefix (Dr./Mr.)", color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" },
+  { tag: "{{prefix}}", label: "Prefix (Dr./Mr./Mrs.)", color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" },
   { tag: "{{designation}}", label: "Designation", color: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" },
   { tag: "{{department}}", label: "Department", color: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100" },
   { tag: "{{joining_date}}", label: "Joining Date", color: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
-  { tag: "{{resignation_date}}", label: "Resignation Date", color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" },
+  { tag: "{{last_date}}", label: "Last Date", color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" },
   { tag: "{{from_date}}", label: "Period From Date", color: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100" },
   { tag: "{{to_date}}", label: "Period To Date", color: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100" },
   { tag: "{{financial_year}}", label: "Financial Year", color: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100" },
@@ -45,22 +63,37 @@ const MERGE_TAGS = [
   { tag: "{{his_her}}", label: "his / her", color: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
 ]
 
+const STUDENT_MERGE_TAGS = [
+  { tag: "{{student_name}}", label: "Student Full Name", color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" },
+  { tag: "{{gr_no}}", label: "GR Number / SID", color: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
+  { tag: "{{enrollment_no}}", label: "Enrollment Code", color: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" },
+  { tag: "{{roll_no}}", label: "Roll Number", color: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100" },
+  { tag: "{{class}}", label: "Class / Year (BHMS)", color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" },
+  { tag: "{{academic_year}}", label: "Academic Session", color: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100" },
+  { tag: "{{dob}}", label: "Date of Birth", color: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100" },
+  { tag: "{{gender}}", label: "Gender", color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" },
+  { tag: "{{father_name}}", label: "Father's Name", color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" },
+  { tag: "{{mother_name}}", label: "Mother's Name", color: "bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100" },
+  { tag: "{{admission_date}}", label: "Admission Date", color: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" },
+  { tag: "{{completion_date}}", label: "Completion Date", color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" },
+  { tag: "{{exam_passed}}", label: "Exam Passed", color: "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100" },
+  { tag: "{{purpose}}", label: "Purpose / Remarks", color: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100" },
+  { tag: "{{ref_no}}", label: "Reference Number", color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" },
+  { tag: "{{cert_date}}", label: "Issue Date", color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100" },
+  { tag: "{{he_she}}", label: "He / She", color: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
+  { tag: "{{him_her}}", label: "him / her", color: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
+  { tag: "{{his_her}}", label: "his / her", color: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100" },
+]
+
 export type CertificateTableType = "none" | "experience" | "salary_with_arrears" | "salary_summary" | "salary_detailed"
 
-const PRESET_TEMPLATES: Record<string, { title: string; body: string; tableType: CertificateTableType }> = {
+const STAFF_PRESETS: Record<string, { title: string; body: string; tableType: CertificateTableType }> = {
   SALARY_WITH_ARREARS: {
-    title: "Salary Certificate",
+    title: "Salary Certificate (With Arrears & TDS)",
     body: `This is to certify that salary paid to {{prefix}} {{full_name}} for the period from {{from_date}} to {{to_date}} as follows:
 
 This certificate is issued upon {{his_her}} personal request for official verification purposes.`,
     tableType: "salary_with_arrears",
-  },
-  SALARY_SUMMARY: {
-    title: "Salary Certificate (Simplified)",
-    body: `This is to certify that salary paid to {{prefix}} {{full_name}} for the period from {{from_date}} to {{to_date}} as follows:
-
-This certificate is issued upon {{his_her}} personal request for official verification purposes.`,
-    tableType: "salary_summary",
   },
   SALARY_DETAILED: {
     title: "Detailed Salary Certificate",
@@ -68,6 +101,13 @@ This certificate is issued upon {{his_her}} personal request for official verifi
 
 This certificate is issued upon {{his_her}} personal request for official verification purposes.`,
     tableType: "salary_detailed",
+  },
+  SALARY_SUMMARY: {
+    title: "Salary Certificate (Simplified)",
+    body: `This is to certify that salary paid to {{prefix}} {{full_name}} for the period from {{from_date}} to {{to_date}} as follows:
+
+This certificate is issued upon {{his_her}} personal request for official verification purposes.`,
+    tableType: "salary_summary",
   },
   EXPERIENCE: {
     title: "Experience Certificate",
@@ -78,9 +118,9 @@ This certificate is issued upon {{his_her}} personal request for official verifi
   },
   RELIEVING: {
     title: "Relieving Order & Experience Letter",
-    body: `This is to certify that {{prefix}} {{full_name}} was working with our institution as {{designation}} in the department of {{department}} from {{joining_date}} to {{resignation_date}}.
+    body: `This is to certify that {{prefix}} {{full_name}} was working with our institution as {{designation}} in the department of {{department}} from {{joining_date}} to {{last_date}}.
 
-{{he_she}} has been relieved from all {{his_her}} duties and responsibilities at the closing of office hours on {{resignation_date}} upon {{his_her}} resignation. 
+{{he_she}} has been relieved from all {{his_her}} duties and responsibilities at the closing of office hours on {{last_date}} upon {{his_her}} resignation. 
 
 During {{his_her}} tenure with us, we found {{him_her}} to be diligent, sincere, and hardworking. We wish {{him_her}} all success in {{his_her}} future endeavors.`,
     tableType: "none",
@@ -105,17 +145,81 @@ To the best of my knowledge and belief, {{he_she}} bears an excellent moral char
   },
 }
 
+const STUDENT_PRESETS: Record<string, { title: string; body: string; tableType: CertificateTableType }> = {
+  STUDENT_BONAFIDE: {
+    title: "Bonafide Certificate",
+    body: `This is to certify that {{student_name}} (GR No: {{gr_no}}, Enrollment No: {{enrollment_no}}) is a bonafide student of this College studying in {{class}} during the Academic Session {{academic_year}}.
+
+According to College records, {{his_her}} Date of Birth is {{dob}}.
+
+To the best of my knowledge and belief, {{he_she}} bears good moral character and exemplary conduct.
+
+Purpose / Remarks: {{purpose}}`,
+    tableType: "none",
+  },
+  STUDENT_CHARACTER: {
+    title: "Character & Conduct Certificate",
+    body: `This is to certify that {{student_name}}, Son/Daughter of {{father_name}}, is/was a bonafide student of this Institution admitted in {{class}} (BHMS).
+
+During {{his_her}} tenure at this College, {{he_she}} has maintained exemplary discipline, sincere dedication towards academic pursuits, and high moral character.
+
+We wish {{him_her}} all success in {{his_her}} future academic and professional endeavors.`,
+    tableType: "none",
+  },
+  STUDENT_ATTEMPT: {
+    title: "Attempt / Passing Certificate",
+    body: `This is to certify that {{student_name}} (GR No: {{gr_no}}, Enrollment No: {{enrollment_no}}) has appeared and passed the {{exam_passed}} examination conducted by the University / College in {{academic_year}}.
+
+As per official examination records of this Institution, {{he_she}} passed the said examination in First Attempt.
+
+Purpose / Remarks: {{purpose}}`,
+    tableType: "none",
+  },
+  STUDENT_MEDIUM: {
+    title: "Medium of Instruction Certificate",
+    body: `This is to certify that {{student_name}} (GR No: {{gr_no}}, Enrollment No: {{enrollment_no}}) is/was a bonafide student of {{class}} at C.N. Kothari Homoeopathic Medical College & Research Centre.
+
+It is hereby certified that the medium of instruction and examination for the Bachelor of Homoeopathic Medicine and Surgery (B.H.M.S.) course at this Institution is English.
+
+This certificate is issued upon {{his_her}} request for higher education / official verification.`,
+    tableType: "none",
+  },
+  STUDENT_COMPLETION: {
+    title: "Course Completion Certificate",
+    body: `This is to certify that {{student_name}} (Enrollment No: {{enrollment_no}}, GR No: {{gr_no}}) was enrolled in the Bachelor of Homoeopathic Medicine and Surgery (B.H.M.S.) degree programme at this Institution from {{admission_date}} to {{completion_date}}.
+
+{{he_she}} has satisfactorily completed all prescribed academic, clinical, and practical requirements of the curriculum.`,
+    tableType: "none",
+  },
+  STUDENT_FEE_STRUCTURE: {
+    title: "Tuition Fee & Expenditure Certificate",
+    body: `This is to certify that {{student_name}} (GR No: {{gr_no}}, Enrollment No: {{enrollment_no}}) is studying in {{class}} (BHMS) for the Academic Session {{academic_year}}.
+
+The estimated fee structure approved by the Fee Regulatory Committee (Medical) for the said academic year is as follows:
+
+1. Tuition Fee (Annual): Rs. 95,000.00
+2. Library & Laboratory Fee: Rs. 5,000.00
+3. University Examination & Enrollment Fee: Rs. 3,500.00
+Total Annual Estimated Expenses: Rs. 1,03,500.00
+
+This certificate is issued for obtaining Bank Education Loan / Government Scholarship.`,
+    tableType: "none",
+  },
+}
+
 export default function CertificateTemplateSettings() {
+  const [activeTab, setActiveTab] = useState<"staff" | "student">("staff")
   const [templates, setTemplates] = useState<CertificateTemplate[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [dialogOpen, setDialogOpen] = useState<boolean>(false)
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplate | null>(null)
   const [isSaving, setIsSaving] = useState<boolean>(false)
 
-  // Simplified form states
+  // Form states
+  const [targetType, setTargetType] = useState<"staff" | "student">("staff")
   const [certTitle, setCertTitle] = useState<string>("")
   const [certBody, setCertBody] = useState<string>("")
-  const [tableType, setTableType] = useState<CertificateTableType>("salary_with_arrears")
+  const [tableType, setTableType] = useState<CertificateTableType>("none")
   const [includeSignature, setIncludeSignature] = useState<boolean>(true)
   const [isActive, setIsActive] = useState<boolean>(true)
 
@@ -124,12 +228,17 @@ export default function CertificateTemplateSettings() {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true)
-      const res = await ApiService.get("certificate-templates?target_type=staff&include_inactive=true")
-      if (res?.data?.success) {
-        setTemplates(res.data.data || [])
+      const res = await ApiService.get("certificate-templates?include_inactive=true")
+      if (res?.data?.success && Array.isArray(res.data.data)) {
+        setTemplates(res.data.data)
       }
     } catch (err: any) {
       console.error("Failed to fetch certificate templates:", err)
+      toast({
+        title: "Error",
+        description: "Failed to load certificate templates.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -139,11 +248,28 @@ export default function CertificateTemplateSettings() {
     fetchTemplates()
   }, [])
 
-  const handleOpenCreate = () => {
+  const staffTemplates = useMemo(
+    () => templates.filter((t) => (t.target_type || t.targetType || "staff") === "staff"),
+    [templates]
+  )
+
+  const studentTemplates = useMemo(
+    () => templates.filter((t) => (t.target_type || t.targetType) === "student"),
+    [templates]
+  )
+
+  const handleOpenCreate = (target: "staff" | "student" = activeTab) => {
     setEditingTemplate(null)
-    setCertTitle("Salary Certificate")
-    setCertBody(PRESET_TEMPLATES.SALARY_WITH_ARREARS.body)
-    setTableType("salary_with_arrears")
+    setTargetType(target)
+    if (target === "staff") {
+      setCertTitle("Salary Certificate (With Arrears & TDS)")
+      setCertBody(STAFF_PRESETS.SALARY_WITH_ARREARS.body)
+      setTableType("salary_with_arrears")
+    } else {
+      setCertTitle("Bonafide Certificate")
+      setCertBody(STUDENT_PRESETS.STUDENT_BONAFIDE.body)
+      setTableType("none")
+    }
     setIncludeSignature(true)
     setIsActive(true)
     setDialogOpen(true)
@@ -151,6 +277,8 @@ export default function CertificateTemplateSettings() {
 
   const handleOpenEdit = (t: CertificateTemplate) => {
     setEditingTemplate(t)
+    const tTarget = (t.target_type || t.targetType || "staff") as "staff" | "student"
+    setTargetType(tTarget)
     setCertTitle(t.name || "")
     setIsActive(t.is_active !== undefined ? t.is_active : t.isActive !== undefined ? t.isActive : true)
 
@@ -185,12 +313,18 @@ export default function CertificateTemplateSettings() {
       .replace(/&gt;/g, ">")
       .trim()
 
+    // If plain text starts with title, remove duplicate title
+    if (t.name && plainText.toLowerCase().startsWith(t.name.toLowerCase())) {
+      plainText = plainText.substring(t.name.length).trim()
+    }
+
     setCertBody(plainText)
     setDialogOpen(true)
   }
 
   const handleLoadPreset = (presetKey: string) => {
-    const preset = PRESET_TEMPLATES[presetKey]
+    const presets = targetType === "staff" ? STAFF_PRESETS : STUDENT_PRESETS
+    const preset = presets[presetKey]
     if (!preset) return
     setCertTitle(preset.title)
     setCertBody(preset.body)
@@ -217,7 +351,7 @@ export default function CertificateTemplateSettings() {
     }, 50)
   }
 
-  // Generates preview HTML with sample dummy data
+  // Generates preview HTML with realistic dummy data
   const getLivePreviewHtml = () => {
     const paragraphs = certBody
       .split("\n\n")
@@ -234,22 +368,51 @@ export default function CertificateTemplateSettings() {
       )
       .join("")
 
-    const sampleReplacements: Record<string, string> = {
-      "{{prefix}}": "MS.",
-      "{{full_name}}": "<strong style='color:#0f172a;'>Suchitra H Dhodiya</strong>",
-      "{{first_name}}": "Suchitra",
-      "{{last_name}}": "Dhodiya",
-      "{{designation}}": "<strong style='color:#0f172a;'>Assistant Professor</strong>",
-      "{{department}}": "<strong style='color:#0f172a;'>Homoeopathy</strong>",
-      "{{joining_date}}": "<strong style='color:#0f172a;'>01/06/2021</strong>",
-      "{{resignation_date}}": "<strong style='color:#0f172a;'>Till date</strong>",
-      "{{from_date}}": "<strong style='color:#0f172a;'>01-06-2025</strong>",
-      "{{to_date}}": "<strong style='color:#0f172a;'>30-11-2025</strong>",
-      "{{financial_year}}": "<strong style='color:#0f172a;'>2025-2026</strong>",
-      "{{he_she}}": "She",
-      "{{him_her}}": "her",
-      "{{his_her}}": "her",
-    }
+    const sampleReplacements: Record<string, string> =
+      targetType === "staff"
+        ? {
+            "{{prefix}}": "Dr.",
+            "{{full_name}}": "<strong style='color:#0f172a;'>Sandeep Kishorbhai Solanki</strong>",
+            "{{first_name}}": "Sandeep",
+            "{{last_name}}": "Solanki",
+            "{{designation}}": "<strong style='color:#0f172a;'>Associate Professor</strong>",
+            "{{department}}": "<strong style='color:#0f172a;'>Organon of Medicine</strong>",
+            "{{joining_date}}": "<strong style='color:#0f172a;'>01/06/2018</strong>",
+            "{{last_date}}": "<strong style='color:#0f172a;'>Till date</strong>",
+            "{{resignation_date}}": "<strong style='color:#0f172a;'>Till date</strong>",
+            "{{from_date}}": "<strong style='color:#0f172a;'>01-04-2025</strong>",
+            "{{to_date}}": "<strong style='color:#0f172a;'>31-03-2026</strong>",
+            "{{financial_year}}": "<strong style='color:#0f172a;'>2025-2026</strong>",
+            "{{he_she}}": "He",
+            "{{him_her}}": "him",
+            "{{his_her}}": "his",
+          }
+        : {
+            "{{student_name}}": "<strong style='color:#0f172a;'>Patel Dhruv Rajeshbhai</strong>",
+            "{{full_name}}": "<strong style='color:#0f172a;'>Patel Dhruv Rajeshbhai</strong>",
+            "{{gr_no}}": "<strong style='color:#0f172a;'>2023041</strong>",
+            "{{sid}}": "<strong style='color:#0f172a;'>2023041</strong>",
+            "{{enrollment_no}}": "<strong style='color:#0f172a;'>BHMS20230041</strong>",
+            "{{enrollment_code}}": "<strong style='color:#0f172a;'>BHMS20230041</strong>",
+            "{{roll_no}}": "<strong style='color:#0f172a;'>41</strong>",
+            "{{class}}": "<strong style='color:#0f172a;'>2nd BHMS</strong>",
+            "{{programme}}": "<strong style='color:#0f172a;'>BHMS</strong>",
+            "{{academic_year}}": "<strong style='color:#0f172a;'>2025-2026</strong>",
+            "{{dob}}": "<strong style='color:#0f172a;'>15/08/2004</strong>",
+            "{{birth_date}}": "<strong style='color:#0f172a;'>15/08/2004</strong>",
+            "{{gender}}": "Male",
+            "{{father_name}}": "<strong style='color:#0f172a;'>Rajeshbhai Patel</strong>",
+            "{{mother_name}}": "<strong style='color:#0f172a;'>Gitaben Patel</strong>",
+            "{{admission_date}}": "<strong style='color:#0f172a;'>01/09/2023</strong>",
+            "{{completion_date}}": "<strong style='color:#0f172a;'>31/03/2028</strong>",
+            "{{exam_passed}}": "<strong style='color:#0f172a;'>1st BHMS University Exam</strong>",
+            "{{purpose}}": "<strong style='color:#0f172a;'>For MYSY Scholarship Application</strong>",
+            "{{ref_no}}": "CNKHMC/CERT/2026/089",
+            "{{cert_date}}": "22/09/2026",
+            "{{he_she}}": "He",
+            "{{him_her}}": "him",
+            "{{his_her}}": "his",
+          }
 
     Object.entries(sampleReplacements).forEach(([tag, val]) => {
       bodyHtml = bodyHtml.split(tag).join(val)
@@ -267,10 +430,10 @@ export default function CertificateTemplateSettings() {
         </thead>
         <tbody>
           <tr>
-            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">Assistant Professor</td>
-            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">01/06/2021</td>
+            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">Associate Professor</td>
+            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">01/06/2018</td>
             <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">Till date</td>
-            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">Homoeopathy</td>
+            <td style="border: 1px solid #94a3b8; padding: 6px 8px; text-align: center; color: #334155;">Organon of Medicine</td>
           </tr>
         </tbody>
       </table>
@@ -280,209 +443,53 @@ export default function CertificateTemplateSettings() {
       <table style="width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 9.5px; border: 1px solid #000;">
         <thead>
           <tr style="background-color: #f8fafc; font-weight: bold;">
-            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; width: 17%;">Month - Year</th>
-            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; width: 14%;">Consolidated Gross Salary</th>
-            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; width: 8%;">Arrears</th>
-            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; width: 14%;">Total Gross Salary</th>
-            <th colspan="5" style="border: 1px solid #000; padding: 4px; text-align: center; width: 34%;">Deduction</th>
-            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; width: 13%;">Net Salary</th>
+            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center;">Month - Year</th>
+            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center;">Consolidated Gross</th>
+            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center;">Arrears</th>
+            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center;">Total Gross</th>
+            <th colspan="5" style="border: 1px solid #000; padding: 4px; text-align: center;">Deduction</th>
+            <th rowspan="2" style="border: 1px solid #000; padding: 4px; text-align: center;">Net Salary</th>
           </tr>
           <tr style="background-color: #f8fafc; font-size: 8.5px;">
-            <th style="border: 1px solid #000; padding: 3px; text-align: center;">Prof. Tax</th>
-            <th style="border: 1px solid #000; padding: 3px; text-align: center;">Prov. Fund</th>
-            <th style="border: 1px solid #000; padding: 3px; text-align: center;">T.D.S.</th>
-            <th style="border: 1px solid #000; padding: 3px; text-align: center;">OTHER</th>
-            <th style="border: 1px solid #000; padding: 3px; text-align: center; font-weight: bold;">Total</th>
+            <th style="border: 1px solid #000; padding: 3px;">Prof. Tax</th>
+            <th style="border: 1px solid #000; padding: 3px;">Prov. Fund</th>
+            <th style="border: 1px solid #000; padding: 3px;">T.D.S.</th>
+            <th style="border: 1px solid #000; padding: 3px;">OTHER</th>
+            <th style="border: 1px solid #000; padding: 3px;">Total</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">JUNE - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
+            <td style="border: 1px solid #000; padding: 3px; text-align: center;">APRIL - 2025</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">70,000</td>
             <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">70,000</td>
             <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">961</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">3,360</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">1,500</td>
             <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">2,000</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">3,161</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">10,773</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">5,060</td>
+            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">64,940</td>
           </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">JULY - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">961</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">2,000</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">3,161</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">10,773</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">AUG - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">961</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">1,161</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">12,773</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">SEP - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">13,934</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">961</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">1,161</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">12,773</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">OCT - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">16,606</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">16,606</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">1,058</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">1,258</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">15,348</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 3px; text-align: center;">NOV - 2025</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">15,329</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">15,329</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">200</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right;">1,058</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">1,258</td>
-            <td style="border: 1px solid #000; padding: 3px 5px; text-align: right; font-weight: bold;">14,071</td>
-          </tr>
-          <tr style="font-weight: bold; border-top: 2px solid #000;">
+          <tr style="font-weight: bold; background-color: #f8fafc; border-top: 2px solid #000;">
             <td style="border: 1px solid #000; padding: 4px; text-align: center;">TOTAL</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">87,671</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">8,40,000</td>
             <td style="border: 1px solid #000; padding: 4px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">87,671</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">1,200</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">5,960</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">8,40,000</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">2,400</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">40,320</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">18,000</td>
             <td style="border: 1px solid #000; padding: 4px 5px; text-align: center;">-</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">4,000</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">11,160</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">76,511</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">60,720</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; text-align: right;">7,79,280</td>
           </tr>
         </tbody>
       </table>
-    `
-
-    const sampleSalarySummaryTableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10.5px;">
-        <thead>
-          <tr style="background-color: #f1f5f9;">
-            <th rowspan="2" style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: center; font-weight: bold; color: #0f172a;">Month - Year</th>
-            <th rowspan="2" style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: center; font-weight: bold; color: #0f172a;">Consolidated Salary</th>
-            <th colspan="3" style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: center; font-weight: bold; color: #0f172a;">Deduction</th>
-            <th rowspan="2" style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: center; font-weight: bold; color: #0f172a;">Net Salary</th>
-          </tr>
-          <tr style="background-color: #f8fafc;">
-            <th style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: center; font-size: 9.5px; color: #475569;">Prof. Tax</th>
-            <th style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: center; font-size: 9.5px; color: #475569;">Prov. Fund</th>
-            <th style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: center; font-size: 9.5px; color: #475569;">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: center;">APRIL - 2023</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">16,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">200.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">1,800.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">2,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right; font-weight: bold;">14,000.00</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: center;">MAY - 2023</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">16,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">200.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">1,800.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right;">2,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 4px 6px; text-align: right; font-weight: bold;">14,000.00</td>
-          </tr>
-          <tr style="background-color: #f1f5f9; font-weight: bold;">
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: center;">TOTAL (12 Months)</td>
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: right;">192,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: right;">2,400.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: right;">21,600.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: right;">24,000.00</td>
-            <td style="border: 1px solid #94a3b8; padding: 5px 6px; text-align: right; color: #0f172a;">168,000.00</td>
-          </tr>
-        </tbody>
-      </table>
-    `
-
-    const sampleSalaryDetailedTableHtml = `
-      <div style="overflow-x: auto; margin: 16px 0;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 8.5px;">
-          <thead>
-            <tr style="background-color: #f1f5f9;">
-              <th style="border: 1px solid #94a3b8; padding: 4px;">Month - Year</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">BASIC</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">D.A.</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">H.R.A.</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">T.A.</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">M.A.</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">Gross</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">PT</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">PF</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px;">Other Ded</th>
-              <th style="border: 1px solid #94a3b8; padding: 4px; font-weight: bold;">Net Salary</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: center;">APRIL - 2023</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">36,183</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">25,328</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">3,618</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">1,600</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">300</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">95,831</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">200</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">1,800</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right;">8,000</td>
-              <td style="border: 1px solid #94a3b8; padding: 3px; text-align: right; font-weight: bold;">85,831</td>
-            </tr>
-            <tr style="background-color: #f1f5f9; font-weight: bold;">
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: center;">TOTAL</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">452,808</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">316,968</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">45,282</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">19,200</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">3,600</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">1,189,812</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">2,400</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">21,600</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">110,000</td>
-              <td style="border: 1px solid #94a3b8; padding: 4px; text-align: right;">1,055,812</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     `
 
     let renderedTableHtml = ""
     if (tableType === "experience") renderedTableHtml = sampleExperienceTableHtml
     else if (tableType === "salary_with_arrears") renderedTableHtml = sampleSalaryWithArrearsTableHtml
-    else if (tableType === "salary_summary") renderedTableHtml = sampleSalarySummaryTableHtml
-    else if (tableType === "salary_detailed") renderedTableHtml = sampleSalaryDetailedTableHtml
 
     const sampleSignatureHtml = `
       <table style="width: 100%; border: none; margin-top: 50px;">
@@ -559,38 +566,40 @@ ${tableTag}
 ${includeSignature ? "{{principal_signature}}" : ""}
       `.trim()
 
-      const code = certTitle.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_")
+      const generatedCode =
+        editingTemplate?.code ||
+        `${targetType.toUpperCase()}_${certTitle.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_")}`
 
       const payload = {
         name: certTitle.trim(),
-        code,
-        type: code,
-        target_type: "staff",
-        description: `Custom ${certTitle.trim()} template`,
+        code: generatedCode,
+        type: generatedCode,
+        target_type: targetType,
+        targetType: targetType,
+        description: `Official ${targetType} certificate template: ${certTitle.trim()}`,
         content: finalHtml,
         is_active: isActive,
       }
 
       if (editingTemplate) {
         const res = await ApiService.put(`certificate-templates/${editingTemplate.id}`, payload)
-        if (res?.data?.success || res?.status === 200) {
-          toast({ title: "Saved", description: `Template "${certTitle}" updated successfully.` })
-          setDialogOpen(false)
-          fetchTemplates()
+        if (res?.data?.success) {
+          toast({ title: "Updated", description: "Certificate template updated successfully." })
         }
       } else {
         const res = await ApiService.post("certificate-templates", payload)
-        if (res?.data?.success || res?.status === 201) {
-          toast({ title: "Created", description: `Template "${certTitle}" created successfully.` })
-          setDialogOpen(false)
-          fetchTemplates()
+        if (res?.data?.success) {
+          toast({ title: "Created", description: "Certificate template created successfully." })
         }
       }
+
+      setDialogOpen(false)
+      fetchTemplates()
     } catch (err: any) {
-      console.error("Failed to save template:", err)
+      console.error("Save template error:", err)
       toast({
-        title: "Error Saving Template",
-        description: err?.response?.data?.message || err?.message || "Failed to save template.",
+        title: "Error",
+        description: err.response?.data?.message || "Failed to save certificate template.",
         variant: "destructive",
       })
     } finally {
@@ -599,346 +608,499 @@ ${includeSignature ? "{{principal_signature}}" : ""}
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this template?")) return
+    if (!confirm("Are you sure you want to delete this certificate template?")) return
     try {
       const res = await ApiService.delete(`certificate-templates/${id}`)
       if (res?.data?.success) {
         toast({ title: "Deleted", description: "Template deleted successfully." })
         fetchTemplates()
       }
-    } catch (err) {
+    } catch (err: any) {
       toast({ title: "Error", description: "Failed to delete template.", variant: "destructive" })
     }
   }
 
+  const currentMergeTags = targetType === "staff" ? STAFF_MERGE_TAGS : STUDENT_MERGE_TAGS
+  const currentPresets = targetType === "staff" ? STAFF_PRESETS : STUDENT_PRESETS
+
   return (
-    <Card className="border border-slate-200/90 shadow-sm rounded-xl overflow-hidden">
-      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 border-b border-slate-100 bg-slate-50/50">
-        <div className="space-y-1">
-          <CardTitle className="text-xl font-bold flex items-center gap-2.5 text-slate-900">
-            <div className="p-2 bg-blue-100 text-blue-800 rounded-lg">
-              <FileText className="h-5 w-5" />
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/70 pb-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-blue-600/10 text-blue-700 rounded-xl">
+              <ScrollText className="w-6 h-6" />
             </div>
-            Certificate & Letter Templates
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-500 max-w-2xl leading-relaxed">
-            Create customized staff certificates (Relieving Order, NOC, Salary Certificate, etc.) with automated placeholders without writing code.
-          </CardDescription>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                Certificate &amp; Letter Templates
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Design and manage official institutional templates for Staff and Students with live preview, letterheads, and print formatting
+              </p>
+            </div>
+          </div>
         </div>
-        <Button onClick={handleOpenCreate} className="gap-2 bg-blue-900 hover:bg-blue-800 text-white text-xs px-4 py-2 h-9 rounded-lg shadow-sm">
+
+        <Button
+          onClick={() => handleOpenCreate(activeTab)}
+          className="gap-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl shadow-xs self-start sm:self-auto"
+        >
           <Plus className="h-4 w-4" />
-          Add New Certificate
+          Create New Template
         </Button>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-6">
-        {isLoading ? (
-          <div className="py-16 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-            <span>Loading certificate templates...</span>
-          </div>
-        ) : templates.length === 0 ? (
-          <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl p-8 bg-slate-50/40 max-w-2xl mx-auto">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto mb-3.5">
-              <FileText className="h-6 w-6" />
-            </div>
-            <p className="text-base font-semibold text-slate-800">No Custom Certificate Templates Yet</p>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-md mx-auto leading-relaxed">
-              Create your own custom letters (Relieving Letter, NOC, Salary Certificate, Character Certificate) in just a few clicks.
-            </p>
-            <Button onClick={handleOpenCreate} className="mt-5 gap-2 bg-blue-900 hover:bg-blue-800 text-white text-xs rounded-lg px-4 h-9">
-              <Plus className="h-3.5 w-3.5" />
-              Add First Certificate
-            </Button>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-2xs">
-            <Table className="text-xs">
-              <TableHeader className="bg-slate-50/80">
-                <TableRow>
-                  <TableHead className="font-semibold text-slate-700 py-3.5 pl-5">Certificate Title</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Identifier Code</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-right pr-5">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-100">
-                {templates.map((t) => (
-                  <TableRow key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                    <TableCell className="font-medium text-slate-900 py-3.5 pl-5">
-                      <div className="font-semibold text-sm text-slate-800">{t.name}</div>
-                      {t.description && <div className="text-[11px] text-slate-500 mt-0.5">{t.description}</div>}
-                    </TableCell>
-                    <TableCell className="font-mono text-slate-600 text-xs">
-                      <span className="px-2 py-0.5 bg-slate-100 rounded text-[11px] border border-slate-200">
-                        {t.code || t.type}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {t.is_active || t.isActive ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-emerald-200 text-[10px] px-2 py-0.5">
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
-                          Inactive
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right pr-5 space-x-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenEdit(t)}
-                        className="h-8 px-3 text-xs gap-1.5 text-slate-700 hover:text-blue-700 hover:border-blue-300"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(t.id)}
-                        className="h-8 px-2.5 text-xs text-slate-500 hover:text-red-700 hover:border-red-200"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        )}
+      {/* Main Tabs (Staff vs Student) */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "staff" | "student")} className="space-y-6">
+        <div className="p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-xs inline-flex">
+          <TabsList className="bg-transparent p-0 gap-1.5 h-auto">
+            <TabsTrigger
+              value="staff"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all border border-transparent data-[state=active]:border-border/60"
+            >
+              <Users className="w-4 h-4 text-blue-600" />
+              <span>Staff Templates</span>
+              <Badge variant="secondary" className="text-[11px] px-2 py-0.5 font-mono">
+                {staffTemplates.length}
+              </Badge>
+            </TabsTrigger>
 
-        {/* Spacious, Beautiful Split-View Modal */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-[1200px] w-[95vw] max-h-[92vh] overflow-y-auto p-7 rounded-2xl shadow-2xl">
-            {/* Header with Preset Loader */}
-            <DialogHeader className="border-b border-slate-100 pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <TabsTrigger
+              value="student"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-xs transition-all border border-transparent data-[state=active]:border-border/60"
+            >
+              <GraduationCap className="w-4 h-4 text-emerald-600" />
+              <span>Student Templates</span>
+              <Badge variant="secondary" className="text-[11px] px-2 py-0.5 font-mono">
+                {studentTemplates.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Staff Templates Tab */}
+        <TabsContent value="staff" className="space-y-4">
+          <Card className="rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+            <CardHeader className="p-6 border-b border-border/60 bg-card">
+              <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
-                    {editingTemplate ? `Edit: ${editingTemplate.name}` : "Create Certificate Template"}
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-slate-500 mt-1">
-                    Enter the certificate title, write the letter text, and select options. Live preview updates on the right.
-                  </DialogDescription>
+                  <CardTitle className="text-lg font-bold text-slate-800">
+                    Staff Certificate Templates
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-1">
+                    Templates available for Teaching faculty, Hospital clinical staff, and Non-teaching personnel
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="py-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading staff templates...
+                </div>
+              ) : staffTemplates.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No staff templates found. Click "Create New Template" above to add one.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="w-12 text-center font-bold">#</TableHead>
+                      <TableHead className="font-bold">Template Name</TableHead>
+                      <TableHead className="font-bold">Code</TableHead>
+                      <TableHead className="font-bold">Included Table Format</TableHead>
+                      <TableHead className="text-center font-bold">Status</TableHead>
+                      <TableHead className="text-right font-bold pr-6">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {staffTemplates.map((t, idx) => {
+                      const hasArrears = t.content?.includes("{{salary_table_with_arrears}}")
+                      const hasDetailed = t.content?.includes("{{salary_table_detailed}}")
+                      const hasSummary = t.content?.includes("{{salary_table_summary}}")
+                      const hasExp = t.content?.includes("{{experience_table}}")
+
+                      return (
+                        <TableRow key={t.id} className="hover:bg-slate-50/70">
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell className="font-semibold text-slate-800">
+                            {t.name}
+                            {t.description && (
+                              <p className="text-[11px] font-normal text-muted-foreground mt-0.5">
+                                {t.description}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-slate-600">
+                            {t.code || t.type}
+                          </TableCell>
+                          <TableCell>
+                            {hasArrears && (
+                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[11px]">
+                                Salary (Arrears &amp; TDS)
+                              </Badge>
+                            )}
+                            {hasDetailed && (
+                              <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[11px]">
+                                Detailed Allowances
+                              </Badge>
+                            )}
+                            {hasSummary && (
+                              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[11px]">
+                                Simplified Salary
+                              </Badge>
+                            )}
+                            {hasExp && (
+                              <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px]">
+                                Experience Table
+                              </Badge>
+                            )}
+                            {!hasArrears && !hasDetailed && !hasSummary && !hasExp && (
+                              <span className="text-xs text-muted-foreground">Standard Text</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {t.is_active ? (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px]">
+                                Inactive
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenEdit(t)}
+                                className="h-8 text-xs gap-1.5"
+                              >
+                                <Edit className="h-3.5 w-3.5" /> Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(t.id)}
+                                className="h-8 text-xs gap-1.5 text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Student Templates Tab */}
+        <TabsContent value="student" className="space-y-4">
+          <Card className="rounded-2xl border border-border/70 shadow-xs overflow-hidden">
+            <CardHeader className="p-6 border-b border-border/60 bg-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800">
+                    Student Certificate Templates
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-1">
+                    Templates available for Bonafide, Character, Transfer/Leaving, Attempt, Medium of Instruction, and Loan Certificates
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="py-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> Loading student templates...
+                </div>
+              ) : studentTemplates.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No student templates found. Click "Create New Template" above to add one.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="w-12 text-center font-bold">#</TableHead>
+                      <TableHead className="font-bold">Template Name</TableHead>
+                      <TableHead className="font-bold">Code</TableHead>
+                      <TableHead className="font-bold">Category</TableHead>
+                      <TableHead className="text-center font-bold">Status</TableHead>
+                      <TableHead className="text-right font-bold pr-6">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {studentTemplates.map((t, idx) => (
+                      <TableRow key={t.id} className="hover:bg-slate-50/70">
+                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-800">
+                          {t.name}
+                          {t.description && (
+                            <p className="text-[11px] font-normal text-muted-foreground mt-0.5">
+                              {t.description}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-slate-600">
+                          {t.code || t.type}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px]">
+                            Student Certificate
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {t.is_active ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px]">
+                              Inactive
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEdit(t)}
+                              className="h-8 text-xs gap-1.5"
+                            >
+                              <Edit className="h-3.5 w-3.5" /> Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(t.id)}
+                              className="h-8 text-xs gap-1.5 text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Create / Edit Template Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-4 border-b border-border/70 bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold text-slate-800">
+                  {editingTemplate ? `Edit Template: ${editingTemplate.name}` : "Create Certificate Template"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                  Configure certificate title, text paragraphs, merge tags, and preview live formatting
+                </DialogDescription>
+              </div>
+
+              {/* Target Type Selector */}
+              <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={targetType === "staff" ? "default" : "ghost"}
+                  onClick={() => setTargetType("staff")}
+                  className={`text-xs h-7 px-3 rounded-lg ${targetType === "staff" ? "bg-blue-700 text-white" : "text-slate-600"}`}
+                >
+                  <Users className="w-3 h-3 mr-1.5" /> Staff
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={targetType === "student" ? "default" : "ghost"}
+                  onClick={() => setTargetType("student")}
+                  className={`text-xs h-7 px-3 rounded-lg ${targetType === "student" ? "bg-emerald-700 text-white" : "text-slate-600"}`}
+                >
+                  <GraduationCap className="w-3 h-3 mr-1.5" /> Student
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-y-auto divide-y lg:divide-y-0 lg:divide-x divide-border/70">
+            {/* Left Column: Form Editor */}
+            <div className="p-6 space-y-5 overflow-y-auto">
+              {/* Presets Quick-Load Bar */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Quick Presets:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(currentPresets).map(([key, p]) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLoadPreset(key)}
+                      className="text-[11px] h-7 px-2.5 bg-white hover:bg-slate-100 text-slate-700"
+                    >
+                      {p.title}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title & Format */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Certificate Title *</Label>
+                  <Input
+                    value={certTitle}
+                    onChange={(e) => setCertTitle(e.target.value)}
+                    placeholder="e.g. Bonafide Certificate"
+                    className="h-9 text-xs"
+                  />
                 </div>
 
-                {!editingTemplate && (
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 self-start sm:self-auto">
-                    <Sparkles className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                    <span className="text-xs font-medium text-slate-600 whitespace-nowrap">Load Example:</span>
-                    <Select onValueChange={handleLoadPreset}>
-                      <SelectTrigger className="h-7 text-xs w-48 bg-white border-slate-300 rounded-lg">
-                        <SelectValue placeholder="Choose starter letter..." />
+                {targetType === "staff" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Included Table Format</Label>
+                    <Select value={tableType} onValueChange={(v) => setTableType(v as CertificateTableType)}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="text-xs">
-                        <SelectItem value="SALARY_WITH_ARREARS">Salary Certificate (With Arrears, TDS & Deductions)</SelectItem>
-                        <SelectItem value="SALARY_SUMMARY">Salary Certificate (Consolidated Table)</SelectItem>
-                        <SelectItem value="SALARY_DETAILED">Salary Certificate (Detailed Breakdown)</SelectItem>
-                        <SelectItem value="EXPERIENCE">Experience Certificate</SelectItem>
-                        <SelectItem value="RELIEVING">Relieving Order</SelectItem>
-                        <SelectItem value="NOC">No Objection Certificate (NOC)</SelectItem>
-                        <SelectItem value="CHARACTER">Character Certificate</SelectItem>
+                      <SelectContent>
+                        <SelectItem value="none">None (Plain Text Letter)</SelectItem>
+                        <SelectItem value="salary_with_arrears">Salary Table (With Arrears &amp; TDS)</SelectItem>
+                        <SelectItem value="salary_detailed">Detailed Salary Table (Allowances)</SelectItem>
+                        <SelectItem value="salary_summary">Simplified Salary Table</SelectItem>
+                        <SelectItem value="experience">Experience Postings Table</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 )}
               </div>
-            </DialogHeader>
 
-            {/* Split Screen Grid with Extra Spacing */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
-              {/* Left Column: Form & Inputs (7 Columns on large screens) */}
-              <div className="lg:col-span-6 space-y-5">
-                {/* Certificate Title */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-800 tracking-wide uppercase">
-                    Certificate Title <span className="text-red-500">*</span>
+              {/* Merge Tags Quick Insert Bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Click to Insert Dynamic Merge Tags:
                   </Label>
-                  <Input
-                    value={certTitle}
-                    onChange={(e) => setCertTitle(e.target.value)}
-                    placeholder="e.g. Salary Certificate"
-                    className="h-10 text-sm bg-white font-medium rounded-xl border-slate-300 focus-visible:ring-blue-500 shadow-2xs"
-                  />
+                  <span className="text-[10px] text-muted-foreground">Inserts at cursor</span>
                 </div>
-
-                {/* Merge Tags Palette */}
-                <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-4 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                      Insert Staff Information <span className="text-[11px] font-normal text-slate-500">(Click to insert):</span>
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {MERGE_TAGS.map((item) => (
-                      <button
-                        key={item.tag}
-                        type="button"
-                        onClick={() => insertMergeTag(item.tag)}
-                        className={`inline-flex items-center gap-1.5 border rounded-lg px-2.5 py-1 text-xs font-medium transition-all active:scale-95 cursor-pointer shadow-2xs ${item.color}`}
-                        title={`Click to insert ${item.label}`}
-                      >
-                        <span className="font-bold text-sm leading-none">+</span>
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Certificate Body Textarea */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-slate-800 tracking-wide uppercase">
-                      Certificate Body Text <span className="text-red-500">*</span>
-                    </Label>
-                    <span className="text-[11px] text-slate-400">Separate paragraphs with double Enter</span>
-                  </div>
-                  <Textarea
-                    ref={textareaRef}
-                    value={certBody}
-                    onChange={(e) => setCertBody(e.target.value)}
-                    placeholder="Type the body of the certificate here. Click on the buttons above to insert dynamic staff variables..."
-                    rows={8}
-                    className="text-xs leading-relaxed font-sans bg-white rounded-xl border-slate-300 focus-visible:ring-blue-500 p-3.5 min-h-[180px] shadow-2xs"
-                  />
-                </div>
-
-                {/* Standard Section Switches & Table Type Selection */}
-                <div className="space-y-2 pt-1">
-                  <Label className="text-xs font-bold text-slate-800 tracking-wide uppercase block">
-                    Document Sections & Settings
-                  </Label>
-                  <div className="space-y-2.5">
-                    <div className="py-2.5 px-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-xs font-semibold text-slate-800 block">
-                            Embedded Table Type
-                          </Label>
-                          <span className="text-[11px] text-slate-500">
-                            Choose which data table to embed in this certificate
-                          </span>
-                        </div>
-                      </div>
-                      <Select value={tableType} onValueChange={(v: CertificateTableType) => setTableType(v)}>
-                        <SelectTrigger className="h-9 text-xs bg-slate-50/80 border-slate-300 rounded-lg">
-                          <SelectValue placeholder="Select Table Type" />
-                        </SelectTrigger>
-                        <SelectContent className="text-xs">
-                          <SelectItem value="none">None (Plain Letter format)</SelectItem>
-                          <SelectItem value="salary_with_arrears">Salary Table - With Arrears, TDS & Deductions (Standard Format)</SelectItem>
-                          <SelectItem value="salary_summary">Salary Table - Consolidated (Monthly, PT, PF, Net)</SelectItem>
-                          <SelectItem value="salary_detailed">Salary Table - Detailed Breakdown (Allowances & Deductions)</SelectItem>
-                          <SelectItem value="experience">Experience / Service History (4 Columns: Post, From, To, Department)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center justify-between py-2.5 px-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs hover:bg-slate-50/50 transition-colors">
-                      <div>
-                        <Label htmlFor="toggle-sig" className="text-xs font-medium text-slate-800 cursor-pointer block">
-                          Include Principal Signature Block
-                        </Label>
-                        <span className="text-[11px] text-slate-500">Adds college seal and Principal designation at bottom</span>
-                      </div>
-                      <Switch id="toggle-sig" checked={includeSignature} onCheckedChange={setIncludeSignature} />
-                    </div>
-
-                    <div className="flex items-center justify-between py-2.5 px-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs hover:bg-slate-50/50 transition-colors">
-                      <div>
-                        <Label htmlFor="toggle-active" className="text-xs font-medium text-slate-800 cursor-pointer block">
-                          Active Template
-                        </Label>
-                        <span className="text-[11px] text-slate-500">Make this certificate type selectable in staff profiles</span>
-                      </div>
-                      <Switch id="toggle-active" checked={isActive} onCheckedChange={setIsActive} />
-                    </div>
-                  </div>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  {currentMergeTags.map((mt) => (
+                    <button
+                      key={mt.tag}
+                      type="button"
+                      onClick={() => insertMergeTag(mt.tag)}
+                      className={`text-[11px] px-2 py-0.5 rounded-md border font-medium transition-all ${mt.color}`}
+                    >
+                      {mt.label} <span className="font-mono text-[10px] opacity-75">{mt.tag}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Right Column: Real-Time Live Paper Preview (6 Columns on large screens) */}
-              <div className="lg:col-span-6 flex flex-col space-y-2">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wide">
-                    <Eye className="h-4 w-4 text-blue-600" />
-                    <span>Real-Time Certificate Preview</span>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] text-slate-600 bg-slate-100 font-mono">
-                    A4 Sheet Preview
-                  </Badge>
+              {/* Certificate Body Textarea */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Certificate Body Text *</Label>
+                <Textarea
+                  ref={textareaRef}
+                  value={certBody}
+                  onChange={(e) => setCertBody(e.target.value)}
+                  placeholder="Write the paragraphs of the certificate. Separate paragraphs with double enter (blank line)."
+                  rows={8}
+                  className="font-sans text-xs leading-relaxed"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Separate paragraphs with a blank line. Do not manually type the certificate title inside the body text.
+                </p>
+              </div>
+
+              {/* Toggles */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Switch id="sig-switch" checked={includeSignature} onCheckedChange={setIncludeSignature} />
+                  <Label htmlFor="sig-switch" className="text-xs cursor-pointer font-medium">
+                    Include Principal Signature &amp; Seal Block
+                  </Label>
                 </div>
-
-                {/* Paper Container */}
-                <div className="bg-slate-100/90 p-5 rounded-2xl border border-slate-200/90 h-[560px] overflow-y-auto shadow-inner flex justify-center">
-                  <div
-                    className="bg-white p-8 rounded-xl shadow-md border border-slate-200/80 w-full text-black font-serif text-xs leading-normal flex flex-col justify-between"
-                    style={{ minHeight: "500px" }}
-                  >
-                    <div>
-                      {/* College Header */}
-                      <div className="border-b-2 border-double border-blue-900 pb-3 mb-5">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src="/college-logo.jpeg"
-                            alt="College Logo"
-                            className="w-12 h-12 object-contain shrink-0"
-                          />
-                          <div className="flex-1 text-center pr-12">
-                            <h4 className="font-bold text-[12.5px] text-blue-900 tracking-wide uppercase leading-tight font-sans">
-                              C. N. KOTHARI HOMOEOPATHIC MEDICAL COLLEGE<br />
-                              <span className="text-[11px]">&amp; RESEARCH CENTRE</span>
-                            </h4>
-                            <p className="text-[9px] text-slate-600 mt-0.5 font-sans">
-                              (Managed by: Vyara Pradesh Seva Samiti)
-                            </p>
-                            <p className="text-[8px] text-slate-500 font-sans">
-                              Kakrapar Road, Vyara, Dist: Tapi, Gujarat - 394650 | Phone: 02626-220117
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Ref and Date Line */}
-                      <div className="flex justify-between text-[11px] text-slate-700 mb-6 font-sans">
-                        <span>Ref. No. 104/C.N.K.H.M.C.&amp;R.C./Vyara/2026</span>
-                        <span>Date: {new Date().toLocaleDateString("en-GB")}</span>
-                      </div>
-
-                      {/* Rendered Live Body */}
-                      <div
-                        className="preview-body-content"
-                        dangerouslySetInnerHTML={{ __html: getLivePreviewHtml() }}
-                      />
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="active-switch" checked={isActive} onCheckedChange={setIsActive} />
+                  <Label htmlFor="active-switch" className="text-xs cursor-pointer font-medium">
+                    Template Active
+                  </Label>
                 </div>
               </div>
             </div>
 
-            {/* Footer Actions */}
-            <DialogFooter className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-end gap-3">
-              <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="text-xs h-9 px-4 rounded-lg">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                size="sm"
-                className="gap-2 bg-blue-900 hover:bg-blue-800 text-white text-xs h-9 px-5 rounded-lg shadow-sm"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                {editingTemplate ? "Save Changes" : "Create Template"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+            {/* Right Column: Live A4 Preview */}
+            <div className="p-6 bg-slate-100/70 overflow-y-auto flex flex-col items-center">
+              <div className="w-full flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <Eye className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Real-time A4 Letterhead Preview:</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-white">
+                  Sample Data
+                </Badge>
+              </div>
+
+              <div className="w-full bg-white border border-slate-200 rounded-lg shadow-sm p-8 min-h-[500px]">
+                {/* Header Letterhead Sample */}
+                <div className="border-b-2 border-blue-900 pb-3 mb-6 text-center">
+                  <h2 className="text-base font-bold text-blue-900 leading-tight uppercase">
+                    C. N. KOTHARI HOMOEOPATHIC MEDICAL COLLEGE &amp; RESEARCH CENTRE
+                  </h2>
+                  <p className="text-[11px] text-slate-600 mt-0.5">(Managed by: Vyara Pradesh Seva Samiti)</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Kakrapar Road, Vyara, Dist: Tapi, Gujarat - 394650 | Phone: 02626-220117
+                  </p>
+                </div>
+
+                <div className="flex justify-between text-xs text-slate-600 mb-6 font-mono">
+                  <span>Ref. No. CNKHMC/CERT/2026/042</span>
+                  <span>Date: 22/09/2026</span>
+                </div>
+
+                <div
+                  className="font-serif text-[12px] leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: getLivePreviewHtml() }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 border-t border-border/70 bg-card gap-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving} className="bg-blue-700 hover:bg-blue-800 text-white gap-2">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

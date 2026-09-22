@@ -24,26 +24,59 @@ const fieldGroups = {
   role: [
     { id: "staff_role", label: "Staff Role" },
     { id: "employee_code", label: "Employee Code" },
-    { id: "joining_date", label: "Joining Date" },
-    { id: "employment_status", label: "Employment Status" },
     { id: "staff_type", label: "Staff Type" },
     { id: "staff_category", label: "Staff Category" },
     { id: "designation", label: "Designation" },
+    { id: "employment_status", label: "Employment Status" },
+    { id: "nature_of_appointment", label: "Nature of Appointment" },
+    { id: "designation_on_doa", label: "Designation on DOA" },
+    { id: "department", label: "Department" },
+    { id: "joining_date", label: "Joining Date" },
+    { id: "promotion_date", label: "Promotion Date" },
+    { id: "pay_scale", label: "Pay Scale / Grade" },
+    { id: "working_hours", label: "Working Hours" },
+    { id: "retirement_age", label: "Retirement Age" },
+    { id: "retirement_date", label: "Retirement Date" },
+    { id: "resignation_date", label: "Resignation Date" },
   ],
   personal: [
     { id: "first_name", label: "First Name" },
     { id: "middle_name", label: "Middle Name" },
     { id: "last_name", label: "Last Name" },
+    { id: "first_name_in_guj", label: "First Name (Gujarati)" },
+    { id: "middle_name_in_guj", label: "Middle Name (Gujarati)" },
+    { id: "last_name_in_guj", label: "Last Name (Gujarati)" },
     { id: "gender", label: "Gender" },
-    { id: "birth_date", label: "Birth Date" },
-    { id: "mobile_number", label: "Mobile Number" },
-    { id: "email", label: "Email" },
-    { id: "aadhar_no", label: "Aadhar Number" },
+    { id: "birth_date", label: "Date of Birth" },
     { id: "marital_status", label: "Marital Status" },
+    { id: "blood_group", label: "Blood Group" },
+    { id: "aadhar_no", label: "Aadhar Number" },
     { id: "pan_card_no", label: "PAN Card No" },
+    { id: "category", label: "Category" },
+    { id: "nationality", label: "Nationality" },
+    { id: "religion", label: "Religion" },
+    { id: "religion_in_guj", label: "Religion (Gujarati)" },
+    { id: "caste", label: "Caste" },
+    { id: "caste_in_guj", label: "Caste (Gujarati)" },
+    { id: "minority", label: "Minority" },
+    { id: "voter_id", label: "Voter ID No" },
+    { id: "driving_licence", label: "Driving License No" },
+    { id: "driving_licence_expiry", label: "Driving License Validity" },
+  ],
+  contact: [
+    { id: "mobile_number", label: "Mobile Number" },
+    { id: "email", label: "Email Address" },
+    { id: "emergency_contact_name", label: "Emergency Contact Name" },
+    { id: "emergency_contact_number", label: "Emergency Contact Number" },
+    { id: "address", label: "Current Address" },
+    { id: "city", label: "City" },
+    { id: "district", label: "District" },
+    { id: "state", label: "State" },
+    { id: "postal_code", label: "Postal Code" },
+    { id: "permanent_address", label: "Permanent Address" },
   ],
   academic: [
-    { id: "qualification", label: "Qualification" },
+    { id: "qualification", label: "Primary Qualification" },
     { id: "subject_specialization", label: "Subject Specialization" },
     { id: "ug_degree", label: "UG Degree" },
     { id: "ug_passing_university", label: "UG University" },
@@ -51,24 +84,39 @@ const fieldGroups = {
     { id: "pg_degree", label: "PG Degree" },
     { id: "pg_passing_university", label: "PG University" },
     { id: "pg_passing_year", label: "PG Passing Year" },
+    { id: "diploma_degree", label: "Diploma Degree" },
+    { id: "diploma_council", label: "Diploma Council" },
+    { id: "diploma_passing_year", label: "Diploma Passing Year" },
+    { id: "other_degree", label: "Other Degree" },
+    { id: "other_passing_university", label: "Other University" },
+    { id: "other_passing_year", label: "Other Passing Year" },
+    { id: "md_subject", label: "MD Subject" },
+    { id: "passing_date", label: "Passing Date" },
   ],
   professional: [
     { id: "teacher_code", label: "AYUSH Teacher Code" },
+    { id: "ayush_registration_no", label: "AYUSH Reg / ID No" },
     { id: "state_council_reg_no", label: "State Council Reg No" },
-    { id: "ayush_registration_no", label: "AYUSH Reg No" },
+    { id: "council_name", label: "Name of Council" },
     { id: "nch_registration_no", label: "NCH Reg No" },
-    { id: "total_experience", label: "Total Experience" },
+    { id: "nch_registration_date", label: "NCH Reg Date" },
+    { id: "registration_authority", label: "Registration Authority" },
+    { id: "area_of_expertise", label: "Area of Expertise" },
+    { id: "total_experience", label: "Total Experience (Years)" },
   ],
-  address: [
-    { id: "address", label: "Address" },
-    { id: "city", label: "City" },
-    { id: "state", label: "State" },
-    { id: "postal_code", label: "Postal Code" },
+  university: [
+    { id: "university_appointment_letter_no", label: "University Appointment Letter No" },
+    { id: "university_appointment_date", label: "University Appointment Date" },
+    { id: "uni_approval_number", label: "University Approval Letter No" },
+    { id: "uni_approval_date", label: "University Approval Date" },
   ],
   bank: [
     { id: "bank_name", label: "Bank Name" },
+    { id: "bank_branch_name", label: "Branch Name" },
     { id: "account_no", label: "Account Number" },
     { id: "IFSC_code", label: "IFSC Code" },
+    { id: "epf_no", label: "EPF Number" },
+    { id: "epf_uan_no", label: "EPF UAN Number" },
   ],
 }
 
@@ -137,12 +185,94 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
 
   // Transform Excel file headers on the client side using headerMappings
   const transformExcelHeaders = async (excelBlob: Blob): Promise<Blob> => {
+    const STAFF_DATE_FIELDS = [
+      "birth_date",
+      "joining_date",
+      "date_of_appointment",
+      "appointment_date",
+      "promotion_date",
+      "date_of_promotion",
+      "registration_date",
+      "date_of_registration",
+      "nch_registration_date",
+      "university_appointment_date",
+      "university_approval_date",
+      "uni_approval_date",
+      "passing_date",
+      "date_of_passing",
+      "driving_licence_expiry",
+      "driving_license_validity",
+      "retirement_date",
+      "resignation_date",
+    ];
+
+    const STAFF_TEXT_FIELDS = [
+      "aadhar_no",
+      "mobile_number",
+      "emergency_contact_number",
+      "pan_card_no",
+      "account_no",
+      "epf_no",
+      "epf_uan_no",
+      "teacher_code",
+      "ayush_teacher_code",
+      "ayush_id_no",
+      "ayush_registration_no",
+      "state_council_reg_no",
+      "registration_number",
+      "registration_no",
+      "nch_registration_no",
+      "IFSC_code",
+      "employee_code",
+      "postal_code",
+      "voter_id",
+      "voter_id_no",
+      "driving_licence",
+      "driving_license_no",
+    ];
+
+    const formatExcelDate = (val: any): string => {
+      if (val === null || val === undefined || val === "") return "";
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) return "";
+        const y = val.getUTCFullYear();
+        const m = String(val.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(val.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+      if (typeof val === "number" && val > 0) {
+        // Excel serial date (e.g. 22153, 39790)
+        const days = val > 60 ? val - 25569 : val - 25568;
+        const date = new Date(Math.round(days * 86400 * 1000));
+        if (!isNaN(date.getTime())) {
+          const y = date.getUTCFullYear();
+          const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+          const d = String(date.getUTCDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+      }
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (!trimmed) return "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+        const parsed = new Date(trimmed);
+        if (!isNaN(parsed.getTime())) {
+          const y = parsed.getFullYear();
+          const m = String(parsed.getMonth() + 1).padStart(2, "0");
+          const d = String(parsed.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        return trimmed;
+      }
+      return String(val);
+    };
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: "array" });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
 
@@ -154,6 +284,27 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
           }
 
           const originalHeaders = sheetData[0] as string[];
+
+          // Format all data rows
+          for (let r = 1; r < sheetData.length; r++) {
+            const row = sheetData[r];
+            if (!row) continue;
+            for (let c = 0; c < originalHeaders.length; c++) {
+              const headerKey = originalHeaders[c];
+              const cellVal = row[c];
+              if (cellVal === null || cellVal === undefined || cellVal === "") {
+                row[c] = "";
+                continue;
+              }
+
+              if (STAFF_DATE_FIELDS.includes(headerKey)) {
+                row[c] = formatExcelDate(cellVal);
+              } else if (STAFF_TEXT_FIELDS.includes(headerKey)) {
+                row[c] = String(cellVal).trim();
+              }
+            }
+          }
+
           const transformedHeaders = originalHeaders.map((header) => {
             return staffHeaderMappings[header] || formatKeyToHeader(header);
           });
@@ -161,17 +312,32 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
           sheetData[0] = transformedHeaders;
 
           const newWorksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+          // Force text cell type 's' on text/date columns to avoid Excel scientific notation
+          for (let r = 1; r < sheetData.length; r++) {
+            for (let c = 0; c < originalHeaders.length; c++) {
+              const headerKey = originalHeaders[c];
+              if (STAFF_TEXT_FIELDS.includes(headerKey) || STAFF_DATE_FIELDS.includes(headerKey)) {
+                const cellRef = XLSX.utils.encode_cell({ r, c });
+                if (newWorksheet[cellRef]) {
+                  newWorksheet[cellRef].t = "s";
+                  newWorksheet[cellRef].z = "@";
+                }
+              }
+            }
+          }
+
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, firstSheetName);
 
-          const excelBuffer = XLSX.write(newWorkbook, { bookType: 'xlsx', type: 'array' });
+          const excelBuffer = XLSX.write(newWorkbook, { bookType: "xlsx", type: "array" });
           const newBlob = new Blob([excelBuffer], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           });
 
           resolve(newBlob);
         } catch (error) {
-          console.error('Error transforming Excel headers:', error);
+          console.error("Error transforming Excel headers:", error);
           resolve(excelBlob);
         }
       };

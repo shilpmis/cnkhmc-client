@@ -217,7 +217,7 @@ interface StaffTableProps {
   onPageChange: (page: number) => void
   onDelete: (staff_id: number) => void
   setDefaultRoute?: number
-  type: "teaching" | "non-teaching"
+  type: "teaching" | "non-teaching" | "hospital"
   filteredStaff: StaffType[]
 }
 
@@ -389,21 +389,30 @@ export default function StaffTable({
                   </div>
                 </TableHead>
                 <TableHead>{t("DOJ")}</TableHead>
-                <TableHead>{t("staff_type") || "Type"}</TableHead>
-                <TableHead>{t("staff_category") || "Category"}</TableHead>
+                <TableHead className="cursor-pointer hover:bg-gray-50 select-none" onClick={() => handleSort("staff_type")}>
+                  <div className="flex items-center">
+                    {t("staff") || "Staff"}
+                    <SortIcon field="staff_type" />
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-gray-50 select-none" onClick={() => handleSort("employment_status")}>
+                  <div className="flex items-center">
+                    {t("staff_type") || "Staff Type"}
+                    <SortIcon field="employment_status" />
+                  </div>
+                </TableHead>
+                {type === "hospital" && (
+                  <TableHead className="cursor-pointer hover:bg-gray-50 select-none" onClick={() => handleSort("staff_category")}>
+                    <div className="flex items-center">
+                      {t("staff_category") || "Staff Category"}
+                      <SortIcon field="staff_category" />
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="cursor-pointer hover:bg-gray-50 select-none" onClick={() => handleSort("designation")}>
                   <div className="flex items-center">
                     {t("designation") || "Designation"}
                     <SortIcon field="designation" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort("employment_status")}
-                >
-                  <div className="flex items-center">
-                    {t("current_status")}
-                    <SortIcon field="employment_status" />
                   </div>
                 </TableHead>
                 <TableHead>{t("actions")}</TableHead>
@@ -436,9 +445,11 @@ export default function StaffTable({
                     {staff.joining_date ? new Date(staff.joining_date).toLocaleDateString("en-GB") : "-"}
                   </TableCell>
                   <TableCell>{staff.staff_type || "N/A"}</TableCell>
-                  <TableCell>{staff.staff_category || "N/A"}</TableCell>
+                  <TableCell>{staff.employment_status || "N/A"}</TableCell>
+                  {type === "hospital" && (
+                    <TableCell>{staff.staff_category || "N/A"}</TableCell>
+                  )}
                   <TableCell>{staff.designation || staff.role || "N/A"}</TableCell>
-                  <TableCell>{staff.employment_status}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       <Button

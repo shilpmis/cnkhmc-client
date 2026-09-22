@@ -30,6 +30,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer"
 import dynamic from "next/dynamic"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
+import StudentCertificateModal from "./StudentCertificateModal"
 
 interface StudentProfileViewProps {
   student: StudentEnrollment
@@ -43,6 +44,7 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
   const [activeTab, setActiveTab] = useState("overview")
   // Add a state to force re-render PDFDownloadLink
   const [pdfKey, setPdfKey] = useState(Date.now())
+  const [certModalOpen, setCertModalOpen] = useState(false)
 
   const AcademicClasses = useAppSelector(selectAcademicClasses)
   
@@ -114,6 +116,15 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
           {t("back")}
         </Button>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+            onClick={() => setCertModalOpen(true)}
+          >
+            <FileText className="h-4 w-4" />
+            Generate Certificate
+          </Button>
+
           {typeof window !== "undefined" && (
             <PDFDownloadLink
               key={pdfKey}
@@ -908,6 +919,15 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
           </Card>
         </TabsContent>
       </Tabs>
+
+      {certModalOpen && (
+        <StudentCertificateModal
+          open={certModalOpen}
+          onOpenChange={setCertModalOpen}
+          studentId={student.student?.id || student.id}
+          student={student.student || student}
+        />
+      )}
     </div>
   )
 }

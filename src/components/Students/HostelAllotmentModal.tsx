@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 import { useTranslation } from "@/redux/hooks/useTranslation";
 import { useGetHostelsQuery, useAllocateBedMutation } from "@/services/HostelService";
 import {
@@ -11,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -19,7 +22,7 @@ interface HostelAllotmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   studentId: number;
-  schoolId: number;
+  schoolId?: number;
   studentGender?: string;
   onSuccess?: () => void;
 }
@@ -33,11 +36,19 @@ export default function HostelAllotmentModal({
   onSuccess,
 }: HostelAllotmentModalProps) {
   const { t } = useTranslation();
+  const authUser = useSelector((state: RootState) => state.auth.user);
+  const effectiveSchoolId = schoolId || authUser?.school_id;
   
-  const { data: hostels, isLoading: isLoadingHostels } = useGetHostelsQuery(
-    { school_id: schoolId },
-    { skip: !isOpen || !schoolId }
+  const { data: hostels, isLoading: isLoadingHostels, refetch } = useGetHostelsQuery(
+    { school_id: effectiveSchoolId as number },
+    { skip: !isOpen || !effectiveSchoolId, refetchOnMountOrArgChange: true }
   );
+
+  useEffect(() => {
+    if (isOpen && effectiveSchoolId) {
+      refetch();
+    }
+  }, [isOpen, effectiveSchoolId, refetch]);
 
   const [allocateBed, { isLoading: isAllocating }] = useAllocateBedMutation();
 
@@ -45,17 +56,25 @@ export default function HostelAllotmentModal({
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [selectedBedId, setSelectedBedId] = useState<number | null>(null);
 
-  // Filter hostels based on gender if available
+  // Normalize and filter hostels based on gender if available
   const availableHostels = useMemo(() => {
-    if (!hostels) return [];
+    if (!hostels || !Array.isArray(hostels)) return [];
     if (!studentGender) return hostels;
     
-    return hostels.filter((h: any) => {
-      if (studentGender.toLowerCase() === 'male' && h.type === 'Boys') return true;
-      if (studentGender.toLowerCase() === 'female' && h.type === 'Girls') return true;
-      if (h.type === 'Co-ed') return true;
+    const normalizedGender = String(studentGender).trim().toLowerCase();
+    const isMale = normalizedGender === 'male' || normalizedGender === 'm' || normalizedGender === 'boy';
+    const isFemale = normalizedGender === 'female' || normalizedGender === 'f' || normalizedGender === 'girl';
+
+    const genderMatched = hostels.filter((h: any) => {
+      const type = String(h.type || '').toLowerCase();
+      if (isMale && (type === 'boys' || type === 'boy' || type === 'co-ed')) return true;
+      if (isFemale && (type === 'girls' || type === 'girl' || type === 'co-ed')) return true;
+      if (type === 'co-ed') return true;
       return false;
     });
+
+    // If matching hostels found, return them. If none match the strict gender (e.g. only Boys hostel exists), fallback to all hostels so user is not blocked
+    return genderMatched.length > 0 ? genderMatched : hostels;
   }, [hostels, studentGender]);
 
   const selectedHostel = useMemo(() => {

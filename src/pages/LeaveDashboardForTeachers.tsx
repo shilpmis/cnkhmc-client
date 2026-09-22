@@ -374,7 +374,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
       })
     }
 
-    if (!leavePolicyForUser && authState.user?.staff_id && CurrentAcademicSessionForSchool?.id) {
+    if (authState.user?.staff_id && CurrentAcademicSessionForSchool?.id) {
       getAllLeavePoliciesForUser({
         academic_session_id: CurrentAcademicSessionForSchool.id,
       })
@@ -496,8 +496,8 @@ const LeaveDashboardForTeachers: React.FC = () => {
                       : Number(balance.carried_forward) || 0;
                       
                     // Calculate usage percentage
-                    const usagePercentage = policy.annual_quota > 0 
-                      ? (usedLeaves / policy.annual_quota) * 100 
+                    const usagePercentage = totalLeaves > 0 
+                      ? (usedLeaves / totalLeaves) * 100 
                       : 0;
                       
                     // Get color for leave type
@@ -512,7 +512,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
                               <h4 className="font-medium">{policy.leave_type_name}</h4>
                             </div>
                             <Badge variant="outline">
-                              {availableBalance} / {policy.annual_quota}
+                              {availableBalance} / {totalLeaves}
                             </Badge>
                           </div>
                           <Progress value={usagePercentage} className="h-2" />
@@ -539,7 +539,7 @@ const LeaveDashboardForTeachers: React.FC = () => {
                           
                           {/* Only show carried forward info, removing redundant consecutive days */}
                           <div className="mt-3 text-xs text-muted-foreground">
-                            {policy.can_carry_forward === 1 && carriedForward > 0 && (
+                            {Boolean(policy.can_carry_forward) && carriedForward > 0 && (
                               <div className="flex items-center">
                                 <Clock className="h-3 w-3 mr-1" />
                                 <span>
@@ -971,8 +971,6 @@ const LeaveDashboardForTeachers: React.FC = () => {
                               ? t("first_half")
                               : selectedLeave.half_day_type === "second_half"
                               ? t("second_half")
-                              : selectedLeave.half_day_type === "noon"
-                              ? (t("noon") || "Noon")
                               : ""}
                           </p>
                         </div>

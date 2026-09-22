@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -117,6 +118,40 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
                     onChange={(value) => field.onChange(value ? Number(value) : null)}
                     allowEmpty={true}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="mobile_number"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("mobile_no") || "Mobile Number"}</FormLabel>
+                <FormControl>
+                  <NumberInput
+                    value={field.value}
+                    maxLength={10}
+                    onChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                    allowEmpty={true}
+                    placeholder="Enter 10-digit mobile number"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("email") || "Email"}</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} value={field.value ?? ""} placeholder="example@email.com" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

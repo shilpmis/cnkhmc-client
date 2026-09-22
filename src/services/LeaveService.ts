@@ -212,7 +212,7 @@ export const LeaveApi = createApi({
           body: { ...rest, academic_year: academic_session_id || payload.academic_year },
         };
       },
-      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
+      invalidatesTags: ["LeavePolicies"],
     }),
     updateLeavePolicy: builder.mutation<
       LeavePolicy,
@@ -229,21 +229,21 @@ export const LeaveApi = createApi({
           body: { ...rest, academic_year: academic_session_id || payload.academic_year },
         };
       },
-      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
+      invalidatesTags: ["LeavePolicies"],
     }),
     deleteLeavePolicy: builder.mutation<{ message: string }, number>({
       query: (policy_id) => ({
         url: `/leave-policy/${policy_id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["LeavePolicies", "LeaveTemplates"],
+      invalidatesTags: ["LeavePolicies"],
     }),
     deleteLeaveType: builder.mutation<{ message: string }, number>({
       query: (leave_type_id) => ({
         url: `/leave-type/${leave_type_id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["LeaveType", "LeavePolicies"],
+      invalidatesTags: ["LeavePolicies"],
     }),
 
     getStaffsLeaveAppication: builder.query<
@@ -356,7 +356,7 @@ export const LeaveApi = createApi({
 
     getLeaveBalances: builder.query<LeaveBalanceResponse[], { staff_id: number; academic_session_id: number }>({
       query: ({ staff_id, academic_session_id }) => ({
-        url: `/leave-balances/${staff_id}/?academic_year=${academic_session_id}`,
+        url: `/leave-balances/${staff_id}?academic_year=${academic_session_id}`,
         method: "GET",
       }),
       providesTags: ["LeaveBalances"],

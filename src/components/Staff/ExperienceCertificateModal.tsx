@@ -13,6 +13,7 @@ import type { StaffType, StaffExperience } from "@/types/staff"
 import ApiService from "@/services/ApiService"
 import { useGetDepartmentsQuery } from "@/services/DepartmentService"
 import { useGetStaffByIdQuery } from "@/services/StaffService"
+import { useFetchSingleStaffSalaryTemplateQuery } from "@/services/PayrollService"
 import { toast } from "@/hooks/use-toast"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 
@@ -111,12 +112,15 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
   const authSchoolId = useAppSelector((state) => state.auth.user?.school_id)
   const schoolId = staff?.school_id || authSchoolId
 
-  // Fetch departments and full staff data to ensure accurate department resolution
   const { data: departments } = useGetDepartmentsQuery(
     { school_id: schoolId! },
     { skip: !open || !schoolId }
   )
   const { data: fullStaffData } = useGetStaffByIdQuery(staff?.id || 0, { skip: !open || !staff?.id })
+  const { data: staffSalaryTemplate } = useFetchSingleStaffSalaryTemplateQuery(
+    { staff_id: staff?.id || 0 },
+    { skip: !open || !staff?.id }
+  )
 
   const currentStaff = fullStaffData || staff
 
@@ -225,6 +229,89 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
       fetchAuditLogs()
     }
   }, [selectedTemplateId, staff, open])
+
+  // Automatically populate salary certificate data when staff has a salary template
+  useEffect(() => {
+    if (open && staffSalaryTemplate) {
+      const ctc = Number(staffSalaryTemplate.annual_ctc) || 0
+      const monthly = ctc > 0 ? Math.round(ctc / 12) : 16000
+
+      let pt = 200
+      let pf = 1800
+      let tds = 0
+      let basic = Math.round(monthly * 0.4)
+      let da = Math.round(monthly * 0.3)
+      let hra = Math.round(monthly * 0.15)
+      let ta = 1600
+      let ma = 300
+      let otherAllow = 0
+      let otherDed = 0
+
+      const components = [
+        ...(staffSalaryTemplate.template_components || []),
+        ...((staffSalaryTemplate.base_template as any)?.template_components || []),
+      ]
+
+      for (const comp of components) {
+        const compName = String(
+          (comp as any)?.salary_component?.component_name ||
+          (comp as any)?.salary_component?.component_code ||
+          (comp as any)?.component?.component_name ||
+          (comp as any)?.component_name ||
+          (comp as any)?.name ||
+          ""
+        ).toLowerCase()
+        const compAmt = Number(comp.amount) || (comp.percentage ? Math.round((monthly * Number(comp.percentage)) / 100) : 0)
+
+        if (compName.includes("basic")) {
+          if (compAmt > 0) basic = compAmt
+        } else if (compName.includes("da") || compName.includes("dearness")) {
+          if (compAmt > 0) da = compAmt
+        } else if (compName.includes("hra") || compName.includes("house rent")) {
+          if (compAmt > 0) hra = compAmt
+        } else if (compName.includes("ta") || compName.includes("transport") || compName.includes("travelling")) {
+          if (compAmt > 0) ta = compAmt
+        } else if (compName.includes("ma") || compName.includes("medical")) {
+          if (compAmt > 0) ma = compAmt
+        } else if (compName.includes("prof") || compName.includes("pt") || compName.includes("tax")) {
+          if (compAmt > 0) pt = compAmt
+        } else if (compName.includes("provident") || compName.includes("pf") || compName.includes("epf")) {
+          if (compAmt > 0) pf = compAmt
+        } else if (compName.includes("tds") || compName.includes("income tax")) {
+          if (compAmt > 0) tds = compAmt
+        } else if ((comp as any)?.component_type === "deduction" || compName.includes("deduction")) {
+          if (compAmt > 0) otherDed += compAmt
+        } else if ((comp as any)?.component_type === "earning" || compName.includes("allowance")) {
+          if (compAmt > 0) otherAllow += compAmt
+        }
+      }
+
+      if (otherAllow === 0 && monthly > (basic + da + hra + ta + ma)) {
+        otherAllow = monthly - (basic + da + hra + ta + ma)
+      }
+
+      setDefaultMonthlySalary(monthly)
+      setDefaultPt(pt)
+      setDefaultPf(pf)
+
+      setSalaryEntries((prev) =>
+        prev.map((row) => ({
+          ...row,
+          consolidatedSalary: monthly,
+          profTax: pt,
+          provFund: pf,
+          tds: tds || row.tds,
+          otherDeduction: otherDed || row.otherDeduction,
+          basic,
+          da,
+          hra,
+          ta,
+          ma,
+          otherAllowance: otherAllow,
+        }))
+      )
+    }
+  }, [open, staffSalaryTemplate])
 
   if (!staff) return null
 
@@ -345,7 +432,8 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
   const totalConsolidated = salaryEntries.reduce((sum, r) => sum + (Number(r.consolidatedSalary) || 0), 0)
   const totalProfTax = salaryEntries.reduce((sum, r) => sum + (Number(r.profTax) || 0), 0)
   const totalProvFund = salaryEntries.reduce((sum, r) => sum + (Number(r.provFund) || 0), 0)
-  const totalOtherDed = salaryEntries.reduce((sum, r) => sum + (Number(r.otherDeduction) || 0), 0)
+  const totalTdsCalculated = salaryEntries.reduce((sum, r) => sum + (Number(r.tds) || 0), 0)
+  const totalOtherDed = salaryEntries.reduce((sum, r) => sum + (Number(r.otherDeduction) || 0), 0) + totalTdsCalculated
   const totalDeductions = totalProfTax + totalProvFund + totalOtherDed
   const totalNetSalary = totalConsolidated - totalDeductions
 
@@ -421,7 +509,8 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
       const gross = sub + otherAllow
       const pt = Number(r.profTax) || 0
       const pf = Number(r.provFund) || 0
-      const otherDed = Number(r.otherDeduction) || 0
+      const tds = Number(r.tds) || 0
+      const otherDed = (Number(r.otherDeduction) || 0) + tds
       const net = gross - (pt + pf + otherDed)
 
       return `
@@ -609,7 +698,8 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
         "{{post}}": customDesignation || currentStaff?.role || currentStaff?.designation || "Assistant Professor",
         "{{department}}": customDepartment || "Homoeopathy",
         "{{joining_date}}": currentStaff?.joining_date ? formatDate(currentStaff.joining_date) : "-",
-        "{{resignation_date}}": currentStaff?.resignation_date ? formatDate(currentStaff.resignation_date) : "Till date",
+        "{{last_date}}": (currentStaff as any)?.last_date || currentStaff?.resignation_date ? formatDate((currentStaff as any)?.last_date || currentStaff?.resignation_date) : "Till date",
+        "{{resignation_date}}": (currentStaff as any)?.last_date || currentStaff?.resignation_date ? formatDate((currentStaff as any)?.last_date || currentStaff?.resignation_date) : "Till date",
         "{{ref_no}}": formattedRefNumber,
         "{{cert_date}}": formattedCertDate,
         "{{from_date}}": periodDates.from,

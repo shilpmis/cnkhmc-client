@@ -1,5 +1,5 @@
 import type React from "react"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -12,11 +12,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { DateTime } from "luxon"
 import type { LeaveApplication } from "@/types/leave"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectLeavePolicyForUser } from "@/redux/slices/leaveSlice"
+import { selectLeavePolicyForUser, selectLeaveTypeForSchool } from "@/redux/slices/leaveSlice"
 import {
   useApplyLeaveForStaffMutation,
-    useLazyGetAllLeavePoliciesForUserQuery,
-    useUpdateLeaveForStaffMutation,
+  useGetAllLeaveTypeForSchoolQuery,
+  useLazyGetAllLeavePoliciesForUserQuery,
+  useUpdateLeaveForStaffMutation,
 } from "@/services/LeaveService"
 import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 import { toast } from "@/hooks/use-toast"
@@ -91,8 +92,13 @@ interface LeaveApplicationFormProps {
 export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ initialData, onSucessesfullApplication, type , onCancel }) => {
     const user = useAppSelector(selectCurrentUser)
     const leavePolicyForUser = useAppSelector(selectLeavePolicyForUser)
-      const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool);
+    const schoolLeaveTypes = useAppSelector(selectLeaveTypeForSchool)
+    const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool);
     const [getAllLeavePoliciesForUser] = useLazyGetAllLeavePoliciesForUserQuery()
+    const { data: fetchedLeaveTypes } = useGetAllLeaveTypeForSchoolQuery(
+      { academic_session_id: CurrentAcademicSessionForSchool?.id! },
+      { skip: !CurrentAcademicSessionForSchool?.id }
+    )
     const [applyLeaveForTeacher] = useApplyLeaveForStaffMutation()
     const [updateLeaveForTeacher] = useUpdateLeaveForStaffMutation()
     const {t} = useTranslation()
@@ -200,16 +206,47 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
     }, [initialData, form])
 
     useEffect(() => {
-        if (!leavePolicyForUser && user?.staff_id && CurrentAcademicSessionForSchool?.id) {
+        if (user?.staff_id && CurrentAcademicSessionForSchool?.id) {
             getAllLeavePoliciesForUser({
               academic_session_id : CurrentAcademicSessionForSchool.id
             })
         }
-    }, [leavePolicyForUser, getAllLeavePoliciesForUser, user?.staff_id, CurrentAcademicSessionForSchool])
+    }, [getAllLeavePoliciesForUser, user?.staff_id, CurrentAcademicSessionForSchool?.id])
 
     useEffect(()=>{
       console.log("Chevk this " , form.formState.errors)
     },[form.formState.errors])
+
+    const availableLeaveOptions = useMemo(() => {
+        if (leavePolicyForUser && leavePolicyForUser.length > 0) {
+            return leavePolicyForUser.map((policy) => {
+                const typeName = policy.leave_type?.leave_type_name || `Leave Type #${policy.leave_type_id}`
+                const available = policy.balance?.available_balance ?? policy.annual_quota
+                const label = available !== undefined && available !== null
+                    ? `${typeName} (Available: ${available})`
+                    : typeName
+                return {
+                    id: String(policy.leave_type_id || policy.leave_type?.id),
+                    name: label,
+                }
+            }).filter((item) => item.id && item.id !== "undefined")
+        }
+
+        if (leavePolicyForUser === null) {
+            const fallbackTypes = (fetchedLeaveTypes && fetchedLeaveTypes.length > 0)
+                ? fetchedLeaveTypes
+                : schoolLeaveTypes
+
+            if (fallbackTypes && fallbackTypes.length > 0) {
+                return fallbackTypes.map((lt) => ({
+                    id: String(lt.id),
+                    name: lt.leave_type_name,
+                }))
+            }
+        }
+
+        return []
+    }, [leavePolicyForUser, fetchedLeaveTypes, schoolLeaveTypes])
 
     return (
         <Form {...form}>
@@ -227,12 +264,11 @@ export const LeaveApplicationForm: React.FC<LeaveApplicationFormProps> = ({ init
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {leavePolicyForUser &&
-                                        leavePolicyForUser.map((leavePolicy) => (
-                                            <SelectItem key={leavePolicy.leave_type_id} value={leavePolicy.leave_type.id.toString()}>
-                                                {leavePolicy.leave_type.leave_type_name}
-                                            </SelectItem>
-                                        ))}
+                                    {availableLeaveOptions.map((option) => (
+                                        <SelectItem key={option.id} value={option.id}>
+                                            {option.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

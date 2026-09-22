@@ -94,7 +94,6 @@ const SideBarItems: SidebarItem[] = [
   { title: "payments", url: "/d/pay-fees", icon: IndianRupee, requiredPermission: Permission.PAY_FEES },
   { title: "manage_fees", url: "/d/fee", icon: IndianRupee, requiredPermission: Permission.MANAGE_FEES },
   { title: "admissions", url: "/d/admissions", icon: ClipboardList, requiredPermission: Permission.MANAGE_ADMISSION },
-  { title: "hostel_management", url: "/d/hostels", icon: Building2, requiredPermission: Permission.MANAGE_HOSTEL },
   { title: "timetable", url: "/d/timetable", icon: Calendar, requiredPermission: Permission.MANAGE_TIMETABLE },
   { title: "lesson_plans", url: "/d/curriculum", icon: FileText, requiredPermission: Permission.MANAGE_LESSON_PLAN },
 ]

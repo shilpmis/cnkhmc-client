@@ -260,6 +260,87 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
 
   // Add helper function to transform Excel headers client-side
   const transformExcelHeaders = (excelBlob: Blob): Promise<Blob> => {
+    const STUDENT_DATE_FIELDS = [
+      "birth_date",
+      "admission_date",
+      "student_lc_date",
+      "internship_provisional_date",
+      "internship_starting_date",
+      "internship_completion_date",
+      "final_bhms_passing_date",
+      "admission_cancel_date",
+      "admission_transfer_date",
+    ];
+
+    const STUDENT_TEXT_FIELDS = [
+      "aadhar_no",
+      "primary_mobile",
+      "secondary_mobile",
+      "aadhar_dise_no",
+      "gr_no",
+      "roll_number",
+      "account_no",
+      "IFSC_code",
+      "pen",
+      "abha_card_no",
+      "school_udise_no",
+      "father_mobile",
+      "mother_mobile",
+      "guardian_mobile",
+      "neet_roll_no",
+      "neet_application_number",
+      "ayush_id",
+      "abc_id",
+      "admission_number",
+      "enrollment_code",
+      "student_code",
+      "student_lc_no",
+      "internship_provisional_number",
+      "postal_code",
+      "permanent_pincode",
+    ];
+
+    const formatExcelDate = (val: any): string => {
+      if (val === null || val === undefined || val === "") return "";
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) return "";
+        const y = val.getUTCFullYear();
+        const m = String(val.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(val.getUTCDate()).padStart(2, "0");
+        return `${d}/${m}/${y}`;
+      }
+      if (typeof val === "number" && val > 0) {
+        // Excel serial date (e.g. 22153, 39790)
+        const days = val > 60 ? val - 25569 : val - 25568;
+        const date = new Date(Math.round(days * 86400 * 1000));
+        if (!isNaN(date.getTime())) {
+          const y = date.getUTCFullYear();
+          const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+          const d = String(date.getUTCDate()).padStart(2, "0");
+          return `${d}/${m}/${y}`;
+        }
+      }
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (!trimmed) return "";
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed;
+        const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          const [, y, m, d] = match;
+          return `${d}/${m}/${y}`;
+        }
+        const parsed = new Date(trimmed);
+        if (!isNaN(parsed.getTime())) {
+          const y = parsed.getFullYear();
+          const m = String(parsed.getMonth() + 1).padStart(2, "0");
+          const d = String(parsed.getDate()).padStart(2, "0");
+          return `${d}/${m}/${y}`;
+        }
+        return trimmed;
+      }
+      return String(val);
+    };
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -272,24 +353,56 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
-          // Convert to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
-          // Transform the headers
-          const transformedData = jsonData.map((record: any) => {
-            const transformedRecord: Record<string, any> = {};
-            
-            Object.entries(record).forEach(([key, value]) => {
-              // Get friendly header from mapping or format the key
-              const friendlyHeader = currentHeaderMapping[key] || formatKeyToHeader(key);
-              transformedRecord[friendlyHeader] = value;
-            });
-            
-            return transformedRecord;
+          const sheetData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+          if (sheetData.length === 0) {
+            resolve(excelBlob);
+            return;
+          }
+
+          const originalHeaders = sheetData[0] as string[];
+
+          // Format all data rows
+          for (let r = 1; r < sheetData.length; r++) {
+            const row = sheetData[r];
+            if (!row) continue;
+            for (let c = 0; c < originalHeaders.length; c++) {
+              const headerKey = originalHeaders[c];
+              const cellVal = row[c];
+              if (cellVal === null || cellVal === undefined || cellVal === "") {
+                row[c] = "";
+                continue;
+              }
+
+              if (STUDENT_DATE_FIELDS.includes(headerKey)) {
+                row[c] = formatExcelDate(cellVal);
+              } else if (STUDENT_TEXT_FIELDS.includes(headerKey)) {
+                row[c] = String(cellVal).trim();
+              }
+            }
+          }
+
+          const transformedHeaders = originalHeaders.map((header) => {
+            return currentHeaderMapping[header] || formatKeyToHeader(header);
           });
-          
-          // Create new worksheet with transformed data
-          const newWorksheet = XLSX.utils.json_to_sheet(transformedData);
+
+          sheetData[0] = transformedHeaders;
+
+          const newWorksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+          // Force text cell type 's' on text/date columns to avoid Excel scientific notation / date auto-conversion
+          for (let r = 1; r < sheetData.length; r++) {
+            for (let c = 0; c < originalHeaders.length; c++) {
+              const headerKey = originalHeaders[c];
+              if (STUDENT_TEXT_FIELDS.includes(headerKey) || STUDENT_DATE_FIELDS.includes(headerKey)) {
+                const cellRef = XLSX.utils.encode_cell({ r, c });
+                if (newWorksheet[cellRef]) {
+                  newWorksheet[cellRef].t = "s";
+                  newWorksheet[cellRef].z = "@";
+                }
+              }
+            }
+          }
+
           const newWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "Students");
           

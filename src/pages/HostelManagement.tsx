@@ -1,8 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Plus, Loader2, Home, Trash2, User } from "lucide-react";
+import { 
+  Plus, 
+  Loader2, 
+  Home, 
+  Trash2, 
+  User, 
+  Building2, 
+  Bed, 
+  Layers, 
+  DoorOpen, 
+  Sparkles, 
+  ArrowRight, 
+  ArrowLeft, 
+  CheckCircle2,
+  Info
+} from "lucide-react";
 import { RootState } from "@/redux/store";
 import {
   useGetHostelsQuery,
@@ -10,7 +25,7 @@ import {
   useCreateHostelRoomMutation,
   useDeleteHostelMutation,
 } from "@/services/HostelService";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,10 +35,51 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface RoomItem {
+  id: string;
+  roomNumber: string;
+  beds: number;
+}
+
+interface FloorItem {
+  floorIndex: number;
+  floorName: string;
+  rooms: RoomItem[];
+}
+
+const getStandardFloorName = (index: number) => {
+  if (index === 0) return "Ground Floor";
+  const j = index % 10;
+  const k = index % 100;
+  if (j === 1 && k !== 11) return `${index}st Floor`;
+  if (j === 2 && k !== 12) return `${index}nd Floor`;
+  if (j === 3 && k !== 13) return `${index}rd Floor`;
+  return `${index}th Floor`;
+};
+
+const createDefaultRooms = (floorIndex: number, roomCount: number, defaultBeds: number): RoomItem[] => {
+  const rooms: RoomItem[] = [];
+  for (let i = 1; i <= Math.max(1, roomCount); i++) {
+    const roomNum = floorIndex === 0
+      ? `G${String(i).padStart(2, "0")}`
+      : `${floorIndex}${String(i).padStart(2, "0")}`;
+    rooms.push({
+      id: Math.random().toString(36).substring(2, 9),
+      roomNumber: roomNum,
+      beds: Math.max(1, defaultBeds || 3),
+    });
+  }
+  return rooms;
+};
 
 export default function HostelManagement() {
   const { t } = useTranslation();
@@ -39,9 +95,22 @@ export default function HostelManagement() {
   const [createRoom, { isLoading: isCreatingRoom }] = useCreateHostelRoomMutation();
   const [deleteHostel] = useDeleteHostelMutation();
 
+  // Wizard Dialog States
   const [isHostelDialogOpen, setIsHostelDialogOpen] = useState(false);
-  const [newHostel, setNewHostel] = useState({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, number_of_floors: 1, beds_per_room: 0 });
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [newHostel, setNewHostel] = useState({
+    name: "",
+    type: "Boys",
+    address: "",
+    number_of_floors: 2,
+    default_rooms_per_floor: 4,
+    default_beds_per_room: 3,
+  });
 
+  const [floors, setFloors] = useState<FloorItem[]>([]);
+  const [activeFloorTab, setActiveFloorTab] = useState<string>("0");
+
+  // Single Room Dialog State
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
   const [deleteHostelId, setDeleteHostelId] = useState<number | null>(null);
@@ -51,16 +120,227 @@ export default function HostelManagement() {
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [isRoomDetailsOpen, setIsRoomDetailsOpen] = useState(false);
 
-  const handleCreateHostel = async () => {
-    if (!newHostel.name) return toast({ title: "Error", description: "Name is required", variant: "destructive" });
-    if (!schoolId) return toast({ title: "Error", description: "School ID is missing. Please select a school.", variant: "destructive" });
+  // Initialize/Reset floors structure
+  const resetHostelWizard = () => {
+    const numFloors = 2;
+    const defaultRooms = 4;
+    const defaultBeds = 3;
+    setNewHostel({
+      name: "",
+      type: "Boys",
+      address: "",
+      number_of_floors: numFloors,
+      default_rooms_per_floor: defaultRooms,
+      default_beds_per_room: defaultBeds,
+    });
+    const initialFloors: FloorItem[] = [];
+    for (let f = 0; f < numFloors; f++) {
+      initialFloors.push({
+        floorIndex: f,
+        floorName: getStandardFloorName(f),
+        rooms: createDefaultRooms(f, defaultRooms, defaultBeds),
+      });
+    }
+    setFloors(initialFloors);
+    setActiveFloorTab("0");
+    setCurrentStep(1);
+  };
+
+  const handleOpenAddHostel = () => {
+    resetHostelWizard();
+    setIsHostelDialogOpen(true);
+  };
+
+  // Sync floors array when number_of_floors changes in step 1
+  const handleFloorsCountChange = (count: number) => {
+    const targetCount = Math.max(1, Math.min(20, count || 1));
+    setNewHostel((prev) => ({ ...prev, number_of_floors: targetCount }));
+
+    setFloors((prevFloors) => {
+      const nextFloors: FloorItem[] = [];
+      for (let f = 0; f < targetCount; f++) {
+        if (f < prevFloors.length) {
+          nextFloors.push(prevFloors[f]);
+        } else {
+          nextFloors.push({
+            floorIndex: f,
+            floorName: getStandardFloorName(f),
+            rooms: createDefaultRooms(f, newHostel.default_rooms_per_floor || 4, newHostel.default_beds_per_room || 3),
+          });
+        }
+      }
+      return nextFloors;
+    });
+  };
+
+  // Regenerate rooms for a specific floor
+  const handleRegenerateFloorRooms = (floorIndex: number, roomCount: number, defaultBeds: number, prefix?: string) => {
+    setFloors((prev) =>
+      prev.map((fl) => {
+        if (fl.floorIndex !== floorIndex) return fl;
+        const newRoomsList: RoomItem[] = [];
+        const count = Math.max(1, roomCount);
+        for (let i = 1; i <= count; i++) {
+          const roomNum = prefix
+            ? `${prefix}${String(i).padStart(2, "0")}`
+            : floorIndex === 0
+            ? `G${String(i).padStart(2, "0")}`
+            : `${floorIndex}${String(i).padStart(2, "0")}`;
+          newRoomsList.push({
+            id: Math.random().toString(36).substring(2, 9),
+            roomNumber: roomNum,
+            beds: Math.max(1, defaultBeds || 3),
+          });
+        }
+        return { ...fl, rooms: newRoomsList };
+      })
+    );
+  };
+
+  // Update room on a floor
+  const handleUpdateRoom = (floorIndex: number, roomId: string, field: "roomNumber" | "beds", value: string | number) => {
+    setFloors((prev) =>
+      prev.map((fl) => {
+        if (fl.floorIndex !== floorIndex) return fl;
+        return {
+          ...fl,
+          rooms: fl.rooms.map((rm) => (rm.id === roomId ? { ...rm, [field]: value } : rm)),
+        };
+      })
+    );
+  };
+
+  // Add a room to a floor
+  const handleAddRoomToFloor = (floorIndex: number) => {
+    setFloors((prev) =>
+      prev.map((fl) => {
+        if (fl.floorIndex !== floorIndex) return fl;
+        const nextNumber = fl.rooms.length + 1;
+        const roomNum = floorIndex === 0
+          ? `G${String(nextNumber).padStart(2, "0")}`
+          : `${floorIndex}${String(nextNumber).padStart(2, "0")}`;
+        return {
+          ...fl,
+          rooms: [
+            ...fl.rooms,
+            {
+              id: Math.random().toString(36).substring(2, 9),
+              roomNumber: roomNum,
+              beds: newHostel.default_beds_per_room || 3,
+            },
+          ],
+        };
+      })
+    );
+  };
+
+  // Delete a room from a floor
+  const handleDeleteRoomFromFloor = (floorIndex: number, roomId: string) => {
+    setFloors((prev) =>
+      prev.map((fl) => {
+        if (fl.floorIndex !== floorIndex) return fl;
+        if (fl.rooms.length <= 1) {
+          toast({
+            title: "Cannot delete",
+            description: "Each floor must have at least one room.",
+            variant: "destructive",
+          });
+          return fl;
+        }
+        return {
+          ...fl,
+          rooms: fl.rooms.filter((rm) => rm.id !== roomId),
+        };
+      })
+    );
+  };
+
+  const handleUpdateFloorName = (floorIndex: number, floorName: string) => {
+    setFloors((prev) =>
+      prev.map((fl) => (fl.floorIndex === floorIndex ? { ...fl, floorName } : fl))
+    );
+  };
+
+  // Summary calculations
+  const totalConfiguredRooms = useMemo(() => {
+    return floors.reduce((acc, f) => acc + f.rooms.length, 0);
+  }, [floors]);
+
+  const totalConfiguredBeds = useMemo(() => {
+    return floors.reduce((acc, f) => acc + f.rooms.reduce((rAcc, r) => rAcc + (Number(r.beds) || 0), 0), 0);
+  }, [floors]);
+
+  const handleProceedToStep2 = () => {
+    if (!newHostel.name.trim()) {
+      toast({ title: "Name is required", description: "Please enter a name for the hostel.", variant: "destructive" });
+      return;
+    }
+    if (newHostel.number_of_floors < 1) {
+      toast({ title: "Invalid Floors", description: "Please define at least 1 floor.", variant: "destructive" });
+      return;
+    }
+    setCurrentStep(2);
+  };
+
+  const handleCreateHostelSubmit = async () => {
+    if (!newHostel.name.trim()) {
+      toast({ title: "Validation Error", description: "Hostel Name is required", variant: "destructive" });
+      return;
+    }
+    if (!schoolId) {
+      toast({ title: "Error", description: "School ID is missing. Please select an active school.", variant: "destructive" });
+      return;
+    }
+
+    // Validate rooms
+    const allRoomNumbers: string[] = [];
+    for (const floor of floors) {
+      if (!floor.rooms || floor.rooms.length === 0) {
+        toast({ title: "Empty Floor", description: `${floor.floorName} has no rooms. Please add at least one room.`, variant: "destructive" });
+        return;
+      }
+      for (const room of floor.rooms) {
+        const num = room.roomNumber.trim();
+        if (!num) {
+          toast({ title: "Invalid Room Number", description: `A room in ${floor.floorName} is missing a room number.`, variant: "destructive" });
+          return;
+        }
+        if (allRoomNumbers.includes(num)) {
+          toast({ title: "Duplicate Room Number", description: `Room number "${num}" is duplicated. Room numbers must be unique.`, variant: "destructive" });
+          return;
+        }
+        allRoomNumbers.push(num);
+        if (!room.beds || room.beds < 1) {
+          toast({ title: "Invalid Bed Count", description: `Room ${num} must have at least 1 bed.`, variant: "destructive" });
+          return;
+        }
+      }
+    }
+
     try {
-      await createHostel({ ...newHostel, school_id: schoolId }).unwrap();
-      toast({ title: "Success", description: "Hostel created successfully" });
+      const payload = {
+        school_id: schoolId,
+        name: newHostel.name.trim(),
+        type: newHostel.type,
+        address: newHostel.address.trim(),
+        number_of_floors: floors.length,
+        capacity: totalConfiguredBeds,
+        floors: floors.map((f) => ({
+          floorIndex: f.floorIndex,
+          floorName: f.floorName,
+          rooms: f.rooms.map((r) => ({
+            roomNumber: r.roomNumber.trim(),
+            beds: Number(r.beds),
+          })),
+        })),
+      };
+
+      await createHostel(payload).unwrap();
+      toast({ title: "Success", description: `Hostel "${newHostel.name}" created with ${totalConfiguredRooms} rooms and ${totalConfiguredBeds} beds!` });
       setIsHostelDialogOpen(false);
-      setNewHostel({ name: "", type: "Boys", address: "", capacity: 0, number_of_rooms: 0, number_of_floors: 1, beds_per_room: 0 });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create hostel", variant: "destructive" });
+      resetHostelWizard();
+    } catch (error: any) {
+      toast({ title: "Failed to create hostel", description: error?.data?.message || "An unexpected error occurred", variant: "destructive" });
     }
   };
 
@@ -99,62 +379,334 @@ export default function HostelManagement() {
   const FLOOR_OPTIONS = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "5th Floor", "6th Floor"];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t("hostel_management")}</h1>
           <p className="text-muted-foreground">{t("manage_hostels_rooms_and_beds")}</p>
         </div>
+        
         <Dialog open={isHostelDialogOpen} onOpenChange={setIsHostelDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> {t("add_hostel")}</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Hostel</DialogTitle>
+          <Button onClick={handleOpenAddHostel}>
+            <Plus className="mr-2 h-4 w-4" /> {t("add_hostel")}
+          </Button>
+          <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2 border-b bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-xl flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Create New Hostel
+                  </DialogTitle>
+                  <DialogDescription>
+                    {currentStep === 1
+                      ? "Step 1: Basic hostel info and number of floors"
+                      : "Step 2: Configure room numbers and beds for each floor"}
+                  </DialogDescription>
+                </div>
+                {/* Step indicator badges */}
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={currentStep === 1 ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setCurrentStep(1)}
+                  >
+                    1. Floors & Defaults
+                  </Badge>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  <Badge
+                    variant={currentStep === 2 ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={handleProceedToStep2}
+                  >
+                    2. Rooms & Beds
+                  </Badge>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("name")}</label>
-                <Input value={newHostel.name} onChange={(e) => setNewHostel({ ...newHostel, name: e.target.value })} placeholder="e.g. Ganga Boys Hostel" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("hostel_type")}</label>
-                <Select value={newHostel.type} onValueChange={(val) => setNewHostel({ ...newHostel, type: val })}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Boys">Boys</SelectItem>
-                    <SelectItem value="Girls">Girls</SelectItem>
-                    <SelectItem value="Co-ed">Co-ed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("total_capacity")} (Optional)</label>
-                <Input type="number" value={newHostel.capacity} onChange={(e) => setNewHostel({ ...newHostel, capacity: parseInt(e.target.value) || 0 })} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">{t("number_of_rooms")} (Auto)</label>
-                  <Input type="number" value={newHostel.number_of_rooms} onChange={(e) => setNewHostel({ ...newHostel, number_of_rooms: parseInt(e.target.value) || 0 })} placeholder="e.g. 10" />
+
+            {currentStep === 1 ? (
+              <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Hostel Name <span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      value={newHostel.name}
+                      onChange={(e) => setNewHostel({ ...newHostel, name: e.target.value })}
+                      placeholder="e.g. Ganga Boys Hostel"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t("hostel_type")}</label>
+                    <Select value={newHostel.type} onValueChange={(val) => setNewHostel({ ...newHostel, type: val })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Boys">Boys</SelectItem>
+                        <SelectItem value="Girls">Girls</SelectItem>
+                        <SelectItem value="Co-ed">Co-ed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Floors</label>
-                  <Input type="number" min={1} value={newHostel.number_of_floors} onChange={(e) => setNewHostel({ ...newHostel, number_of_floors: parseInt(e.target.value) || 1 })} placeholder="e.g. 2" />
+                  <label className="text-sm font-medium">{t("hostel_address")}</label>
+                  <Input
+                    value={newHostel.address}
+                    onChange={(e) => setNewHostel({ ...newHostel, address: e.target.value })}
+                    placeholder="Hostel address / campus location"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">{t("beds_per_room")}</label>
-                  <Input type="number" value={newHostel.beds_per_room} onChange={(e) => setNewHostel({ ...newHostel, beds_per_room: parseInt(e.target.value) || 0 })} placeholder="e.g. 4" />
+
+                <div className="p-4 rounded-xl border bg-muted/20 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                      <Layers className="h-4 w-4 text-primary" />
+                      Structure Setup (Floors & Defaults)
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Define how many floors this hostel has. Next, you will customize room numbers and beds on each floor.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-foreground">Number of Floors</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={newHostel.number_of_floors}
+                        onChange={(e) => handleFloorsCountChange(parseInt(e.target.value) || 1)}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Ground Floor + Upper floors</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-foreground">Initial Rooms / Floor</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={newHostel.default_rooms_per_floor}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          setNewHostel({ ...newHostel, default_rooms_per_floor: val });
+                          setFloors((prev) =>
+                            prev.map((f) => ({
+                              ...f,
+                              rooms: createDefaultRooms(f.floorIndex, val, newHostel.default_beds_per_room),
+                            }))
+                          );
+                        }}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Default rooms per floor</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-foreground">Initial Beds / Room</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={newHostel.default_beds_per_room}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          setNewHostel({ ...newHostel, default_beds_per_room: val });
+                          setFloors((prev) =>
+                            prev.map((f) => ({
+                              ...f,
+                              rooms: f.rooms.map((r) => ({ ...r, beds: val })),
+                            }))
+                          );
+                        }}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Default bed count</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary" className="font-medium">
+                      Estimated: {floors.length} Floors · {totalConfiguredRooms} Rooms · {totalConfiguredBeds} Beds
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setIsHostelDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleProceedToStep2}>
+                    Define Rooms & Beds <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("hostel_address")}</label>
-                <Input value={newHostel.address} onChange={(e) => setNewHostel({ ...newHostel, address: e.target.value })} placeholder="Hostel address" />
+            ) : (
+              <div className="flex flex-col flex-1 overflow-hidden p-6 gap-4">
+                {/* Summary Metrics Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Layers className="h-4 w-4 text-primary" />
+                      <span>{floors.length} Floors</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <DoorOpen className="h-4 w-4 text-blue-600" />
+                      <span>{totalConfiguredRooms} Total Rooms</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Bed className="h-4 w-4 text-emerald-600" />
+                      <span>{totalConfiguredBeds} Total Beds</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-background">
+                    Hostel: {newHostel.name || "Untitled"} ({newHostel.type})
+                  </Badge>
+                </div>
+
+                {/* Floor Tabs */}
+                <Tabs value={activeFloorTab} onValueChange={setActiveFloorTab} className="flex-1 flex flex-col overflow-hidden">
+                  <TabsList className="w-full justify-start overflow-x-auto h-auto p-1.5 flex-wrap">
+                    {floors.map((fl) => (
+                      <TabsTrigger key={fl.floorIndex} value={fl.floorIndex.toString()} className="text-xs px-3 py-1.5 gap-2">
+                        <Layers className="h-3.5 w-3.5" />
+                        <span>{fl.floorName}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                          {fl.rooms.length}R · {fl.rooms.reduce((s, r) => s + (Number(r.beds) || 0), 0)}B
+                        </Badge>
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {floors.map((fl) => (
+                    <TabsContent
+                      key={fl.floorIndex}
+                      value={fl.floorIndex.toString()}
+                      className="flex-1 flex flex-col overflow-hidden mt-3 space-y-3"
+                    >
+                      {/* Floor Details & Quick Auto-Fill */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Floor Name:</span>
+                          <Input
+                            value={fl.floorName}
+                            onChange={(e) => handleUpdateFloorName(fl.floorIndex, e.target.value)}
+                            className="h-8 w-44 text-xs font-medium"
+                            placeholder="e.g. Ground Floor"
+                          />
+                        </div>
+
+                        {/* Quick Generator on Floor */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs gap-1"
+                            onClick={() => {
+                              const count = prompt(`How many rooms for ${fl.floorName}?`, String(fl.rooms.length || 4));
+                              if (!count) return;
+                              const parsedCount = parseInt(count);
+                              if (isNaN(parsedCount) || parsedCount < 1) return;
+                              const beds = prompt(`Default beds per room for ${fl.floorName}?`, "3");
+                              const parsedBeds = parseInt(beds || "3") || 3;
+                              handleRegenerateFloorRooms(fl.floorIndex, parsedCount, parsedBeds);
+                            }}
+                          >
+                            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                            Auto-Generate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 text-xs gap-1"
+                            onClick={() => handleAddRoomToFloor(fl.floorIndex)}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Room
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Room Table / List */}
+                      <div className="flex-1 border rounded-lg overflow-hidden flex flex-col bg-background">
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 border-b text-xs font-semibold text-muted-foreground">
+                          <span className="col-span-1">#</span>
+                          <span className="col-span-5">Room Number / Name</span>
+                          <span className="col-span-4">Number of Beds</span>
+                          <span className="col-span-2 text-right">Action</span>
+                        </div>
+
+                        <ScrollArea className="flex-1 max-h-[240px] p-2">
+                          <div className="space-y-1.5">
+                            {fl.rooms.map((room, idx) => (
+                              <div
+                                key={room.id}
+                                className="grid grid-cols-12 gap-2 items-center px-3 py-1.5 rounded-md hover:bg-muted/40 border border-transparent hover:border-muted transition-colors"
+                              >
+                                <span className="col-span-1 text-xs text-muted-foreground font-mono">
+                                  {idx + 1}
+                                </span>
+                                <div className="col-span-5">
+                                  <Input
+                                    value={room.roomNumber}
+                                    onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "roomNumber", e.target.value)}
+                                    placeholder="e.g. 101"
+                                    className="h-8 text-xs font-mono font-medium"
+                                  />
+                                </div>
+                                <div className="col-span-4 flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={20}
+                                    value={room.beds}
+                                    onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "beds", parseInt(e.target.value) || 1)}
+                                    className="h-8 text-xs font-medium"
+                                  />
+                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">beds</span>
+                                </div>
+                                <div className="col-span-2 flex justify-end">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDeleteRoomFromFloor(fl.floorIndex, room.id)}
+                                    disabled={fl.rooms.length <= 1}
+                                    title={fl.rooms.length <= 1 ? "At least one room required" : "Delete Room"}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+
+                {/* Footer with Back & Create Hostel */}
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <Button variant="outline" onClick={() => setCurrentStep(1)} className="gap-1.5">
+                    <ArrowLeft className="h-4 w-4" /> Back to Floors
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setIsHostelDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateHostelSubmit} disabled={isCreating} className="gap-2">
+                      {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      Create Hostel ({totalConfiguredRooms} Rooms, {totalConfiguredBeds} Beds)
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <Button className="w-full" onClick={handleCreateHostel} disabled={isCreating}>
-                {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save"}
-              </Button>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

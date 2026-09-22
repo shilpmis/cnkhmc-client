@@ -293,10 +293,10 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
                 </div>
                 <Separator />
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">{t("staff_type")}</span>
-                  <span className="font-medium">{isTeachingStaff ? "Teaching" : "Non-Teaching"}</span>
+                  <span className="text-muted-foreground">{t("staff") || "Staff"}</span>
+                  <span className="font-medium">{staff.staff_type || (isTeachingStaff ? "Teaching" : "Non-Teaching")}</span>
                 </div>
-                {isTeachingStaff && (
+                {Boolean(staff.subject_specialization || isTeachingStaff) && (
                   <>
                     <Separator />
                     <div className="flex justify-between items-center">

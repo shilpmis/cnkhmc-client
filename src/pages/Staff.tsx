@@ -1570,7 +1570,7 @@ export const Staff: React.FC = () => {
                 filteredStaff={filteredStaff}
                 onEdit={handleEditHospitalStaff}
                 onDelete={handleDelete}
-                type="non-teaching"
+                type="hospital"
                 onPageChange={onPageChange}
               />
             ) : (

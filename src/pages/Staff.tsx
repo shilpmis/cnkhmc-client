@@ -822,21 +822,56 @@ export const Staff: React.FC = () => {
           setOpenDialogForStaffBulkUpload(false)
         }
       } else {
-        const errors = (response.error as any).data?.errors
-        if (errors) {
-          const dbValidationResults: ValidationResult[] = errors.map((error: any, index: number) => ({
-            row: index + 1,
-            hasErrors: true,
-            errors: [
-              {
-                field: error.field,
-                message: error.message,
-              },
-            ],
-            rawData: {},
-          }))
-          setServerValidationErrors([...dbValidationResults])
+        const errorData = (response.error as any)?.data
+        const errorRow = errorData?.row || 1
+
+        if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+          const dbValidationResults: ValidationResult[] = errorData.errors.map((error: any, index: number) => {
+            const field = typeof error === "object" && error !== null ? error.field || "" : ""
+            const message =
+              typeof error === "object" && error !== null
+                ? error.message || error.rule || JSON.stringify(error)
+                : String(error || "Validation error")
+            return {
+              row: errorData.row || index + 1,
+              hasErrors: true,
+              errors: [
+                {
+                  field: field,
+                  message: message,
+                },
+              ],
+              rawData: {},
+            }
+          })
+          setServerValidationErrors(dbValidationResults)
           setValidationPassed(false)
+        } else if (errorData?.message) {
+          setServerValidationErrors([
+            {
+              row: errorRow,
+              hasErrors: true,
+              errors: [
+                {
+                  field: "",
+                  message: errorData.message,
+                },
+              ],
+              rawData: {},
+            },
+          ])
+          setValidationPassed(false)
+          toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: errorData.message,
+          })
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: "Server returned an error. Please verify the file and try again.",
+          })
         }
       }
     } catch (error: any) {
@@ -844,7 +879,7 @@ export const Staff: React.FC = () => {
         toast({ variant: "destructive", title: "Validation Error", description: error.errors.join(", ") })
       } else {
         console.error("Upload error:", error)
-        toast({ variant: "destructive", title: "Upload Failed", description: "Upload failed! Try again." })
+        toast({ variant: "destructive", title: "Upload Failed", description: error?.message || "Upload failed! Try again." })
       }
     } finally {
       setIsUploading(false)
@@ -1089,16 +1124,18 @@ export const Staff: React.FC = () => {
 
         setActiveTab(staffType)
       } else if (new_staff.error) {
+        const errorData = (new_staff.error as any)?.data
+        const errMsg = errorData?.message || errorData?.error || "Failed to add staff member."
         toast({
-          title: "Error",
-          description: "Staff not added",
+          title: "Error adding staff",
+          description: errMsg,
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Something went wrong !",
+        description: error?.message || "Something went wrong while adding staff.",
         variant: "destructive",
       })
     }
@@ -1150,17 +1187,19 @@ export const Staff: React.FC = () => {
             })
           }
         }, 300)
-      } else {
+      } else if (updated_staff.error) {
+        const errorData = (updated_staff.error as any)?.data
+        const errMsg = errorData?.message || errorData?.error || "Failed to update staff member."
         toast({
-          title: "Error",
-          description: "Staff not updated",
+          title: "Error updating staff",
+          description: errMsg,
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Something went wrong !",
+        description: error?.message || "Something went wrong while updating staff.",
         variant: "destructive",
       })
     }
@@ -1358,11 +1397,13 @@ export const Staff: React.FC = () => {
                         <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
                           <AlertTitle>{t("server_validation_errors")}</AlertTitle>
-                          <AlertDescription>
-                            {serverValidationErrors.map((err) => (
-                              <div key={err.row}>
-                                Row {err.row}:{" "}
-                                {err.errors.map((e) => `${e.field ?? ""} ${e.message}`).join(", ")}
+                          <AlertDescription className="mt-1 space-y-1 text-xs">
+                            {serverValidationErrors.map((err, idx) => (
+                              <div key={idx}>
+                                <strong>Row {err.row}:</strong>{" "}
+                                {err.errors
+                                  .map((e) => (e.field ? `${e.field}: ${e.message}` : e.message))
+                                  .join(", ")}
                               </div>
                             ))}
                           </AlertDescription>

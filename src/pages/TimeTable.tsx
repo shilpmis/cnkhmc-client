@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, AlertCircle, Calendar, Edit, Info, Eye, Wand2, Settings, Table, Trash2, RefreshCw, FileDown } from "lucide-react"
+import { Loader2, AlertCircle, Calendar, Edit, Info, Eye, Wand2, Settings, Table, Trash2, RefreshCw, FileDown, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
@@ -15,12 +15,15 @@ import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
 import {
   useLazyFetchTimeTableConfigForDivisionQuery,
   useDeleteDayWiseTimeTableForDivisonMutation,
+  useGetTimetableVersionsQuery,
   exportTimetablePDF,
 } from "@/services/timetableService"
 import TimetableDisplay from "@/components/TimeTable/TimetableDisplay"
 import TimetableWeekEditor from "@/components/TimeTable/TimetableWeekEditor"
 import TimetableWeekView from "@/components/TimeTable/TimetableWeekView"
 import DayConfigurationView from "@/components/TimeTable/DayConfigurationView"
+import TimetableHistoryDialog from "@/components/TimeTable/TimetableHistoryDialog"
+import { format } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -46,6 +49,26 @@ export default function TimetableManagement() {
   const [activeTab, setActiveTab] = useState<string>("day_view")
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+
+  const { data: timetableVersions = [] } = useGetTimetableVersionsQuery(
+    {
+      division_id: Number(selectedDivision),
+      academic_session_id: currentAcademicSession?.id || 0,
+    },
+    { skip: !selectedDivision || !currentAcademicSession }
+  )
+
+  const activeVersion = timetableVersions.find((v: any) => v.is_active) || timetableVersions[0]
+
+  const formatDateDisplay = (dateStr: string | null) => {
+    if (!dateStr) return null
+    try {
+      return format(new Date(dateStr), "MMM d, yyyy")
+    } catch {
+      return dateStr
+    }
+  }
 
   // Load academic classes if not already loaded
   useEffect(() => {
@@ -334,17 +357,37 @@ export default function TimetableManagement() {
               <div className="border-b bg-gray-50 px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {t("timetable_for")}{" "}
-                      {academicClasses.find((cls) => cls.id.toString() === selectedClass)?.class}{" "}
-                      {filteredDivisions.find((div) => div.id.toString() === selectedDivision)?.division}
-                    </h2>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h2 className="text-xl font-semibold text-gray-900">
+                        {t("timetable_for")}{" "}
+                        {academicClasses.find((cls) => cls.id.toString() === selectedClass)?.class}{" "}
+                        {filteredDivisions.find((div) => div.id.toString() === selectedDivision)?.division}
+                      </h2>
+                      {activeVersion && (activeVersion.start_date || activeVersion.end_date) && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1.5 py-0.5 px-2.5 text-xs font-medium">
+                          <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                          <span>
+                            {activeVersion.version_name ? `${activeVersion.version_name}: ` : ""}
+                            {formatDateDisplay(activeVersion.start_date) || "Start"} → {formatDateDisplay(activeVersion.end_date) || "Ongoing"}
+                          </span>
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">
                       {hasPeriodConfig ? t("timetable_configured") : t("no_timetable_configured")}
                     </p>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsHistoryDialogOpen(true)}
+                      className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                    >
+                      <History className="h-4 w-4" />
+                      {t("history_validity") || "History & Validity"}
+                    </Button>
+
                     {!hasPeriodConfig ? (
                       <>
                         <Button variant="outline" onClick={() => setActiveTab("timetable_setup")}>
@@ -567,6 +610,22 @@ export default function TimetableManagement() {
           </>
         )}
       </div>
+
+      {/* Timetable History & Validity Dialog */}
+      {selectedDivision && currentAcademicSession && (
+        <TimetableHistoryDialog
+          isOpen={isHistoryDialogOpen}
+          onOpenChange={setIsHistoryDialogOpen}
+          divisionId={Number(selectedDivision)}
+          academicSessionId={currentAcademicSession.id}
+          onRestored={() => {
+            fetchTimeTableConfig({
+              academic_session_id: currentAcademicSession.id,
+              division_id: Number(selectedDivision),
+            })
+          }}
+        />
+      )}
     </div>
   )
 }

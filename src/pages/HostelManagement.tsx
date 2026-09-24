@@ -546,7 +546,7 @@ export default function HostelManagement() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col flex-1 overflow-hidden p-6 gap-4">
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(92vh-130px)] flex flex-col">
                 {/* Summary Metrics Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="flex items-center gap-4 text-xs">
@@ -569,10 +569,10 @@ export default function HostelManagement() {
                 </div>
 
                 {/* Floor Tabs */}
-                <Tabs value={activeFloorTab} onValueChange={setActiveFloorTab} className="flex-1 flex flex-col overflow-hidden">
-                  <TabsList className="w-full justify-start overflow-x-auto h-auto p-1.5 flex-wrap">
+                <Tabs value={activeFloorTab} onValueChange={setActiveFloorTab} className="flex-1 flex flex-col">
+                  <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1.5 gap-1.5">
                     {floors.map((fl) => (
-                      <TabsTrigger key={fl.floorIndex} value={fl.floorIndex.toString()} className="text-xs px-3 py-1.5 gap-2">
+                      <TabsTrigger key={fl.floorIndex} value={fl.floorIndex.toString()} className="text-xs px-3 py-1.5 gap-2 shrink-0">
                         <Layers className="h-3.5 w-3.5" />
                         <span>{fl.floorName}</span>
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
@@ -586,7 +586,7 @@ export default function HostelManagement() {
                     <TabsContent
                       key={fl.floorIndex}
                       value={fl.floorIndex.toString()}
-                      className="flex-1 flex flex-col overflow-hidden mt-3 space-y-3"
+                      className="flex-1 flex flex-col mt-3 space-y-3"
                     >
                       {/* Floor Details & Quick Auto-Fill */}
                       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg border">
@@ -632,66 +632,64 @@ export default function HostelManagement() {
                       </div>
 
                       {/* Room Table / List */}
-                      <div className="flex-1 border rounded-lg overflow-hidden flex flex-col bg-background">
-                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 border-b text-xs font-semibold text-muted-foreground">
+                      <div className="border rounded-lg overflow-hidden flex flex-col bg-background shadow-sm">
+                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/70 border-b text-xs font-semibold text-muted-foreground sticky top-0 z-10">
                           <span className="col-span-1">#</span>
                           <span className="col-span-5">Room Number / Name</span>
                           <span className="col-span-4">Number of Beds</span>
                           <span className="col-span-2 text-right">Action</span>
                         </div>
 
-                        <ScrollArea className="flex-1 max-h-[240px] p-2">
-                          <div className="space-y-1.5">
-                            {fl.rooms.map((room, idx) => (
-                              <div
-                                key={room.id}
-                                className="grid grid-cols-12 gap-2 items-center px-3 py-1.5 rounded-md hover:bg-muted/40 border border-transparent hover:border-muted transition-colors"
-                              >
-                                <span className="col-span-1 text-xs text-muted-foreground font-mono">
-                                  {idx + 1}
-                                </span>
-                                <div className="col-span-5">
-                                  <Input
-                                    value={room.roomNumber}
-                                    onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "roomNumber", e.target.value)}
-                                    placeholder="e.g. 101"
-                                    className="h-8 text-xs font-mono font-medium"
-                                  />
-                                </div>
-                                <div className="col-span-4 flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    max={20}
-                                    value={room.beds}
-                                    onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "beds", parseInt(e.target.value) || 1)}
-                                    className="h-8 text-xs font-medium"
-                                  />
-                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">beds</span>
-                                </div>
-                                <div className="col-span-2 flex justify-end">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeleteRoomFromFloor(fl.floorIndex, room.id)}
-                                    disabled={fl.rooms.length <= 1}
-                                    title={fl.rooms.length <= 1 ? "At least one room required" : "Delete Room"}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
+                        <div className="overflow-y-auto max-h-[300px] p-2 space-y-1.5">
+                          {fl.rooms.map((room, idx) => (
+                            <div
+                              key={room.id}
+                              className="grid grid-cols-12 gap-2 items-center px-3 py-1.5 rounded-md hover:bg-muted/40 border border-transparent hover:border-muted transition-colors"
+                            >
+                              <span className="col-span-1 text-xs text-muted-foreground font-mono">
+                                {idx + 1}
+                              </span>
+                              <div className="col-span-5">
+                                <Input
+                                  value={room.roomNumber}
+                                  onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "roomNumber", e.target.value)}
+                                  placeholder="e.g. 101"
+                                  className="h-8 text-xs font-mono font-medium"
+                                />
                               </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
+                              <div className="col-span-4 flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={20}
+                                  value={room.beds}
+                                  onChange={(e) => handleUpdateRoom(fl.floorIndex, room.id, "beds", parseInt(e.target.value) || 1)}
+                                  className="h-8 text-xs font-medium"
+                                />
+                                <span className="text-[11px] text-muted-foreground whitespace-nowrap">beds</span>
+                              </div>
+                              <div className="col-span-2 flex justify-end">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteRoomFromFloor(fl.floorIndex, room.id)}
+                                  disabled={fl.rooms.length <= 1}
+                                  title={fl.rooms.length <= 1 ? "At least one room required" : "Delete Room"}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </TabsContent>
                   ))}
                 </Tabs>
 
                 {/* Footer with Back & Create Hostel */}
-                <div className="flex items-center justify-between pt-3 border-t">
+                <div className="flex items-center justify-between pt-3 border-t mt-auto">
                   <Button variant="outline" onClick={() => setCurrentStep(1)} className="gap-1.5">
                     <ArrowLeft className="h-4 w-4" /> Back to Floors
                   </Button>

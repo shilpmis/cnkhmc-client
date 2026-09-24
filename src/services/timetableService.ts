@@ -7,7 +7,7 @@ import { ClassDayConfigForTimeTable, labConfig, PeriodsConfig, SchoolSubject, Su
 
 export const TimeTableApi = createApi({
     reducerPath: 'timeTableApi',
-    tagTypes: ['TimeTableConfig', 'PeriodsConfig', 'LabConfig'],
+    tagTypes: ['TimeTableConfig', 'PeriodsConfig', 'LabConfig', 'TimetableVersions'],
     baseQuery: fetchBaseQuery({
         baseUrl: `${baseUrl.serverUrl}api/v1/`,
         prepareHeaders: (headers, { getState }) => {
@@ -127,6 +127,23 @@ export const TimeTableApi = createApi({
         }),
 
 
+        updateSinglePeriod: builder.mutation<PeriodsConfig, { period_id: number, payload: Partial<PeriodsConfig> }>({
+            query: ({ period_id, payload }) => ({
+                url: `/timetable/config/period/${period_id}`,
+                method: "PUT",
+                body: payload
+            }),
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+        }),
+
+        deleteSinglePeriod: builder.mutation<{ message: string, id: number }, { period_id: number }>({
+            query: ({ period_id }) => ({
+                url: `/timetable/config/period/${period_id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+        }),
+
         deleteDayWiseTimeTableForDivison: builder.mutation<any, { school_timetable_config_id: number, division_id: number }>({
             query: ({ school_timetable_config_id, division_id }) => ({
                 url: `/timetable/config/${school_timetable_config_id}/${division_id}`,
@@ -179,12 +196,13 @@ export const TimeTableApi = createApi({
                 invalidatesTags: ['PeriodsConfig'],
             }),
 
-        saveTimetableVersion: builder.mutation<any, { payload: { division_id: number, academic_session_id: number, periods_config: any[] } }>({
+        saveTimetableVersion: builder.mutation<any, { payload: { division_id: number, academic_session_id: number, version_name?: string, start_date?: string | null, end_date?: string | null, is_active?: boolean, periods_config?: any[] } }>({
             query: ({ payload }) => ({
                 url: `/timetable/version`,
                 method: "POST",
                 body: payload
             }),
+            invalidatesTags: ['TimetableVersions'],
         }),
 
         getTimetableVersions: builder.query<any, { division_id: number, academic_session_id: number }>({
@@ -192,6 +210,7 @@ export const TimeTableApi = createApi({
                 url: `/timetable/version/${division_id}?academic_session=${academic_session_id}`,
                 method: "GET",
             }),
+            providesTags: ['TimetableVersions'],
         }),
 
         restoreTimetableVersion: builder.mutation<any, { version_id: number }>({
@@ -199,7 +218,15 @@ export const TimeTableApi = createApi({
                 url: `/timetable/version/restore/${version_id}`,
                 method: "POST",
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
+        }),
+
+        deleteTimetableVersion: builder.mutation<any, { version_id: number }>({
+            query: ({ version_id }) => ({
+                url: `/timetable/version/${version_id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ['TimetableVersions'],
         }),
 
     })
@@ -221,12 +248,16 @@ export const {
     useUpdateLabConfigMutation,
     useUpdateDayWiseTimeTableForDivisonMutation,
     useUpdateWeekWiseTimeTableForDivisionMutation,
+    useUpdateSinglePeriodMutation,
+    useDeleteSinglePeriodMutation,
     useDeleteDayWiseTimeTableForDivisonMutation,
     useDeleteDayWiseTimeTableForAllDivisionsMutation,
     useDeleteDayWiseTimeTableConfigForClassMutation,
     useSaveTimetableVersionMutation,
+    useGetTimetableVersionsQuery,
     useLazyGetTimetableVersionsQuery,
-    useRestoreTimetableVersionMutation
+    useRestoreTimetableVersionMutation,
+    useDeleteTimetableVersionMutation,
 } = TimeTableApi;
 
 export const exportTimetablePDF = async (divisionId: number, academicSessionId: number) => {

@@ -1323,7 +1323,7 @@ export const Students: React.FC = () => {
                     }
                   }}
                   form_type="update"
-                  initial_data={studentDataForEditStudent}
+                  initial_data={openDialogForStudent.selectedStudent || studentDataForEditStudent}
                   setListedStudentForSelectedClass={setListedStudentForSelectedClass}
                   setPaginationDataForSelectedClass={setPaginationDataForSelectedClass}
                 />

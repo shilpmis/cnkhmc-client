@@ -57,13 +57,13 @@ const StudentForm: React.FC<StudentFormProps> = ({
     return value ? new Date(value).toISOString().split("T")[0] : " "
   }
 
-  const normalizeGender = (val: any): "Male" | "Female" => {
-    if (!val) return "Male" as any
+  const normalizeGender = (val: any): "Male" | "Female" | undefined => {
+    if (!val) return undefined as any
     const str = String(val).trim().toLowerCase()
     if (["male", "m"].includes(str)) return "Male"
     if (["female", "f"].includes(str)) return "Female"
     if (val === "Male" || val === "Female") return val
-    return "Male" as any
+    return undefined as any
   }
 
   const normalizeCategory = (val: any): "ST" | "SC" | "OBC" | "OPEN" | null => {
@@ -860,7 +860,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
   }, [activeTab])
 
   useEffect(() => {
-    if (form_type === "update") {
+    if (form_type === "update" && initial_data) {
       const CurrentClass = available_division?.filter((cls) => cls.id === initial_data?.class_id)[0]
       if (CurrentClass) handleClassChange(CurrentClass.id.toString(), "class")
       if (CurrentClass) handleDivisionChange(CurrentClass.id.toString(), "class")
@@ -872,59 +872,53 @@ const StudentForm: React.FC<StudentFormProps> = ({
       )[0]
 
       if (AdmissionClass) handleClassChange(AdmissionClass.id.toString(), "admission_Class")
-      // if (AdmissionClass) handleClassChange(AdmissionClass.id.toString(), "admission_Class")
-
-      const AdmissionDivision = available_division?.filter(
-        (cls) => cls.id === initial_data?.student_meta?.admission_class_id,
-      )[0];
-
 
       form.reset({
-        first_name: initial_data?.first_name,
-        last_name: initial_data?.last_name,
+        first_name: initial_data?.first_name || "",
+        last_name: initial_data?.last_name || "",
         middle_name: initial_data?.middle_name ? initial_data?.middle_name : null,
-        first_name_in_guj: initial_data?.first_name_in_guj,
-        middle_name_in_guj: initial_data?.middle_name_in_guj,
+        first_name_in_guj: initial_data?.first_name_in_guj || null,
+        middle_name_in_guj: initial_data?.middle_name_in_guj || null,
         gender: normalizeGender(initial_data?.gender),
         birth_date: initial_data?.birth_date ? formatData(initial_data.birth_date) : "",
-        enrollment_code: initial_data?.enrollment_code,
+        enrollment_code: initial_data?.enrollment_code || "",
         gr_no: initial_data?.gr_no,
         primary_mobile: initial_data?.primary_mobile,
-        father_name: initial_data?.father_name,
-        father_name_in_guj: initial_data?.father_name_in_guj,
-        mother_name: initial_data?.mother_name,
-        mother_name_in_guj: initial_data?.mother_name_in_guj,
+        father_name: initial_data?.father_name || null,
+        father_name_in_guj: initial_data?.father_name_in_guj || null,
+        mother_name: initial_data?.mother_name || null,
+        mother_name_in_guj: initial_data?.mother_name_in_guj || null,
         roll_number: initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number || null,
-        aadhar_no: initial_data?.aadhar_no ? Number(initial_data?.aadhar_no) : undefined,
-        aadhar_dise_no: initial_data?.student_meta?.aadhar_dise_no
+        aadhar_no: (initial_data?.aadhar_no !== undefined && initial_data?.aadhar_no !== null && String(initial_data?.aadhar_no).trim() !== "") ? Number(initial_data?.aadhar_no) : null,
+        aadhar_dise_no: (initial_data?.student_meta?.aadhar_dise_no !== undefined && initial_data?.student_meta?.aadhar_dise_no !== null && String(initial_data?.student_meta?.aadhar_dise_no).trim() !== "")
           ? Number(initial_data?.student_meta?.aadhar_dise_no)
-          : undefined,
-        birth_place: initial_data?.student_meta?.birth_place,
-        birth_place_in_guj: initial_data?.student_meta?.birth_place_in_guj,
-        religion: initial_data?.student_meta?.religion,
-        religion_in_guj: initial_data?.student_meta?.religion_in_guj,
-        caste: initial_data?.student_meta?.caste,
-        caste_in_guj: initial_data?.student_meta?.caste_in_guj,
+          : null,
+        birth_place: initial_data?.student_meta?.birth_place || null,
+        birth_place_in_guj: initial_data?.student_meta?.birth_place_in_guj || null,
+        religion: initial_data?.student_meta?.religion || null,
+        religion_in_guj: initial_data?.student_meta?.religion_in_guj || null,
+        caste: initial_data?.student_meta?.caste || null,
+        caste_in_guj: initial_data?.student_meta?.caste_in_guj || null,
         category: normalizeCategory(initial_data?.student_meta?.category),
-        privious_school: initial_data?.student_meta?.privious_school,
-        privious_school_in_guj: initial_data?.student_meta?.privious_school_in_guj,
-        address: initial_data?.student_meta?.address,
-        district: initial_data?.student_meta?.district,
-        city: initial_data?.student_meta?.city,
-        state: initial_data?.student_meta?.state,
+        privious_school: initial_data?.student_meta?.privious_school || null,
+        privious_school_in_guj: initial_data?.student_meta?.privious_school_in_guj || null,
+        address: initial_data?.student_meta?.address || null,
+        district: initial_data?.student_meta?.district || null,
+        city: initial_data?.student_meta?.city || null,
+        state: initial_data?.student_meta?.state || null,
         postal_code: initial_data?.student_meta?.postal_code ? initial_data.student_meta.postal_code.toString() : null,
-        bank_name: initial_data?.student_meta?.bank_name,
+        bank_name: initial_data?.student_meta?.bank_name || null,
         account_no: initial_data?.student_meta?.account_no ? Number(initial_data?.student_meta?.account_no) : null,
-        admission_date: initial_data!.student_meta!.admission_date
-          ? formatData(initial_data!.student_meta!.admission_date)
+        admission_date: initial_data?.student_meta?.admission_date
+          ? formatData(initial_data.student_meta.admission_date)
           : null,
         IFSC_code: initial_data?.student_meta?.IFSC_code || null,
-        last_name_in_guj: initial_data?.last_name_in_guj,
-        secondary_mobile: initial_data!.student_meta!.secondary_mobile,
+        last_name_in_guj: initial_data?.last_name_in_guj || null,
+        secondary_mobile: initial_data?.student_meta?.secondary_mobile || null,
         admission_class: null,
         admission_division: null,
-        class: CurrentDivision?.class_id.toString(),
-        division: CurrentDivision?.id.toString(),
+        class: CurrentDivision?.class_id ? CurrentDivision.class_id.toString() : (initial_data?.class_id ? initial_data.class_id.toString() : undefined),
+        division: CurrentDivision?.id ? CurrentDivision.id.toString() : (initial_data?.class_id ? initial_data.class_id.toString() : undefined),
         current_area: initial_data?.student_meta?.current_area || "",
         current_country: initial_data?.student_meta?.current_country || "",
         permanent_address: initial_data?.student_meta?.permanent_address || "",
@@ -995,10 +989,10 @@ const StudentForm: React.FC<StudentFormProps> = ({
         final_bhms_passing_date: initial_data?.student_meta?.final_bhms_passing_date ? formatData(initial_data.student_meta.final_bhms_passing_date) : "",
         ayush_id: initial_data?.student_meta?.ayush_id || "",
         abc_id: initial_data?.student_meta?.abc_id || "",
-        admission_cancel: initial_data?.student_meta?.admission_cancel ?? false,
+        admission_cancel: initial_data?.student_meta?.admission_cancel === true || initial_data?.student_meta?.admission_cancel === 1 || String(initial_data?.student_meta?.admission_cancel) === 'true' || String(initial_data?.student_meta?.admission_cancel) === '1',
         admission_cancel_year: initial_data?.student_meta?.admission_cancel_year || "",
         admission_cancel_date: initial_data?.student_meta?.admission_cancel_date ? formatData(initial_data.student_meta.admission_cancel_date) : "",
-        admission_transfer: initial_data?.student_meta?.admission_transfer ?? false,
+        admission_transfer: initial_data?.student_meta?.admission_transfer === true || initial_data?.student_meta?.admission_transfer === 1 || String(initial_data?.student_meta?.admission_transfer) === 'true' || String(initial_data?.student_meta?.admission_transfer) === '1',
         admission_transfer_date: initial_data?.student_meta?.admission_transfer_date ? formatData(initial_data.student_meta.admission_transfer_date) : "",
         admission_transfer_to_college: initial_data?.student_meta?.admission_transfer_to_college || "",
         admission_transfer_from_college: initial_data?.student_meta?.admission_transfer_from_college || "",
@@ -1449,9 +1443,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         <FormControl>
                           <NumberInput
                             {...field}
-                            value={field.value ? String(field.value) : ""}
+                            value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                             onChange={(value) =>
-                              field.onChange(value ? Number(value) : undefined)
+                              field.onChange(value ? Number(value) : null)
                             }
                           />
                         </FormControl>
@@ -1468,9 +1462,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         <FormControl>
                           <NumberInput
                             {...field}
-                            value={field.value ? String(field.value) : ""}
+                            value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                             onChange={(value) =>
-                              field.onChange(value ? Number(value) : undefined)
+                              field.onChange(value ? Number(value) : null)
                             }
                           />
                         </FormControl>

@@ -1,9 +1,8 @@
-"use client"
-
 import { useEffect, useState, useMemo, Fragment } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock, Presentation } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock, Presentation, Edit, ClipboardList } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
@@ -12,7 +11,7 @@ import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
 import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
-import { ClipboardList } from "lucide-react"
+import EditPeriodDialog from "@/components/TimeTable/EditPeriodDialog"
 import { TimeTableConfigForSchool, PeriodsConfig } from "@/types/subjects"
 
 interface TimetableWeekViewProps {
@@ -31,6 +30,9 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
   
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null)
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [periodToEdit, setPeriodToEdit] = useState<PeriodsConfig | null>(null)
 
   // Load subjects and staff data
   useEffect(() => {
@@ -251,13 +253,28 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
             <td key={`${day.value}-${slotIndex}`} colSpan={span} className="border p-0 align-top">
               <div className="flex flex-col h-full w-full">
                 {periods.map((period, index) => (
-                  <div key={index} className={`flex flex-col flex-1 p-2 ${index < periods.length - 1 ? 'border-b' : ''} hover:bg-gray-50 transition-colors`}>
+                  <div key={index} className={`group relative flex flex-col flex-1 p-2 ${index < periods.length - 1 ? 'border-b' : ''} hover:bg-slate-50/80 transition-colors`}>
                     
-                    {!!period.batch_name && (
-                      <span className="font-medium text-[11px] text-gray-700 mb-0.5">
-                        {period.batch_name}
-                      </span>
-                    )}
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      {!!period.batch_name ? (
+                        <span className="font-semibold text-[11px] text-blue-700 bg-blue-50 px-1 rounded">
+                          {period.batch_name}
+                        </span>
+                      ) : <span />}
+
+                      {/* Quick Edit Icon */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPeriodToEdit(period)
+                          setIsEditDialogOpen(true)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-black/5"
+                        title={t("edit_period") || "Edit Period"}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </button>
+                    </div>
                     
                     <div className="flex flex-col gap-0.5 items-center text-center">
                       {period.is_library && (
@@ -296,18 +313,33 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
                         </span>
                       )}
                       
-                      {!period.is_free_period && !period.is_library && !period.is_seminar && period.subjects_division_masters_id && (
-                        <button 
+                      <div className="flex items-center justify-center gap-2 mt-1 w-full">
+                        <button
+                          type="button"
                           onClick={() => {
-                            setSelectedPeriod(period);
-                            setIsLogDialogOpen(true);
+                            setPeriodToEdit(period);
+                            setIsEditDialogOpen(true);
                           }}
-                          className="mt-1 text-[10px] text-blue-600 hover:text-blue-700 flex items-center justify-center font-medium w-full"
+                          className="text-[10px] text-gray-500 hover:text-gray-800 flex items-center justify-center font-medium"
                         >
-                          <ClipboardList className="h-3 w-3 mr-1" />
-                          {t("log")}
+                          <Edit className="h-2.5 w-2.5 mr-0.5" />
+                          {t("edit") || "Edit"}
                         </button>
-                      )}
+
+                        {!period.is_free_period && !period.is_library && !period.is_seminar && period.subjects_division_masters_id && (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setSelectedPeriod(period);
+                              setIsLogDialogOpen(true);
+                            }}
+                            className="text-[10px] text-blue-600 hover:text-blue-700 flex items-center justify-center font-medium"
+                          >
+                            <ClipboardList className="h-2.5 w-2.5 mr-0.5" />
+                            {t("log") || "Log"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -343,6 +375,15 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
           <tbody>{dayRows}</tbody>
         </table>
       </div>
+
+      <EditPeriodDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        period={periodToEdit}
+        timetableConfig={timetableConfig}
+        subjects={subjects}
+        staff={staff}
+      />
 
       <LogLectureDialog 
         isOpen={isLogDialogOpen}

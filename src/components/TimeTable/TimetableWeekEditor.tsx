@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, BookOpen, Users, Beaker, Dumbbell, Coffee, Clock, RotateCcw, Plus, History, FileDown, Edit3, Eye, Presentation } from "lucide-react"
+import { Save, Loader2, BookOpen, Users, Beaker, Dumbbell, Coffee, Clock, RotateCcw, Plus, History, FileDown, Edit3, Eye, Presentation, Trash2 } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useToast } from "@/hooks/use-toast"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
@@ -22,6 +22,7 @@ import jsPDF from "jspdf"
 import { parseBackendError } from "@/lib/errorParser"
 import type { TimeTableConfigForSchool, PeriodsConfig, SubjectDivisionMaster, SchoolSubject } from "@/types/subjects"
 import ApiService from "@/services/ApiService"
+import TimetableHistoryDialog from "@/components/TimeTable/TimetableHistoryDialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -86,7 +87,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     subjectId: "none", staffId: "none", labId: "none", isLibrary: false, isSeminar: false, isFree: false, batchName: ""
   })
 
-  // Versions
+  // Versions & History
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
   const [versions, setVersions] = useState<any[]>([])
   const [selectedVersionId, setSelectedVersionId] = useState<string>("")
   const [saveTimetableVersion] = useSaveTimetableVersionMutation()
@@ -667,6 +669,77 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     setEditDialogOpen(false);
   }
 
+  const handleDeleteOrClearPeriod = async () => {
+    if (!editingPeriod || !editDayValue) return;
+
+    const newState = { ...periodsState };
+    const dayPeriods = [...(newState[editDayValue] || [])];
+    
+    const indexInState = dayPeriods.findIndex(p => 
+      p.period_order === editingPeriod.period_order && 
+      (p.batch_name || "") === (editingPeriod.batch_name || "")
+    );
+
+    if (indexInState !== -1) {
+      const periodsForOrder = dayPeriods.filter(p => p.period_order === editingPeriod.period_order);
+      if (periodsForOrder.length > 1) {
+        // Multi-batch slot: remove this specific batch
+        dayPeriods.splice(indexInState, 1);
+      } else {
+        // Single period slot: clear subject, teacher, lab, and flags
+        dayPeriods[indexInState] = {
+          ...dayPeriods[indexInState],
+          subjects_division_masters_id: null,
+          staff_enrollment_id: null,
+          lab_id: null,
+          is_pt: false,
+          is_free_period: false,
+          is_library: false,
+          is_seminar: false,
+          batch_name: null,
+        };
+      }
+      
+      newState[editDayValue] = dayPeriods;
+      setPeriodsState(newState);
+      setEditDialogOpen(false);
+
+      // Auto-save immediately using the freshly mutated state
+      await executeSaveAll(newState);
+    }
+  };
+
+  const handleDirectDeletePeriod = async (e: React.MouseEvent, dayValue: string, period: PeriodState) => {
+    e.stopPropagation();
+    const newState = { ...periodsState };
+    const dayPeriods = [...(newState[dayValue] || [])];
+    const indexInState = dayPeriods.indexOf(period);
+
+    if (indexInState !== -1) {
+      const periodsForOrder = dayPeriods.filter(p => p.period_order === period.period_order);
+      if (periodsForOrder.length > 1) {
+        dayPeriods.splice(indexInState, 1);
+      } else {
+        dayPeriods[indexInState] = {
+          ...dayPeriods[indexInState],
+          subjects_division_masters_id: null,
+          staff_enrollment_id: null,
+          lab_id: null,
+          is_pt: false,
+          is_free_period: false,
+          is_library: false,
+          is_seminar: false,
+          batch_name: null,
+        };
+      }
+      newState[dayValue] = dayPeriods;
+      setPeriodsState(newState);
+
+      // Auto-save immediately using the freshly mutated state
+      await executeSaveAll(newState);
+    }
+  };
+
   const handleSaveAll = async () => {
     if (subjectHourCheck.under.length > 0) {
       setValidationType("under")
@@ -681,29 +754,40 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     await executeSaveAll()
   }
 
-  const executeSaveAll = async () => {
+  const executeSaveAll = async (stateOverride?: Record<string, PeriodState[]>) => {
     try {
+        const stateToSave = stateOverride || periodsState;
         const payloadDays = [];
         
-        for (const [dayValue, periods] of Object.entries(periodsState)) {
+        for (const [dayValue, periods] of Object.entries(stateToSave)) {
             if (periods.length === 0) continue;
             
-            const class_day_config_id = periods[0].class_day_config_id;
-            const updatedPeriods = periods.map(p => ({
-                id: p.id,
-                period_order: p.period_order,
-                start_time: p.start_time,
-                end_time: p.end_time,
-                is_break: !!p.is_break,
-                subjects_division_masters_id: p.subjects_division_masters_id,
-                staff_enrollment_id: p.staff_enrollment_id,
-                lab_id: p.lab_id,
-                is_pt: false,
-                is_free_period: !!p.is_free_period,
-                is_library: !!p.is_library,
-                is_seminar: !!p.is_seminar,
-                batch_name: p.batch_name || null
-            }));
+            const dayConfig = timetableConfig.class_day_config?.find(c => c.day === dayValue);
+            const class_day_config_id = dayConfig ? Number(dayConfig.id) : (periods.find(p => p.class_day_config_id)?.class_day_config_id ? Number(periods.find(p => p.class_day_config_id)!.class_day_config_id) : null);
+            
+            if (!class_day_config_id || isNaN(class_day_config_id)) {
+                console.warn(`Skipping day ${dayValue}: class_day_config_id not found.`);
+                continue;
+            }
+
+            const updatedPeriods = periods.map(p => {
+                const item: any = {
+                    period_order: Number(p.period_order),
+                    start_time: p.start_time || "00:00",
+                    end_time: p.end_time || "00:00",
+                    is_break: !!p.is_break,
+                    subjects_division_masters_id: p.subjects_division_masters_id ? Number(p.subjects_division_masters_id) : null,
+                    staff_enrollment_id: p.staff_enrollment_id ? Number(p.staff_enrollment_id) : null,
+                    lab_id: p.lab_id ? Number(p.lab_id) : null,
+                    is_pt: false,
+                    is_free_period: !!p.is_free_period,
+                    is_library: !!p.is_library,
+                    is_seminar: !!p.is_seminar,
+                    batch_name: p.batch_name || null
+                };
+                if (p.id) item.id = Number(p.id);
+                return item;
+            });
 
             payloadDays.push({
                 class_day_config_id,
@@ -712,7 +796,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
         }
 
         const payload = {
-            division_id: divisionId,
+            division_id: Number(divisionId),
             days: payloadDays
         };
 
@@ -990,21 +1074,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
               </Button>
             )}
 
-            <Button onClick={handleSaveVersion} variant="outline" size="sm">
-               <History className="mr-2 h-4 w-4" /> Save as Version
+            <Button onClick={() => setIsHistoryDialogOpen(true)} variant="outline" size="sm" className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10">
+               <History className="h-4 w-4" /> {t("history_validity") || "History & Validity"}
             </Button>
-            
-            <div className="flex items-center space-x-1 border rounded p-1">
-               <Select value={selectedVersionId} onValueChange={setSelectedVersionId}>
-                 <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Select Version" /></SelectTrigger>
-                 <SelectContent>
-                   {versions.map(v => (
-                     <SelectItem key={v.id} value={v.id.toString()}>Version {v.id}</SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-               <Button onClick={handleRestoreVersion} disabled={!selectedVersionId} size="sm" variant="secondary">Restore</Button>
-            </div>
 
             {hasChanges && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">{t("unsaved_changes")}</Badge>}
             <Button onClick={handleSaveAll} disabled={!hasChanges || isUpdating} size="sm">
@@ -1203,7 +1275,19 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                               else if (period.subjects_division_masters_id) bgColor = "bg-green-50 hover:bg-green-100 cursor-pointer";
 
                               return (
-                                <div key={pIdx} className={`p-2 flex-1 rounded-sm border ${bgColor}`} onClick={() => handleCellClick(day.value, period.period_order - 1, period)}>
+                                <div key={pIdx} className={`group relative p-2 flex-1 rounded-sm border ${bgColor}`} onClick={() => handleCellClick(day.value, period.period_order - 1, period)}>
+                                  {/* Quick Delete Action Icon */}
+                                  <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <button
+                                      type="button"
+                                      className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-black/5"
+                                      title={period.batch_name ? "Remove Batch" : "Clear Period"}
+                                      onClick={(e) => handleDirectDeletePeriod(e, day.value, period)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
                                   <div className="flex flex-col h-full min-h-[70px] justify-center items-center text-center">
                                     
                                     {period.is_library && <Badge variant="outline" className="text-xs bg-sky-100 text-sky-800 border-sky-300 flex items-center gap-1"><BookOpen className="h-3 w-3" /> {t("library") || "Library"}</Badge>}
@@ -1413,12 +1497,38 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                 )}
             </div>
 
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t("cancel")}</Button>
-                <Button onClick={handleApplyEdit}>{t("apply")}</Button>
+            <DialogFooter className="flex items-center justify-between sm:justify-between w-full pt-3 border-t gap-2">
+                {!isAddingBatch && (
+                    <Button 
+                        type="button" 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={handleDeleteOrClearPeriod}
+                        className="gap-1.5"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        {editingPeriod?.batch_name ? (t("delete_batch") || "Remove Batch") : (t("clear_period") || "Clear Period")}
+                    </Button>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                    <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>{t("cancel") || "Cancel"}</Button>
+                    <Button size="sm" onClick={handleApplyEdit}>{t("apply") || "Apply"}</Button>
+                </div>
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Timetable History & Validity Dialog */}
+      <TimetableHistoryDialog
+        isOpen={isHistoryDialogOpen}
+        onOpenChange={setIsHistoryDialogOpen}
+        divisionId={divisionId}
+        academicSessionId={currentAcademicSession?.id || 0}
+        currentPeriods={Object.values(periodsState).flat()}
+        onRestored={() => {
+          onSave()
+        }}
+      />
 
       {/* Validation Dialog */}
       <AlertDialog open={isValidationDialogOpen} onOpenChange={setIsValidationDialogOpen}>

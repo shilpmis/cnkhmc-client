@@ -250,7 +250,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, BookOpen, Users, Dumbbell, Coffee, Beaker, AlertCircle, Edit, Presentation } from "lucide-react"
+import { Clock, BookOpen, Users, Dumbbell, Coffee, Beaker, AlertCircle, Edit, Presentation, Settings2, Trash2 } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import type { ClassDayConfigForTimeTable, TimeTableConfigForSchool, PeriodsConfig } from "@/types/subjects"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
@@ -261,6 +261,7 @@ import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice
 import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
+import EditPeriodDialog from "@/components/TimeTable/EditPeriodDialog"
 import { ClipboardList } from "lucide-react"
 
 interface TimetableDisplayProps {
@@ -280,6 +281,9 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
   
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false)
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null)
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [periodToEdit, setPeriodToEdit] = useState<PeriodsConfig | null>(null)
 
   // Load subjects and staff data
   useEffect(() => {
@@ -422,13 +426,13 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
 
   // Get period background color
   const getPeriodBgColor = (period: PeriodsConfig) => {
-    if (period.is_break) return "bg-amber-50"
-    if (period.is_library) return "bg-sky-50"
-    if (period.is_seminar) return "bg-purple-50"
-    if (period.is_pt) return "bg-purple-50"
-    if (period.lab_id) return "bg-blue-50"
-    if (period.is_free_period) return "bg-gray-50"
-    return "bg-green-50"
+    if (period.is_break) return "bg-amber-50/70 border-amber-200"
+    if (period.is_library) return "bg-sky-50/70 border-sky-200"
+    if (period.is_seminar) return "bg-purple-50/70 border-purple-200"
+    if (period.is_pt) return "bg-purple-50/70 border-purple-200"
+    if (period.lab_id) return "bg-blue-50/70 border-blue-200"
+    if (period.is_free_period) return "bg-gray-50/70 border-gray-200"
+    return "bg-green-50/70 border-green-200"
   }
 
   // If no periods are configured
@@ -464,77 +468,127 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
         {onEdit && (
           <Button variant="outline" size="sm" onClick={onEdit}>
             <Edit className="h-4 w-4 mr-2" />
-            {t("edit_timetable")}
+            {t("edit_full_day_timetable") || "Edit Full Day Timetable"}
           </Button>
         )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {divisionPeriods.map((period) => (
-          <Card key={period.id} className={`${getPeriodBgColor(period)} overflow-hidden`}>
+          <Card key={period.id} className={`${getPeriodBgColor(period)} overflow-hidden shadow-sm transition-all hover:shadow-md`}>
             <CardContent className="p-4">
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex-shrink-0">{getPeriodIcon(period)}</div>
-                    <h4 className="font-medium">
-                      {t("period")} {period.period_order}
-                    </h4>
+              <div className="flex flex-col h-full justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-shrink-0">{getPeriodIcon(period)}</div>
+                      <h4 className="font-semibold text-sm">
+                        {t("period")} {period.period_order}
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {getPeriodTypeBadge(period)}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-black/5"
+                        title={t("edit_period") || "Edit Period"}
+                        onClick={() => {
+                          setPeriodToEdit(period)
+                          setIsEditDialogOpen(true)
+                        }}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  {getPeriodTypeBadge(period)}
-                </div>
 
-                <div className="text-sm text-muted-foreground mb-2">
-                  {formatTime(period.start_time)} - {formatTime(period.end_time)}
-                </div>
+                  <div className="text-xs text-muted-foreground font-medium mb-3 flex items-center justify-between">
+                    <span>
+                      {formatTime(period.start_time)} - {formatTime(period.end_time)}
+                    </span>
+                    {period.batch_name && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium">
+                        {period.batch_name}
+                      </Badge>
+                    )}
+                  </div>
 
-                {!period.is_break && (
-                  <div className="mt-auto">
-                    {period.subjects_division_masters_id && !period.is_free_period && (
-                      <div className="flex items-center space-x-1 mb-1">
-                        <BookOpen className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <span className="text-sm font-medium">{getSubjectName(period)}</span>
-                          {getSubjectCode(period) && (
-                            <span className="text-xs text-muted-foreground ml-1">({getSubjectCode(period)})</span>
-                          )}
+                  {!period.is_break && (
+                    <div className="space-y-1.5 mb-3">
+                      {period.subjects_division_masters_id && !period.is_free_period && (
+                        <div className="flex items-center space-x-1.5">
+                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <div className="truncate">
+                            <span className="text-sm font-medium">{getSubjectName(period)}</span>
+                            {getSubjectCode(period) && (
+                              <span className="text-xs text-muted-foreground ml-1">({getSubjectCode(period)})</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {period.staff_enrollment_id && !period.is_free_period && (
-                      <div className="flex items-center space-x-1 mb-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{getTeacherName(period)}</span>
-                      </div>
-                    )}
+                      {period.staff_enrollment_id && !period.is_free_period && (
+                        <div className="flex items-center space-x-1.5">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-xs text-muted-foreground truncate">{getTeacherName(period)}</span>
+                        </div>
+                      )}
 
-                    {period.lab_id && (
-                      <div className="flex items-center space-x-1">
-                        <Beaker className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{getLabName(period)}</span>
-                      </div>
-                    )}
+                      {period.lab_id && (
+                        <div className="flex items-center space-x-1.5">
+                          <Beaker className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-xs text-muted-foreground truncate">{getLabName(period)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
+                {/* Bottom Action Row */}
+                <div className="pt-2 border-t flex items-center gap-1.5 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-7 bg-white/80 hover:bg-white"
+                    onClick={() => {
+                      setPeriodToEdit(period)
+                      setIsEditDialogOpen(true)
+                    }}
+                  >
+                    <Edit className="h-3 w-3 mr-1" />
+                    {t("edit") || "Edit"}
+                  </Button>
+
+                  {!period.is_break && !period.is_free_period && (
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="w-full mt-4 text-xs h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-100"
+                      className="flex-1 text-xs h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 border border-blue-100/80 bg-white/60"
                       onClick={() => {
                         setSelectedPeriod(period);
                         setIsLogDialogOpen(true);
                       }}
                     >
-                      <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-                      {t("log_activity")}
+                      <ClipboardList className="h-3 w-3 mr-1" />
+                      {t("log_activity") || "Log"}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <EditPeriodDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        period={periodToEdit}
+        timetableConfig={timetableConfig}
+        subjects={subjects}
+        staff={staff}
+      />
 
       <LogLectureDialog 
         isOpen={isLogDialogOpen}

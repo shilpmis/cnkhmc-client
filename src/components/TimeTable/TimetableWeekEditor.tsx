@@ -14,9 +14,9 @@ import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useLazyGetSubjectsForDivisionQuery, useAssignSubjectToDivisionMutation, useLazyGetAllSubjectsQuery } from "@/services/subjects"
-import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
+import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useFetchPracticalBatchSettingsQuery } from "@/services/StudentServices"
-import { useUpdateWeekWiseTimeTableForDivisionMutation, useSaveTimetableVersionMutation, useLazyGetTimetableVersionsQuery, useRestoreTimetableVersionMutation } from "@/services/timetableService"
+import { useUpdateWeekWiseTimeTableForDivisionMutation, useSaveTimetableVersionMutation, useLazyGetTimetableVersionsQuery, useRestoreTimetableVersionMutation, useVerifyPeriodConfigurationForDayMutation } from "@/services/timetableService"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 import { parseBackendError } from "@/lib/errorParser"
@@ -70,8 +70,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()
   const [getAllSubjects, { data: allSubjectsData }] = useLazyGetAllSubjectsQuery()
   const [assignSubjectToDivision] = useAssignSubjectToDivisionMutation()
-  const [getTeachingStaff, { data: staffData }] = useLazyGetTeachingStaffQuery()
+  const [getTeachingStaff, { data: staffData }] = useLazyGetAllTeachingStaffQuery()
   const [updateWeekWiseTimeTable, { isLoading: isUpdating }] = useUpdateWeekWiseTimeTableForDivisionMutation()
+  const [verifyPeriodConfiguration] = useVerifyPeriodConfigurationForDayMutation()
 
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])
   const [staff, setStaff] = useState<StaffType[]>([])
@@ -299,7 +300,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
 
   useEffect(() => {
     if (subjectsData) setSubjects(subjectsData)
-    if (staffData) setStaff(staffData.data || [])
+    if (staffData) setStaff(Array.isArray(staffData) ? staffData : (staffData as any).data || [])
   }, [subjectsData, staffData])
 
   // Initialize period state from config
@@ -323,8 +324,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
               max = Math.max(max, dayMaxOrder)
           } else {
               // Generate periods from day config
-              const [startHour, startMinute] = dayConfig.day_start_time.split(":").map(Number)
-              let currentMinutes = startHour * 60 + startMinute
+              const startTimeStr = dayConfig.day_start_time || "09:00";
+              const [startHour, startMinute] = startTimeStr.split(":").map(Number);
+              let currentMinutes = (isNaN(startHour) ? 9 : startHour) * 60 + (isNaN(startMinute) ? 0 : startMinute);
               const periods : PeriodState[] = []
               let periodOrder = 1
               const totalBreaks = dayConfig.total_breaks || 0
@@ -376,11 +378,80 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     }
   }, [timetableConfig, divisionId, days])
 
-  const handleCellClick = (dayValue: string, periodIndex: number, period: PeriodState, addingBatch: boolean = false, addSpan: number = 1) => {
+  const handleCellClick = async (dayValue: string, periodIndex: number, period: PeriodState, addingBatch: boolean = false, addSpan: number = 1) => {
     if (viewMode === 'readonly') return;
     if (period.is_break && !addingBatch) return; // Can't edit breaks
 
     if (isQuickAssignMode && !addingBatch) {
+      const targetStaffId = (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.staffId === "none") ? null : Number(quickAssignData.staffId);
+      
+      if (targetStaffId) {
+        // 1. Local draft conflict check
+        const dayPeriods = periodsState[dayValue] || [];
+        if (period.start_time && period.end_time) {
+          const [newStartHour, newStartMin] = period.start_time.split(":").map(Number);
+          const [newEndHour, newEndMin] = period.end_time.split(":").map(Number);
+          const newStartMins = newStartHour * 60 + newStartMin;
+          const newEndMins = newEndHour * 60 + newEndMin;
+
+          const localConflict = dayPeriods.find(p => {
+            if (p.period_order === period.period_order && (p.batch_name || "") === (period.batch_name || "")) return false;
+            if (p.staff_enrollment_id === targetStaffId && !p.is_break && !p.is_free_period && !p.is_library && !p.is_seminar) {
+              if (p.start_time && p.end_time) {
+                const [pStartHour, pStartMin] = p.start_time.split(":").map(Number);
+                const [pEndHour, pEndMin] = p.end_time.split(":").map(Number);
+                const pStartMins = pStartHour * 60 + pStartMin;
+                const pEndMins = pEndHour * 60 + pEndMin;
+                return newStartMins < pEndMins && newEndMins > pStartMins;
+              }
+            }
+            return false;
+          });
+
+          if (localConflict) {
+            toast({
+              variant: "destructive",
+              title: t("teacher_conflict") || "Teacher Conflict",
+              description: `Teacher is already assigned to another lecture in this draft timetable on ${dayValue.toUpperCase()} (${localConflict.start_time} - ${localConflict.end_time}).`,
+            });
+            return;
+          }
+        }
+
+        // 2. Backend DB conflict check across other classes/years
+        const dayConfig = timetableConfig?.class_day_config?.find(c => c.day === dayValue);
+        if (dayConfig) {
+          try {
+            await verifyPeriodConfiguration({
+              payload: {
+                class_day_config_id: dayConfig.id,
+                division_id: divisionId,
+                period_order: period.period_order,
+                start_time: period.start_time,
+                end_time: period.end_time,
+                is_break: false,
+                subjects_division_masters_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.subjectId === "none") ? null : Number(quickAssignData.subjectId),
+                staff_enrollment_id: targetStaffId,
+                lab_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.labId === "none") ? null : Number(quickAssignData.labId),
+                is_free_period: quickAssignData.isFree,
+                is_library: quickAssignData.isLibrary,
+                is_seminar: quickAssignData.isSeminar,
+                batch_name: quickAssignData.batchName || null,
+                id: period.id || undefined,
+              }
+            }).unwrap();
+          } catch (error: any) {
+            const errorMsg = parseBackendError(error, t);
+            toast({
+              variant: "destructive",
+              title: t("teacher_conflict") || "Teacher Conflict",
+              description: errorMsg || "Teacher is already assigned to another lecture at this time slot.",
+            });
+            return;
+          }
+        }
+      }
+
       // Direct assignment
       const newState = { ...periodsState };
       const targetPeriodIndex = newState[dayValue].findIndex(p => p === period);
@@ -388,7 +459,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
         newState[dayValue][targetPeriodIndex] = {
           ...newState[dayValue][targetPeriodIndex],
           subjects_division_masters_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.subjectId === "none") ? null : Number(quickAssignData.subjectId),
-          staff_enrollment_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.staffId === "none") ? null : Number(quickAssignData.staffId),
+          staff_enrollment_id: targetStaffId,
           lab_id: (quickAssignData.isFree || quickAssignData.isLibrary || quickAssignData.isSeminar || quickAssignData.labId === "none") ? null : Number(quickAssignData.labId),
           is_pt: false,
           is_library: quickAssignData.isLibrary,
@@ -537,6 +608,95 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
             toast({ variant: "destructive", title: t("error"), description: t("failed_to_assign_subject") });
             return;
         }
+    }
+
+    // Teacher Availability Verification
+    const targetStaffId = (editIsFree || editIsLibrary || editIsSeminar || editStaffId === "none") ? null : Number(editStaffId);
+    if (targetStaffId && editingPeriod && editDayValue) {
+      const targetPeriodOrder = editingPeriod.period_order;
+      const targetOrders: number[] = [];
+      for (let i = 0; i < editSpan; i++) {
+        targetOrders.push(targetPeriodOrder + i);
+      }
+
+      // 1. Local draft conflict check
+      const dayPeriods = periodsState[editDayValue] || [];
+      for (const pOrderCheck of targetOrders) {
+        const periodSlot = dayPeriods.find(p => p.period_order === pOrderCheck);
+        const startTime = periodSlot?.start_time || editingPeriod.start_time;
+        const endTime = periodSlot?.end_time || editingPeriod.end_time;
+        
+        if (startTime && endTime) {
+          const [newStartHour, newStartMin] = startTime.split(":").map(Number);
+          const [newEndHour, newEndMin] = endTime.split(":").map(Number);
+          const newStartMins = newStartHour * 60 + newStartMin;
+          const newEndMins = newEndHour * 60 + newEndMin;
+
+          const localConflict = dayPeriods.find(p => {
+            if (targetOrders.includes(p.period_order)) return false;
+            if (p.staff_enrollment_id === targetStaffId && !p.is_break && !p.is_free_period && !p.is_library && !p.is_seminar) {
+              if (p.start_time && p.end_time) {
+                const [pStartHour, pStartMin] = p.start_time.split(":").map(Number);
+                const [pEndHour, pEndMin] = p.end_time.split(":").map(Number);
+                const pStartMins = pStartHour * 60 + pStartMin;
+                const pEndMins = pEndHour * 60 + pEndMin;
+                return newStartMins < pEndMins && newEndMins > pStartMins;
+              }
+            }
+            return false;
+          });
+
+          if (localConflict) {
+            toast({
+              variant: "destructive",
+              title: t("teacher_conflict") || "Teacher Conflict",
+              description: `Teacher is already assigned to another lecture in this draft timetable on ${editDayValue.toUpperCase()} (${localConflict.start_time} - ${localConflict.end_time}).`,
+            });
+            return;
+          }
+        }
+      }
+
+      // 2. Backend DB conflict check across other classes/years
+      const dayConfig = timetableConfig?.class_day_config?.find(c => c.day === editDayValue);
+      if (dayConfig) {
+        for (let i = 0; i < editSpan; i++) {
+          const pOrder = targetPeriodOrder + i;
+          const periodSlot = dayPeriods.find(p => p.period_order === pOrder);
+          const startTime = periodSlot?.start_time || editingPeriod.start_time;
+          const endTime = periodSlot?.end_time || editingPeriod.end_time;
+          const currentId = periodSlot?.id || (i === 0 ? editingPeriod.id : undefined);
+
+          try {
+            await verifyPeriodConfiguration({
+              payload: {
+                class_day_config_id: dayConfig.id,
+                division_id: divisionId,
+                period_order: pOrder,
+                start_time: startTime,
+                end_time: endTime,
+                is_break: false,
+                subjects_division_masters_id: finalSubjectId ? Number(finalSubjectId) : null,
+                staff_enrollment_id: targetStaffId,
+                lab_id: editLabId === "none" ? null : Number(editLabId),
+                is_free_period: editIsFree,
+                is_library: editIsLibrary,
+                is_seminar: editIsSeminar,
+                batch_name: editBatchName.trim() || null,
+                id: currentId || undefined,
+              }
+            }).unwrap();
+          } catch (error: any) {
+            const errorMsg = parseBackendError(error, t);
+            toast({
+              variant: "destructive",
+              title: t("teacher_conflict") || "Teacher Conflict",
+              description: errorMsg || "Teacher is already assigned to another lecture at this time slot.",
+            });
+            return;
+          }
+        }
+      }
     }
 
     const newState = { ...periodsState };
@@ -702,10 +862,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       
       newState[editDayValue] = dayPeriods;
       setPeriodsState(newState);
+      setHasChanges(true);
       setEditDialogOpen(false);
-
-      // Auto-save immediately using the freshly mutated state
-      await executeSaveAll(newState);
     }
   };
 
@@ -734,9 +892,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       }
       newState[dayValue] = dayPeriods;
       setPeriodsState(newState);
-
-      // Auto-save immediately using the freshly mutated state
-      await executeSaveAll(newState);
+      setHasChanges(true);
     }
   };
 
@@ -779,7 +935,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                     subjects_division_masters_id: p.subjects_division_masters_id ? Number(p.subjects_division_masters_id) : null,
                     staff_enrollment_id: p.staff_enrollment_id ? Number(p.staff_enrollment_id) : null,
                     lab_id: p.lab_id ? Number(p.lab_id) : null,
-                    is_pt: false,
+                    is_pt: !!p.is_pt,
                     is_free_period: !!p.is_free_period,
                     is_library: !!p.is_library,
                     is_seminar: !!p.is_seminar,
@@ -1566,7 +1722,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             {validationType === "over" && (
-              <AlertDialogAction onClick={executeSaveAll}>Save Anyway</AlertDialogAction>
+              <AlertDialogAction onClick={() => executeSaveAll()}>Save Anyway</AlertDialogAction>
             )}
           </AlertDialogFooter>
         </AlertDialogContent>

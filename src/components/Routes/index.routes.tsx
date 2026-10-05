@@ -71,6 +71,7 @@ import HostelManagement from "@/pages/HostelManagement"
 import DeadStockRegister from "@/pages/DeadStockRegister"
 import InventoryDepartments from "@/pages/InventoryDepartments"
 import PracticalBatchSettings from "@/components/Settings/PracticalBatchSettings"
+import StudentColumnSettingsTab from "@/components/Settings/StudentColumnSettingsTab"
 
 export default function RootRoute() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
@@ -589,6 +590,14 @@ export default function RootRoute() {
                 element={
                   <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
                     <PracticalBatchSettings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="manage/columns"
+                element={
+                  <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.IT_ADMIN]}>
+                    <StudentColumnSettingsTab />
                   </PrivateRoute>
                 }
               />

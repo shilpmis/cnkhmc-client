@@ -25,6 +25,8 @@ export interface LectureAttendanceForDate {
   date: string
   division_id: number
   subject_id: number
+  lecture_number?: number
+  existing_sessions?: number[]
   is_marked: boolean
   marked_by: number | null
   session_type: SessionType | null
@@ -36,6 +38,7 @@ export interface MarkAttendancePayload {
   subject_id: number
   academic_year: number
   date: string
+  lecture_number?: number
   session_type: SessionType
   marked_by: number
   attendance_data: {
@@ -50,6 +53,7 @@ export interface MarkAttendancePayload {
 export interface LectureHistoryRecord {
   id: number
   attendance_date: string
+  lecture_number?: number
   session_type: SessionType
   total: number
   present: number

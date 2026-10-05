@@ -31,10 +31,10 @@ export const LectureAttendanceApi = createApi({
 
     getLectureAttendanceForDate: builder.query<
       LectureAttendanceForDate,
-      { division_id: number; subject_id: number; unix_date: number; academic_session: number }
+      { division_id: number; subject_id: number; unix_date: number; academic_session: number; lecture_number?: number }
     >({
-      query: ({ division_id, subject_id, unix_date, academic_session }) => ({
-        url: `lecture-attendance/${division_id}/${subject_id}/${unix_date}?academic_session=${academic_session}`,
+      query: ({ division_id, subject_id, unix_date, academic_session, lecture_number }) => ({
+        url: `lecture-attendance/${division_id}/${subject_id}/${unix_date}?academic_session=${academic_session}${lecture_number ? `&lecture_number=${lecture_number}` : ''}`,
         method: "GET",
       }),
     }),
@@ -117,6 +117,7 @@ export const getHistoryExportUrl = (division_id: number, subject_id: number, aca
   `${baseUrl.serverUrl}api/v1/lecture-attendance/export/history/${division_id}/${subject_id}?academic_session=${academic_session}&token=${localStorage.getItem("access_token")}`;
 
 export const getReportExportUrl = (division_id: number, academic_session: number, subject_id?: number) => {
-  const base = `${baseUrl.serverUrl}api/v1/lecture-attendance/export/report/${division_id}?academic_session=${academic_session}`;
+  const token = localStorage.getItem("access_token");
+  const base = `${baseUrl.serverUrl}api/v1/lecture-attendance/export/report/${division_id}?academic_session=${academic_session}&token=${token}`;
   return subject_id ? `${base}&subject_id=${subject_id}` : base;
 };

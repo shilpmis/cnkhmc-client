@@ -26,7 +26,7 @@ class LessonPlanService {
   }
 
   static async getAllCoverageReports(academicSessionId: number) {
-    return ApiService.get(`lesson-plans/reports/coverage/${academicSessionId}`);
+    return ApiService.get(`lesson-plans/reports/coverage/${academicSessionId}`, { timeout: 20000 });
   }
 
   static async exportPDF(academicSessionId: number) {

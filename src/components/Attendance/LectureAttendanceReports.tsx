@@ -49,12 +49,11 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
   const [triggerStudentSubReport, { data: studentSubData, isLoading: isLoadingStudentSub }] =
     useLazyGetStudentSubjectReportQuery()
 
-  // Fetch class report on mount/change
+  // Always fetch class report on mount/change to ensure student list is populated
   useEffect(() => {
     if (divisionId && academicYear) {
-      if (selectedSubjectId === "all") {
-        triggerClassReport({ division_id: divisionId, academic_session: academicYear })
-      } else {
+      triggerClassReport({ division_id: divisionId, academic_session: academicYear })
+      if (selectedSubjectId !== "all") {
         triggerClassSubjectReport({
           division_id: divisionId,
           subject_id: Number(selectedSubjectId),
@@ -83,10 +82,35 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
     }
   }, [selectedStudentId, drilledSubjectId, academicYear, triggerStudentSubReport])
 
-  const classStudents: ClassStudentSummary[] = classReportData?.data ?? []
+  // Deduplicate and build master list of students for the division
+  const classStudentsMap = new Map<number, { student_id: number; student_name: string; roll_number: string | null; overall_percentage?: number }>()
+  
+  if (classReportData?.data) {
+    for (const s of classReportData.data) {
+      classStudentsMap.set(s.student_id, {
+        student_id: s.student_id,
+        student_name: s.student_name,
+        roll_number: s.roll_number,
+        overall_percentage: s.overall_percentage,
+      })
+    }
+  }
+  if (classSubData?.data) {
+    for (const s of classSubData.data) {
+      if (!classStudentsMap.has(s.student_id)) {
+        classStudentsMap.set(s.student_id, {
+          student_id: s.student_id,
+          student_name: s.student_name,
+          roll_number: s.roll_number,
+        })
+      }
+    }
+  }
 
-  // Filter students for search dropdown in "By Student" tab
-  const filteredStudents = classStudents.filter(
+  const allStudents = Array.from(classStudentsMap.values())
+
+  // Filter students for search dropdown & table in "Student Analysis" tab
+  const filteredStudents = allStudents.filter(
     (s) =>
       s.student_name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
       (s.roll_number && s.roll_number.toLowerCase().includes(studentSearchQuery.toLowerCase()))
@@ -116,7 +140,7 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
           {activeTab === "class" && (
             <Button onClick={handleExportClassReport} variant="outline" size="sm" className="gap-2">
               <Download className="h-4 w-4" />
-              Export Report (.csv)
+              Export Report (PDF)
             </Button>
           )}
         </div>
@@ -162,14 +186,14 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {classStudents.length === 0 ? (
+                  {allStudents.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3 + subjects.length} className="text-center py-8 text-muted-foreground">
                         No student data available.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    classStudents.map((st) => (
+                    (classReportData?.data ?? []).map((st) => (
                       <TableRow key={st.student_id}>
                         <TableCell className="font-medium">{st.roll_number || "-"}</TableCell>
                         <TableCell className="font-semibold">{st.student_name}</TableCell>
@@ -254,36 +278,51 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
 
         {/* ── TAB 2: STUDENT ANALYSIS ── */}
         <TabsContent value="student" className="space-y-4 pt-4">
-          <div className="flex items-center gap-4 max-w-md">
-            <Input
-              placeholder="Search student by name or roll number..."
-              value={studentSearchQuery}
-              onChange={(e) => setStudentSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {studentSearchQuery && (
-            <div className="border rounded-md max-h-48 overflow-y-auto bg-background divide-y">
-              {filteredStudents.length === 0 ? (
-                <div className="p-3 text-sm text-muted-foreground text-center">No students found</div>
-              ) : (
-                filteredStudents.map((st) => (
-                  <div
-                    key={st.student_id}
-                    className="p-3 hover:bg-muted cursor-pointer flex items-center justify-between text-sm"
-                    onClick={() => {
-                      setSelectedStudentId(String(st.student_id))
-                      setSelectedStudentName(st.student_name)
-                      setStudentSearchQuery("")
-                    }}
-                  >
-                    <span className="font-medium">{st.student_name}</span>
-                    <span className="text-xs text-muted-foreground">Roll: {st.roll_number || "N/A"}</span>
-                  </div>
-                ))
-              )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="w-full sm:w-72">
+              <Input
+                placeholder="Search student by name or roll number..."
+                value={studentSearchQuery}
+                onChange={(e) => setStudentSearchQuery(e.target.value)}
+              />
             </div>
-          )}
+
+            <div className="w-full sm:w-72">
+              <Select
+                value={selectedStudentId}
+                onValueChange={(val) => {
+                  setSelectedStudentId(val)
+                  const st = allStudents.find((s) => String(s.student_id) === val)
+                  if (st) setSelectedStudentName(st.student_name)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="-- Select Student --" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allStudents.map((st) => (
+                    <SelectItem key={st.student_id} value={String(st.student_id)}>
+                      {st.roll_number ? `#${st.roll_number} - ` : ""}{st.student_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedStudentId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedStudentId("")
+                  setSelectedStudentName("")
+                  setDrilledSubjectId(null)
+                }}
+              >
+                Clear Selection
+              </Button>
+            )}
+          </div>
 
           {selectedStudentId ? (
             <div className="space-y-4 border p-5 rounded-lg bg-card">
@@ -395,8 +434,58 @@ const LectureAttendanceReports: React.FC<LectureAttendanceReportsProps> = ({
               )}
             </div>
           ) : (
-            <div className="text-center py-12 border rounded-lg bg-muted/20 text-muted-foreground">
-              Search and select a student above to view their attendance profile.
+            // Full Roster Table when no single student is selected
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground">Select a student from the list below to analyze their attendance:</h4>
+              <div className="border rounded-lg overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="w-16">Roll No</TableHead>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead className="text-center">Overall Attendance %</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStudents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          {studentSearchQuery ? `No students found matching "${studentSearchQuery}"` : "Loading student roster..."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredStudents.map((st) => (
+                        <TableRow
+                          key={st.student_id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedStudentId(String(st.student_id))
+                            setSelectedStudentName(st.student_name)
+                          }}
+                        >
+                          <TableCell className="font-medium">{st.roll_number || "-"}</TableCell>
+                          <TableCell className="font-semibold">{st.student_name}</TableCell>
+                          <TableCell className="text-center">
+                            {st.overall_percentage !== undefined ? (
+                              <Badge variant={st.overall_percentage >= 75 ? "default" : "destructive"}>
+                                {st.overall_percentage}%
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                              View Profile <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </TabsContent>

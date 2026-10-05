@@ -58,7 +58,7 @@ const LectureAttendanceHistory: React.FC<LectureAttendanceHistoryProps> = ({
         {records.length > 0 && (
           <Button onClick={handleExport} variant="outline" size="sm" className="gap-2">
             <Download className="h-4 w-4" />
-            Export History (.csv)
+            Export History (PDF)
           </Button>
         )}
       </div>
@@ -86,9 +86,16 @@ const LectureAttendanceHistory: React.FC<LectureAttendanceHistoryProps> = ({
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">{row.attendance_date}</TableCell>
                   <TableCell>
-                    <Badge variant={row.session_type === "lab" ? "secondary" : "default"} className="capitalize">
-                      {row.session_type}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={row.session_type === "lab" ? "secondary" : "default"} className="capitalize">
+                        {row.session_type}
+                      </Badge>
+                      {row.lecture_number && row.lecture_number > 1 && (
+                        <Badge variant="outline" className="text-xs bg-muted/30 font-medium">
+                          Lec {row.lecture_number}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-center font-semibold">{row.total}</TableCell>
                   <TableCell className="text-center font-semibold text-emerald-600 dark:text-emerald-400">

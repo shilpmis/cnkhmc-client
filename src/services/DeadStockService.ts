@@ -96,6 +96,14 @@ export const DeadStockApi = createApi({
       }),
       invalidatesTags: ["DeadStock"],
     }),
+    importDeadStockExcel: builder.mutation<{ message: string, count: number }, FormData>({
+      query: (formData) => ({
+        url: `/dead-stocks/import`,
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: ["DeadStock"],
+    }),
 
     // Transactions
     issueDeadStock: builder.mutation<{ message: string, data: DeadStockTransaction }, any>({
@@ -140,6 +148,7 @@ export const {
   useGetDeadStocksQuery,
   useGetDeadStockByIdQuery,
   useCreateDeadStockMutation,
+  useImportDeadStockExcelMutation,
   useIssueDeadStockMutation,
   useReturnDeadStockMutation,
   useDiscardDeadStockMutation,

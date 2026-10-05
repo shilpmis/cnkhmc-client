@@ -136,14 +136,37 @@ export default function TeacherDashboard() {
   const fetchTimetable = async () => {
     try {
       setIsLoading(true)
-      const [timetableResponse, availabilityResponse, coverageResponse] = await Promise.all([
+      const [timetableRes, availabilityRes, coverageRes] = await Promise.allSettled([
         TeacherService.getMyTimetable(currentAcademicSession!.id),
         TeacherService.getMyAvailability(currentAcademicSession!.id),
         LessonPlanService.getAllCoverageReports(currentAcademicSession!.id)
       ])
-      setTimetable(timetableResponse.data)
-      setAvailability(availabilityResponse.data)
-      setCoverageReports(coverageResponse.data || [])
+
+      if (timetableRes.status === 'fulfilled') {
+        setTimetable(timetableRes.value.data)
+      } else {
+        console.error("Error fetching timetable:", timetableRes.reason)
+      }
+
+      if (availabilityRes.status === 'fulfilled') {
+        setAvailability(availabilityRes.value.data)
+      } else {
+        console.error("Error fetching availability:", availabilityRes.reason)
+      }
+
+      if (coverageRes.status === 'fulfilled') {
+        setCoverageReports(coverageRes.value.data || [])
+      } else {
+        console.error("Error fetching coverage reports:", coverageRes.reason)
+      }
+
+      if (timetableRes.status === 'rejected' && availabilityRes.status === 'rejected') {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: t("failed_to_load_timetable")
+        })
+      }
     } catch (error) {
       console.error("Error fetching teacher timetable:", error)
       toast({

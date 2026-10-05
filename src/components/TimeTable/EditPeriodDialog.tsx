@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -92,6 +95,75 @@ export default function EditPeriodDialog({
   const [startTime, setStartTime] = useState<string>("")
   const [endTime, setEndTime] = useState<string>("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // Extract assigned teachers for the currently selected subject
+  const assignedTeachers = useMemo(() => {
+    if (!subjectId || subjectId === "none") return []
+    const selectedSub = subjects.find((s) => String(s.id) === subjectId)
+    if (!selectedSub || !selectedSub.subject_staff_divisioin_master) return []
+
+    return selectedSub.subject_staff_divisioin_master
+      .filter((ssm) => ssm.status !== "Inactive")
+      .map((ssm) => {
+        const staffEnrollmentId = String(ssm.staff_enrollment_id)
+        const teacherObj = ssm.staff_enrollment?.staff
+        const globalStaffObj = staff.find(
+          (s) =>
+            String(s.staff_enrollment_id) === staffEnrollmentId ||
+            String(s.id) === String(ssm.staff_enrollment?.staff_id)
+        )
+
+        const firstName = teacherObj?.first_name || globalStaffObj?.first_name || ""
+        const middleName = teacherObj?.middle_name || globalStaffObj?.middle_name || ""
+        const lastName = teacherObj?.last_name || globalStaffObj?.last_name || ""
+        const fullName = `${firstName} ${middleName} ${lastName}`.trim()
+        const empCode = teacherObj?.employee_code || globalStaffObj?.employee_code
+
+        return {
+          staff_enrollment_id: staffEnrollmentId,
+          name: fullName || `Staff Enrollment #${staffEnrollmentId}`,
+          code: empCode,
+        }
+      })
+  }, [subjectId, subjects, staff])
+
+  // Extract other teachers not assigned to the selected subject
+  const otherTeachers = useMemo(() => {
+    const assignedIds = new Set(assignedTeachers.map((t) => t.staff_enrollment_id))
+    return staff
+      .filter((s) => s.staff_enrollment_id != null && !assignedIds.has(String(s.staff_enrollment_id)))
+      .map((s) => {
+        const fullName = `${s.first_name || ""} ${s.middle_name || ""} ${s.last_name || ""}`.trim()
+        return {
+          staff_enrollment_id: String(s.staff_enrollment_id),
+          name: fullName || `Staff #${s.id}`,
+          code: s.employee_code,
+        }
+      })
+  }, [staff, assignedTeachers])
+
+  const handleSubjectChange = (newSubjectId: string) => {
+    setSubjectId(newSubjectId)
+    if (newSubjectId === "none") {
+      setStaffId("none")
+      return
+    }
+
+    const selectedSub = subjects.find((s) => String(s.id) === newSubjectId)
+    const assigned = (selectedSub?.subject_staff_divisioin_master || []).filter(
+      (ssm) => ssm.status !== "Inactive"
+    )
+    if (assigned.length === 1) {
+      setStaffId(String(assigned[0].staff_enrollment_id))
+    } else if (assigned.length > 0) {
+      const isCurrentAssigned = assigned.some(
+        (a) => String(a.staff_enrollment_id) === staffId
+      )
+      if (!isCurrentAssigned) {
+        setStaffId(String(assigned[0].staff_enrollment_id))
+      }
+    }
+  }
 
   // Initialize form state when period changes
   useEffect(() => {
@@ -185,10 +257,11 @@ export default function EditPeriodDialog({
       if (onSuccess) onSuccess()
     } catch (error: any) {
       console.error("Failed to update period:", error)
-      const parsed = parseBackendError(error)
+      const errorMsg = parseBackendError(error, t)
+      const isTeacherConflict = errorMsg?.toLowerCase().includes("teacher") || errorMsg?.toLowerCase().includes("assigned")
       toast({
-        title: t("error") || "Error",
-        description: parsed.description || parsed.title || "Failed to update period",
+        title: isTeacherConflict ? (t("teacher_conflict") || "Teacher Conflict") : (t("error") || "Error"),
+        description: errorMsg || "Failed to update period",
         variant: "destructive",
       })
     }
@@ -212,10 +285,10 @@ export default function EditPeriodDialog({
       if (onSuccess) onSuccess()
     } catch (error: any) {
       console.error("Failed to delete period:", error)
-      const parsed = parseBackendError(error)
+      const errorMsg = parseBackendError(error, t)
       toast({
         title: t("error") || "Error",
-        description: parsed.description || parsed.title || "Failed to delete period",
+        description: errorMsg || "Failed to delete period",
         variant: "destructive",
       })
     }
@@ -356,7 +429,7 @@ export default function EditPeriodDialog({
                       <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
                       {t("subject") || "Subject"}
                     </Label>
-                    <Select value={subjectId} onValueChange={setSubjectId}>
+                    <Select value={subjectId} onValueChange={handleSubjectChange}>
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder={t("select_subject") || "Select Subject"} />
                       </SelectTrigger>
@@ -390,14 +463,37 @@ export default function EditPeriodDialog({
                         <SelectItem value="none">
                           <span className="text-muted-foreground">{t("no_teacher") || "None (No Teacher)"}</span>
                         </SelectItem>
-                        {staff.map((s) => {
-                          const fullName = `${s.first_name || ""} ${s.middle_name || ""} ${s.last_name || ""}`.trim()
-                          return (
-                            <SelectItem key={s.id} value={String(s.staff_enrollment_id)}>
-                              {fullName || `Staff #${s.id}`}
-                            </SelectItem>
-                          )
-                        })}
+
+                        {/* Assigned Teachers Section */}
+                        {assignedTeachers.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel className="text-xs font-semibold text-primary px-2 py-1">
+                              {t("assigned_teachers") || "Assigned Teachers to Subject"}
+                            </SelectLabel>
+                            {assignedTeachers.map((t) => (
+                              <SelectItem key={`assigned-${t.staff_enrollment_id}`} value={t.staff_enrollment_id}>
+                                <span className="font-medium">{t.name}</span>
+                                {t.code ? <span className="text-xs text-muted-foreground ml-1.5">({t.code})</span> : null}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+
+                        {/* Other Teachers Section */}
+                        {otherTeachers.length > 0 && (
+                          <SelectGroup>
+                            {assignedTeachers.length > 0 && <SelectSeparator />}
+                            <SelectLabel className="text-xs font-semibold text-muted-foreground px-2 py-1">
+                              {assignedTeachers.length > 0 ? (t("other_teachers") || "Other Teachers") : (t("all_teachers") || "All Teachers")}
+                            </SelectLabel>
+                            {otherTeachers.map((t) => (
+                              <SelectItem key={`other-${t.staff_enrollment_id}`} value={t.staff_enrollment_id}>
+                                {t.name}
+                                {t.code ? <span className="text-xs text-muted-foreground ml-1.5">({t.code})</span> : null}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

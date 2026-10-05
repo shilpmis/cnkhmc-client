@@ -75,9 +75,10 @@ const academicCalendarSlice = createSlice({
       }).filter((d): d is string => typeof d === "string");
 
       state.nonWorkingDates = Array.from(new Set(parsedDates))
-      state.isSaturdayWorking = action.payload.isSaturdayWorking === true || 
-                               action.payload.isSaturdayWorking === 1 || 
-                               action.payload.isSaturdayWorking === "true"
+      const rawSat = action.payload.isSaturdayWorking
+      state.isSaturdayWorking = rawSat === undefined || rawSat === null
+        ? true
+        : (rawSat === true || rawSat === 1 || rawSat === "true" || rawSat === "1")
       persistState(state)
     },
     setNonWorkingDates: (state, action: PayloadAction<string[]>) => {
@@ -100,9 +101,10 @@ const academicCalendarSlice = createSlice({
       persistState(state)
     },
     setIsSaturdayWorking: (state, action: PayloadAction<any>) => {
-      state.isSaturdayWorking = action.payload === true || 
-                               action.payload === 1 || 
-                               action.payload === "true"
+      const rawSat = action.payload
+      state.isSaturdayWorking = rawSat === undefined || rawSat === null
+        ? true
+        : (rawSat === true || rawSat === 1 || rawSat === "true" || rawSat === "1")
       persistState(state)
     },
   },

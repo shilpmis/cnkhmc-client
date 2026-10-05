@@ -314,12 +314,24 @@ export default function LessonPlanManager() {
         title: t("success"),
         description: t("export_successful")
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Export Error:", error)
+      let errorMessage = t("failed_to_export_lp_sheet")
+      if (error?.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          const json = JSON.parse(text)
+          if (json.message) errorMessage = json.message
+        } catch (e) {
+          // fallback
+        }
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      }
       toast({
         variant: "destructive",
         title: t("error"),
-        description: t("failed_to_export_lp_sheet")
+        description: errorMessage
       })
     }
   }

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { CalendarIcon, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Save } from "lucide-react"
+import { CalendarIcon, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Save, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { AssignedSubject, AttendanceStatus, LectureAttendanceStudent } from "@/types/lectureAttendance"
 import LectureAttendanceHistory from "./LectureAttendanceHistory"
@@ -33,6 +33,7 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
 }) => {
   const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [lectureNumber, setLectureNumber] = useState<number>(1)
   const [sessionType, setSessionType] = useState<"lecture" | "lab">(assignedSubject.session_type)
   const [activeTab, setActiveTab] = useState<"mark" | "history" | "reports">("mark")
   const [students, setStudents] = useState<LectureAttendanceStudent[]>([])
@@ -41,7 +42,13 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
   const [triggerFetchDate, { data: dateData, isLoading: isLoadingDate }] = useLazyGetLectureAttendanceForDateQuery()
   const [markAttendance, { isLoading: isSubmitting }] = useMarkLectureAttendanceMutation()
 
-  // Fetch attendance when date changes
+  // Reset lecture number to 1 when date changes
+  const handleDateChange = (d: Date) => {
+    setSelectedDate(d)
+    setLectureNumber(1)
+  }
+
+  // Fetch attendance when date or lectureNumber changes
   useEffect(() => {
     if (selectedDate && assignedSubject && academicYear) {
       const unixDate = Math.floor(selectedDate.getTime() / 1000)
@@ -50,9 +57,10 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
         subject_id: assignedSubject.subject_id,
         unix_date: unixDate,
         academic_session: academicYear,
+        lecture_number: lectureNumber,
       })
     }
-  }, [selectedDate, assignedSubject, academicYear, triggerFetchDate])
+  }, [selectedDate, lectureNumber, assignedSubject, academicYear, triggerFetchDate])
 
   // Sync fetched student data into local state
   useEffect(() => {
@@ -97,6 +105,7 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
       subject_id: assignedSubject.subject_id,
       academic_year: academicYear,
       date: format(selectedDate, "yyyy-MM-dd"),
+      lecture_number: lectureNumber,
       session_type: sessionType,
       marked_by: userId,
       attendance_data: students.map((s) => ({
@@ -110,7 +119,7 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
       await markAttendance(payload).unwrap()
       toast({
         title: "Success",
-        description: "Lecture attendance marked successfully!",
+        description: `Lecture ${lectureNumber} attendance marked successfully!`,
       })
       setIsMarked(true)
     } catch (error: any) {
@@ -121,6 +130,13 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
       })
     }
   }
+
+  const existingSessions = dateData?.existing_sessions || []
+  const maxSession = existingSessions.length > 0 ? Math.max(...existingSessions) : 0
+  
+  // Base sessions to show: if no session marked yet, show [1]. Otherwise show existing sessions + current selected lecture number
+  const baseSessions = existingSessions.length > 0 ? existingSessions : [1]
+  const availableLectureNumbers = Array.from(new Set([...baseSessions, lectureNumber])).sort((a, b) => a - b)
 
   const counts = {
     total: students.length,
@@ -162,44 +178,83 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
         <TabsContent value="mark" className="space-y-6 pt-4">
           {/* Date Picker & Controls Card */}
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 border rounded-lg bg-card">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold">Select Date:</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-48 justify-start text-left font-normal gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(d) => d && setSelectedDate(d)}
-                    disabled={(date) => date > new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Select Date:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-48 justify-start text-left font-normal gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(d) => d && handleDateChange(d)}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-              <span className="text-sm font-semibold ml-4">Session:</span>
-              <div className="flex gap-1 border rounded-md p-1 bg-muted/40">
-                <Button
-                  variant={sessionType === "lecture" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setSessionType("lecture")}
-                  disabled={isMarked}
-                >
-                  Lecture
-                </Button>
-                <Button
-                  variant={sessionType === "lab" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setSessionType("lab")}
-                  disabled={isMarked}
-                >
-                  Lab
-                </Button>
+              {/* Lecture Session Switcher */}
+              <div className="flex items-center gap-2 border-l pl-4">
+                <span className="text-sm font-semibold">Lecture Session:</span>
+                <div className="flex flex-wrap items-center gap-1 bg-muted/40 p-1 rounded-md border">
+                  {availableLectureNumbers.map((num) => {
+                    const isSessionMarked = existingSessions.includes(num)
+                    return (
+                      <Button
+                        key={num}
+                        variant={lectureNumber === num ? "default" : "ghost"}
+                        size="sm"
+                        className="gap-1.5 text-xs h-7 px-2.5"
+                        onClick={() => setLectureNumber(num)}
+                      >
+                        Lecture {num}
+                        {isSessionMarked && <CheckCircle2 className="h-3 w-3 text-emerald-500 fill-emerald-100" />}
+                      </Button>
+                    )
+                  })}
+                  {!availableLectureNumbers.includes(maxSession + 1) && existingSessions.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-xs h-7 px-2 border-dashed border-primary/50 text-primary hover:bg-primary/10"
+                      onClick={() => setLectureNumber(maxSession + 1)}
+                      title="Mark an extra lecture session"
+                    >
+                      <Plus className="h-3 w-3" /> Add Session
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 border-l pl-4">
+                <span className="text-sm font-semibold">Type:</span>
+                <div className="flex gap-1 border rounded-md p-1 bg-muted/40">
+                  <Button
+                    variant={sessionType === "lecture" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setSessionType("lecture")}
+                    disabled={isMarked}
+                  >
+                    Lecture
+                  </Button>
+                  <Button
+                    variant={sessionType === "lab" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setSessionType("lab")}
+                    disabled={isMarked}
+                  >
+                    Lab
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -207,11 +262,11 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
             <div>
               {isMarked ? (
                 <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="h-4 w-4" /> Attendance Already Marked
+                  <CheckCircle2 className="h-4 w-4" /> Lecture {lectureNumber} Already Marked
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-amber-600 font-semibold text-sm bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800">
-                  <AlertCircle className="h-4 w-4" /> Ready to Mark
+                  <AlertCircle className="h-4 w-4" /> Lecture {lectureNumber} Ready to Mark
                 </div>
               )}
             </div>

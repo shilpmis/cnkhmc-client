@@ -163,6 +163,40 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
     })
   }
 
+  // Check if conclusion and reference book should be enabled (only when allocated hours & all subtopics are completed)
+  const canEnterConclusionAndReference = useMemo(() => {
+    if (!logData.topicIds || logData.topicIds.length === 0) return false
+
+    return logData.topicIds.every((topicId) => {
+      const topic = lessonPlan?.topics?.find((t: any) => t.id === topicId)
+      if (!topic) return false
+
+      // 1. All subtopics under this topic must be completed or checked in this log
+      const topicSubtopics = topic.subtopics || []
+      const allSubtopicsDone = topicSubtopics.length > 0
+        ? topicSubtopics.every((sub: any) => 
+            sub.isCompleted || sub.is_completed || logData.subtopicIds.includes(sub.id)
+          )
+        : true
+
+      // 2. All hours allocated to this topic must be completed (existing + entered in form now)
+      const subtopicsSum = topicSubtopics.reduce((acc: number, st: any) => acc + (Number(st.requiredHours || st.required_hours) || 0), 0)
+      const required = topicSubtopics.length > 0 && subtopicsSum > 0 
+        ? subtopicsSum 
+        : (topic.requiredHours || topic.required_hours || 0)
+
+      const completed = topic.completedHours || topic.completed_hours || 0
+      const enteredVal = logData.topicDurations[topicId]
+      const currentEntered = typeof enteredVal === 'number'
+        ? enteredVal
+        : (typeof enteredVal === 'string' && enteredVal !== "" ? parseFloat(enteredVal) : (required > completed ? Math.min(1, Math.max(0.5, required - completed)) : 0))
+
+      const hoursDone = (completed + currentEntered + 0.01) >= required
+
+      return allSubtopicsDone && hoursDone
+    })
+  }, [logData.topicIds, logData.subtopicIds, logData.topicDurations, lessonPlan])
+
   const handleLogSubmit = async () => {
     if (!logData.topicCovered) {
       toast({
@@ -178,8 +212,24 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
       Object.entries(logData.topicDurations).forEach(([key, val]) => {
         const numKey = Number(key)
         const numVal = typeof val === "string" ? parseFloat(val) : val
-        if (!isNaN(numVal)) {
+        if (!isNaN(numVal) && numVal > 0) {
           cleanDurations[numKey] = numVal
+        }
+      })
+
+      // Default duration for selected topics without explicit user entry
+      logData.topicIds.forEach((tId) => {
+        if (cleanDurations[tId] === undefined || cleanDurations[tId] === null) {
+          const topic = lessonPlan?.topics?.find((t: any) => t.id === tId)
+          const topicSubtopics = topic?.subtopics || []
+          const subtopicsSum = topicSubtopics.reduce((acc: number, st: any) => acc + (Number(st.requiredHours || st.required_hours) || 0), 0)
+          const required = topicSubtopics.length > 0 && subtopicsSum > 0 
+            ? subtopicsSum 
+            : (topic?.requiredHours || topic?.required_hours || 0)
+          const completed = topic?.completedHours || topic?.completed_hours || 0
+          const remaining = Math.max(0, required - completed)
+          
+          cleanDurations[tId] = remaining > 0 ? Math.min(1, remaining) : 0.5
         }
       })
 
@@ -187,6 +237,8 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
         periodsConfigId: period.id,
         date: date || format(new Date(), 'yyyy-MM-dd'),
         ...logData,
+        conclusion: canEnterConclusionAndReference ? logData.conclusion : "",
+        referenceBook: canEnterConclusionAndReference ? logData.referenceBook : "",
         topicDurations: cleanDurations
       })
       
@@ -342,7 +394,11 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
                 <Label className="font-semibold text-sm text-blue-800">{t("hours_taught_per_topic")}</Label>
                 {logData.topicIds.map(topicId => {
                   const topic = lessonPlan?.topics?.find((t: any) => t.id === topicId);
-                  const required = topic?.requiredHours || topic?.required_hours || 0;
+                  const topicSubtopics = topic?.subtopics || [];
+                  const subtopicsSum = topicSubtopics.reduce((acc: number, st: any) => acc + (Number(st.requiredHours || st.required_hours) || 0), 0);
+                  const required = topicSubtopics.length > 0 && subtopicsSum > 0
+                    ? subtopicsSum
+                    : (topic?.requiredHours || topic?.required_hours || 0);
                   const completed = topic?.completedHours || topic?.completed_hours || 0;
                   const maxAllowed = Math.max(0, required - completed);
                   
@@ -383,36 +439,59 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="attendance" className="font-semibold text-sm">{t("attendance")}</Label>
-              <Input
-                id="attendance"
-                placeholder={t("e_g_45_or_45_out_of_50")}
-                value={logData.attendance}
-                onChange={(e) => setLogData({ ...logData, attendance: e.target.value })}
-                className="border-gray-200 h-9 text-sm"
-              />
-            </div>
+            {/* Attendance field removed as per requirements */}
 
             <div className="space-y-2">
-              <Label htmlFor="conclusion" className="font-semibold text-sm">{t("conclusion")}</Label>
+              <Label htmlFor="conclusion" className="font-semibold text-sm flex items-center justify-between">
+                <span>{t("conclusion")}</span>
+                {!canEnterConclusionAndReference && (
+                  <span className="text-[10px] text-amber-600 font-normal italic">
+                    (Locked: Complete subtopics & hours)
+                  </span>
+                )}
+              </Label>
               <Textarea
                 id="conclusion"
-                placeholder={t("summarize_lecture_conclusion")}
+                disabled={!canEnterConclusionAndReference}
+                placeholder={
+                  canEnterConclusionAndReference
+                    ? t("summarize_lecture_conclusion")
+                    : "Conclusion can only be entered once all subtopics & allocated hours for the topic are completed."
+                }
                 value={logData.conclusion}
                 onChange={(e) => setLogData({ ...logData, conclusion: e.target.value })}
-                className="min-h-[80px] border-gray-200 text-sm"
+                className={`min-h-[80px] text-sm ${
+                  !canEnterConclusionAndReference
+                    ? "bg-gray-50 opacity-70 cursor-not-allowed border-gray-200"
+                    : "border-gray-200"
+                }`}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="referenceBook" className="font-semibold text-sm">{t("reference_book")}</Label>
+              <Label htmlFor="referenceBook" className="font-semibold text-sm flex items-center justify-between">
+                <span>{t("reference_book")}</span>
+                {!canEnterConclusionAndReference && (
+                  <span className="text-[10px] text-amber-600 font-normal italic">
+                    (Locked: Complete subtopics & hours)
+                  </span>
+                )}
+              </Label>
               <Textarea
                 id="referenceBook"
-                placeholder={t("reference_book_used")}
+                disabled={!canEnterConclusionAndReference}
+                placeholder={
+                  canEnterConclusionAndReference
+                    ? t("reference_book_used")
+                    : "Reference book can only be entered once all subtopics & allocated hours for the topic are completed."
+                }
                 value={logData.referenceBook}
                 onChange={(e) => setLogData({ ...logData, referenceBook: e.target.value })}
-                className="min-h-[80px] border-gray-200 text-sm"
+                className={`min-h-[80px] text-sm ${
+                  !canEnterConclusionAndReference
+                    ? "bg-gray-50 opacity-70 cursor-not-allowed border-gray-200"
+                    : "border-gray-200"
+                }`}
               />
             </div>
           </div>

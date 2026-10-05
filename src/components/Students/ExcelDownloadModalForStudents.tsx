@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { AcademicClasses, Division } from "@/types/academic"
-import { useDownloadExcelTemplateMutation } from "@/services/StudentServices"
+import { useDownloadExcelTemplateMutation, useFetchStudentColumnSettingsQuery } from "@/services/StudentServices"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectAccademicSessionsForSchool, selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -208,16 +208,21 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
   )
 
   const [getExcelForClass, { isLoading: isDownloadingExcle, isError }] = useDownloadExcelTemplateMutation()
+  const { data: serverColumnSettings } = useFetchStudentColumnSettingsQuery()
 
   useEffect(() => {
     const initialSelectedFields: Record<string, boolean> = {}
+    const enabledSet = serverColumnSettings?.enabled_columns && Array.isArray(serverColumnSettings.enabled_columns)
+      ? new Set(serverColumnSettings.enabled_columns)
+      : null
+
     Object.entries(activeFieldGroups).forEach(([_, fields]) => {
       fields.forEach((field) => {
-        initialSelectedFields[field.id] = true
+        initialSelectedFields[field.id] = enabledSet ? enabledSet.has(field.id) : true
       })
     })
     setSelectedFields(initialSelectedFields)
-  }, [isCollege])
+  }, [isCollege, serverColumnSettings])
 
   const availableDivisions =
     academicClasses && selectedClass ? academicClasses.find((cls) => cls.id.toString() === selectedClass) : null

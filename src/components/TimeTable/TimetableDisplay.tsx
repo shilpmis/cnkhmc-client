@@ -254,7 +254,7 @@ import { Clock, BookOpen, Users, Dumbbell, Coffee, Beaker, AlertCircle, Edit, Pr
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import type { ClassDayConfigForTimeTable, TimeTableConfigForSchool, PeriodsConfig } from "@/types/subjects"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
-import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
+import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useEffect, useState } from "react"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
@@ -275,7 +275,7 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
   const { t } = useTranslation()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()
-  const [getTeachingStaff, { data: staffData }] = useLazyGetTeachingStaffQuery()
+  const [getTeachingStaff, { data: staffData }] = useLazyGetAllTeachingStaffQuery()
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])
   const [staff, setStaff] = useState<StaffType[]>([])
   
@@ -305,7 +305,7 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
       setSubjects(subjectsData)
     }
     if (staffData) {
-      setStaff(staffData.data || [])
+      setStaff(Array.isArray(staffData) ? staffData : (staffData as any).data || [])
     }
   }, [subjectsData, staffData])
 

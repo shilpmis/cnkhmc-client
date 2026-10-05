@@ -7,7 +7,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
-import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
+import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
@@ -24,7 +24,7 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
   const { t } = useTranslation()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()
-  const [getTeachingStaff, { data: staffData }] = useLazyGetTeachingStaffQuery()
+  const [getTeachingStaff, { data: staffData }] = useLazyGetAllTeachingStaffQuery()
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])
   const [staff, setStaff] = useState<StaffType[]>([])
   
@@ -54,7 +54,7 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
       setSubjects(subjectsData)
     }
     if (staffData) {
-      setStaff(staffData.data || [])
+      setStaff(Array.isArray(staffData) ? staffData : (staffData as any).data || [])
     }
   }, [subjectsData, staffData])
 

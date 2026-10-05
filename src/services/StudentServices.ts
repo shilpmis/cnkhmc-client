@@ -213,6 +213,24 @@ export const StudentApi = createApi({
       }),
     }),
 
+    fetchStudentColumnSettings: builder.query<{ id: number | null; school_id: number; enabled_columns: string[] | null }, void>({
+      query: () => ({
+        url: `student-column-settings`,
+        method: 'GET',
+      }),
+    }),
+
+    updateStudentColumnSettings: builder.mutation<
+      { id: number; school_id: number; enabled_columns: string[] },
+      { enabled_columns: string[] }
+    >({
+      query: (payload) => ({
+        url: `student-column-settings`,
+        method: 'PUT',
+        body: payload,
+      }),
+    }),
+
   }),
 });
 
@@ -231,6 +249,8 @@ export const {
   useBulkAssignPracticalBatchMutation,
   useFetchPracticalBatchSettingsQuery,
   useUpdatePracticalBatchSettingsMutation,
+  useFetchStudentColumnSettingsQuery,
+  useUpdateStudentColumnSettingsMutation,
   usePrefetch
 } = StudentApi;
 

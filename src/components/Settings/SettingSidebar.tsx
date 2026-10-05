@@ -161,6 +161,11 @@ const navigationSections: NavSection[] = [
             icon: Settings,
             href: "manage/batches",
           },
+          {
+            title: "Import / Export Columns",
+            icon: Settings,
+            href: "manage/columns",
+          },
         ],
       },
       {

@@ -553,7 +553,6 @@ export default function TimetableManagement() {
                             divisionId={Number(selectedDivision)}
                             days={days}
                             onSave={() => {
-                              setActiveTab("week_view")
                               fetchTimeTableConfig({
                                 academic_session_id: currentAcademicSession.id,
                                 division_id: Number(selectedDivision),

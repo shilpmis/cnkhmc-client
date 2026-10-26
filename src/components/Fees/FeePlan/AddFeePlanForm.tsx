@@ -12,10 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Loader2, Plus, Trash2, AlertTriangle, Info, Lock, Edit } from 'lucide-react'
+import { Loader2, Plus, Trash2, AlertTriangle, Info, Lock, Edit, ShieldCheck } from 'lucide-react'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "@/hooks/use-toast"
 import {
   useCreateFeesPlanMutation,
@@ -26,7 +27,8 @@ import {
 import type { FeesPlanDetail, InstallmentBreakdowns, FeesPlan, ReqObjectForUpdateFeesPlan } from "@/types/fees"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectAuthState, selectCurrentUser } from "@/redux/slices/authSlice"
-import { useLazyGetAllClassesWithOutFeesPlanQuery } from "@/services/AcademicService"
+import { useLazyGetAllClassesWithOutFeesPlanQuery, useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
+import { useGetQuotasQuery } from "@/services/QuotaService"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { NumberInput } from "@/components/ui/NumberInput"
 
@@ -45,7 +47,10 @@ const feePlanSchema = z.object({
   fees_plan: z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     description: z.string().optional(),
-    class_id: z.number({ required_error: "Please select a class" }).optional(),
+    class_id: z
+      .number({ required_error: "Please select an admission class / program" })
+      .min(1, { message: "Please select an admission class / program" }),
+    quota_id: z.number().optional().nullable(),
   }),
   fees_types: z
     .array(
@@ -150,6 +155,22 @@ const validateInstallmentDates = (installments: any[]) => {
   return true
 }
 
+const FIRST_YEAR_HALF_YEARLY_INSTALLMENTS = 3
+
+export const isEntryLevelClass = (className?: string) => {
+  if (!className) return false
+  const name = className.toLowerCase().trim()
+  return (
+    name.includes("1st") ||
+    name.includes("first") ||
+    name.startsWith("1 ") ||
+    name.startsWith("1-") ||
+    name === "1" ||
+    name.includes("admission") ||
+    name.includes("entry")
+  )
+}
+
 export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSuccessfulSubmit, type, plan_id }) => {
   const authState = useAppSelector(selectAuthState)
   const user = useAppSelector(selectCurrentUser)
@@ -159,6 +180,11 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
   const [getAllFeesType, { data: FetchedFeesType, isLoading: isFeeTypeLoading }] = useLazyGetAllFeesTypeQuery()
   const [getClassesWithoutFeesPlan, { data: ClassesWithOutFeesPlan, isLoading: isClassWithOutFeesPlanLoading }] =
     useLazyGetAllClassesWithOutFeesPlanQuery()
+  const [getAcademicClasses, { data: allAcademicClasses }] = useLazyGetAcademicClassesQuery()
+  const { data: quotasList } = useGetQuotasQuery(
+    { academic_session_id: CurrentAcademicSessionForSchool?.id || 0 },
+    { skip: !CurrentAcademicSessionForSchool?.id }
+  )
 
   const [
     getFeePlanInDetail,
@@ -177,6 +203,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
   const [originalFormValues, setOriginalFormValues] = useState<any>(null)
   const [deletedFeeTypes, setDeletedFeeTypes] = useState<Map<number, any>>(new Map()) // Store deleted fee types with their original data
   const [deletedFeeTypeIds, setDeletedFeeTypeIds] = useState<Set<number>>(new Set()) // Track fees_plan_detail_ids to be deleted
+  const [showOnlyEntryClasses, setShowOnlyEntryClasses] = useState<boolean>(true)
 
   // Initialize the form
   const form = useForm<FeePlanFormValues>({
@@ -186,6 +213,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
         name: "",
         description: "",
         class_id: 0,
+        quota_id: null,
       },
       fees_types: [],
     },
@@ -212,6 +240,15 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
   }, [form])
 
   // Function to shift Sunday dates to next working day (Monday)
+  // The 1st year runs 1.5 years, so its half-yearly schedule has 3 installments (other years have 2).
+  const watchedClassId = form.watch("fees_plan.class_id")
+  const selectedClassName = ((allAcademicClasses && allAcademicClasses.length > 0
+    ? allAcademicClasses
+    : ClassesWithOutFeesPlan) || []
+  ).find((cls) => cls.id === watchedClassId)?.class
+  const isFirstYearClass = isEntryLevelClass(selectedClassName)
+  const halfYearlyCount = isFirstYearClass ? FIRST_YEAR_HALF_YEARLY_INSTALLMENTS : 2
+
   const shiftSundayToMonday = useCallback((date: Date) => {
     const newDate = new Date(date)
     if (newDate.getDay() === 0) { // Sunday is 0
@@ -234,7 +271,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
         const currentMonth = startDate.getMonth()
         const nextQuarterMonth = Math.ceil((currentMonth + 1) / 3) * 3
         startDate = new Date(startDate.getFullYear(), nextQuarterMonth, 1)
-      } else if (installmentType === "Half-Yearly") {
+      } else if ((installmentType === "Half-Yearly" || installmentType === "Half Yearly")) {
         const currentMonth = startDate.getMonth()
         const nextHalfYear = currentMonth < 6 ? 6 : 0
         startDate = new Date(startDate.getFullYear() + (nextHalfYear === 0 ? 1 : 0), nextHalfYear, 1)
@@ -251,7 +288,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
           dueDate = addMonths(startDate, i)
         } else if (installmentType === "Quarterly") {
           dueDate = addMonths(startDate, i * 3)
-        } else if (installmentType === "Half-Yearly") {
+        } else if ((installmentType === "Half-Yearly" || installmentType === "Half Yearly")) {
           dueDate = addMonths(startDate, i * 6)
         } else if (installmentType === "Yearly") {
           dueDate = addMonths(startDate, i * 12)
@@ -329,6 +366,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
       const maxInstallments = typeConfig?.maxInstallments || 12
 
       let defaultCount = maxInstallments
+      if (installmentType === "Half Yearly") defaultCount = halfYearlyCount
       if (installmentType === "Yearly" || installmentType === "Admission") {
         defaultCount = 1
       }
@@ -339,7 +377,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
       // Track this fee type as modified when installment type changes
       trackFeeTypeChange(planDetailIndex)
     },
-    [form, generateEmptyInstallmentBreakdowns, trackFeeTypeChange],
+    [form, generateEmptyInstallmentBreakdowns, trackFeeTypeChange, halfYearlyCount],
   )
 
   const handleInstallmentCountChange = useCallback(
@@ -350,6 +388,20 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
     },
     [generateEmptyInstallmentBreakdowns, trackFeeTypeChange],
   )
+
+  // When the selected class changes between 1st year and later years, re-size half-yearly fee types
+  // (create mode only; saved plans keep their stored installments).
+  useEffect(() => {
+    if (type !== "create") return
+    const feeTypes = form.getValues("fees_types") || []
+    feeTypes.forEach((feeType, idx) => {
+      if (feeType.installment_type === "Half Yearly" && Number(feeType.total_installment) !== halfYearlyCount) {
+        form.setValue(`fees_types.${idx}.total_installment`, halfYearlyCount)
+        generateEmptyInstallmentBreakdowns(halfYearlyCount, idx)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [halfYearlyCount])
 
   // Handle fee type deletion with ability to restore
   const handleDeleteFeeType = useCallback((planDetailIndex: number) => {
@@ -563,18 +615,19 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
         data: {
           fees_plan: {
             name: values.fees_plan.name,
-            description: values.fees_plan.description ?? "",
-            class_id: values.fees_plan.class_id!,
+            description: values.fees_plan.description ? values.fees_plan.description.trim() : "",
+            class_id: Number(values.fees_plan.class_id),
+            quota_id: values.fees_plan.quota_id ? Number(values.fees_plan.quota_id) : null,
           },
           plan_details: values.fees_types.map((detail) => ({
-            fees_type_id: detail.fees_type_id,
+            fees_type_id: Number(detail.fees_type_id),
             installment_type: detail.installment_type,
             total_installment: Number(detail.total_installment),
-            total_amount: detail.total_amount,
+            total_amount: String(detail.total_amount),
             installment_breakDowns: detail.installment_breakDowns.map((breakdown) => ({
-              installment_no: breakdown.installment_no,
+              installment_no: Number(breakdown.installment_no),
               due_date: breakdown.due_date,
-              installment_amount: breakdown.installment_amount,
+              installment_amount: String(breakdown.installment_amount),
             })),
           })),
         },
@@ -585,7 +638,8 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
       const updatedPlan: ReqObjectForUpdateFeesPlan = {
         general_detail_for_plan: {
           name: values.fees_plan.name,
-          description: values.fees_plan.description ?? "",
+          description: values.fees_plan.description ? values.fees_plan.description.trim() : "",
+          quota_id: values.fees_plan.quota_id ? Number(values.fees_plan.quota_id) : null,
         },
       }
 
@@ -595,14 +649,14 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
 
         if (newFeeTypes.length > 0) {
           updatedPlan.new_fees_type = newFeeTypes.map((detail) => ({
-            fees_type_id: detail.fees_type_id,
+            fees_type_id: Number(detail.fees_type_id),
             installment_type: detail.installment_type,
             total_installment: Number(detail.total_installment),
-            total_amount: detail.total_amount,
+            total_amount: String(detail.total_amount),
             installment_breakDowns: detail.installment_breakDowns.map((breakdown: any) => ({
-              installment_no: breakdown.installment_no,
+              installment_no: Number(breakdown.installment_no),
               due_date: breakdown.due_date,
-              installment_amount: breakdown.installment_amount,
+              installment_amount: Number(breakdown.installment_amount),
             })),
           }))
         }
@@ -610,15 +664,15 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
         if (existingFeeTypes.length > 0) {
           updatedPlan.existing_fees_type = existingFeeTypes.map((detail) => ({
             fees_plan_detail_id: detail.fees_plan_detail_id,
-            fees_type_id: detail.fees_type_id,
+            fees_type_id: Number(detail.fees_type_id),
             installment_type: detail.installment_type,
             total_installment: Number(detail.total_installment),
-            total_amount: detail.total_amount,
+            total_amount: String(detail.total_amount),
             installment_breakDowns: detail.installment_breakDowns.map((breakdown: any) => ({
               id: breakdown.id,
-              installment_no: breakdown.installment_no,
+              installment_no: Number(breakdown.installment_no),
               due_date: breakdown.due_date,
-              installment_amount: breakdown.installment_amount,
+              installment_amount: Number(breakdown.installment_amount),
             })),
           }))
         }
@@ -637,17 +691,26 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
     if (response?.data) {
       toast({
         variant: "default",
-        title: `Fee Plan ${type === "create" ? "Created" : "Updated"}`,
-        description: `Fee Plan has been ${type === "create" ? "created" : "updated"} successfully.`,
+        title: `Fee Template ${type === "create" ? "Created" : "Updated"}`,
+        description: `Fee Template has been ${type === "create" ? "created" : "updated"} successfully.`,
       })
       onSuccessfulSubmit()
     } else {
+      const errorData = (response?.error as any)?.data
+      const errorMsg =
+        errorData?.message ||
+        (Array.isArray(errorData?.messages)
+          ? errorData.messages.map((m: any) => m.message).join(", ")
+          : null) ||
+        (Array.isArray(errorData?.errors)
+          ? errorData.errors.map((e: any) => e.message).join(", ")
+          : null) ||
+        "An error occurred while saving the fee template. Please verify all fields."
+
       toast({
         variant: "destructive",
-        title: "Error",
-        description:
-          (response?.error as any)?.data?.message ||
-          "An error occurred while updating the fee plan. Please try again later.",
+        title: "Validation Error",
+        description: errorMsg,
       })
     }
   }
@@ -676,9 +739,10 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
 
   // Get max installments for the current installment type
   const getMaxInstallments = useCallback((installmentType: string) => {
+    if (installmentType === "Half Yearly") return halfYearlyCount
     const typeConfig = installmentTypes.find((type) => type.value === installmentType)
     return typeConfig?.maxInstallments || 24
-  }, [])
+  }, [halfYearlyCount])
 
   // Check if installment type is fixed (one-time or yearly)
   const isFixedInstallmentType = useCallback((installmentType: string) => {
@@ -708,6 +772,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
           name: fees_plan.name,
           description: fees_plan.description,
           class_id: fees_plan.class_id,
+          quota_id: (fees_plan as any).quota_id ?? null,
         },
         fees_types: fees_types.map(
           (feeType: { fees_type: FeesPlanDetail; installment_breakDowns: InstallmentBreakdowns[] }) => ({
@@ -804,6 +869,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
       setIsFullyEditable(true) // For create mode
     }
     getClassesWithoutFeesPlan({ school_id: authState.user!.school_id })
+    getAcademicClasses(authState.user!.school_id)
     getAllFeesType({
       academic_session_id: CurrentAcademicSessionForSchool!.id,
       applicable_to: "plan",
@@ -814,6 +880,7 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
     authState.user,
     getFeePlanInDetail,
     getClassesWithoutFeesPlan,
+    getAcademicClasses,
     getAllFeesType,
   ])
 
@@ -887,53 +954,152 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4 pt-4">
+              <Alert className="border-blue-200 bg-blue-50/50">
+                <ShieldCheck className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="ml-2">
+                  <AlertTitle className="text-blue-900 font-semibold flex items-center gap-2">
+                    Cohort-Based Grandfathering (Lock-in Rule)
+                    <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 text-xs font-semibold">
+                      {CurrentAcademicSessionForSchool?.session_name || "Active Session"}
+                    </Badge>
+                  </AlertTitle>
+                  <AlertDescription className="text-xs text-blue-800 leading-relaxed mt-1">
+                    Standardizes fee structures by quota and enrollment year. When a student is admitted and assigned this template, their entire fee structure and installment schedule remain permanently locked for the duration of their academic program.
+                  </AlertDescription>
+                </div>
+              </Alert>
+
               <Card>
                 <CardHeader>
                   <CardTitle>{t("fee_plan_details")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="fees_plan.class_id"
+                      render={({ field }) => {
+                        const classOptions = (allAcademicClasses && allAcademicClasses.length > 0)
+                          ? allAcademicClasses
+                          : ClassesWithOutFeesPlan || []
 
-                  <FormField
-                    control={form.control}
-                    name="fees_plan.class_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel required>{t("class")}</FormLabel>
-                        <div className="flex items-center gap-2">
+                        const entryClasses = classOptions.filter((cls) => isEntryLevelClass(cls.class))
+                        const displayedClasses =
+                          showOnlyEntryClasses && entryClasses.length > 0 ? entryClasses : classOptions
+
+                        return (
+                          <FormItem>
+                            <div className="flex items-center justify-between">
+                              <FormLabel required>Admission Class / Program</FormLabel>
+                              {type === "create" && classOptions.length > entryClasses.length && entryClasses.length > 0 && (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Switch
+                                    id="entry-class-filter"
+                                    checked={showOnlyEntryClasses}
+                                    onCheckedChange={setShowOnlyEntryClasses}
+                                    className="scale-75 data-[state=checked]:bg-blue-600"
+                                  />
+                                  <label
+                                    htmlFor="entry-class-filter"
+                                    className="cursor-pointer text-[11px] font-medium text-slate-600 select-none"
+                                  >
+                                    1st Year Only
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                onValueChange={(value) => field.onChange(Number.parseInt(value))}
+                                value={field.value ? field.value.toString() : undefined}
+                                disabled={type === "update"}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select admission class / program" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {displayedClasses.map((cls) => {
+                                    const isEntry = isEntryLevelClass(cls.class)
+                                    return (
+                                      <SelectItem key={cls.id} value={cls.id.toString()} className="hover:bg-slate-50">
+                                        <div className="flex items-center justify-between w-full gap-2">
+                                          <span className="font-medium">{cls.class}</span>
+                                          {isEntry ? (
+                                            <Badge
+                                              variant="secondary"
+                                              className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5 ml-2 font-normal"
+                                            >
+                                              Admission Year
+                                            </Badge>
+                                          ) : (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-slate-500 text-[10px] py-0 px-1.5 ml-2 font-normal"
+                                            >
+                                              Senior Batch
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </SelectItem>
+                                    )
+                                  })}
+                                  {isClassWithOutFeesPlanLoading && classOptions.length === 0 && (
+                                    <SelectItem value="loading" disabled>
+                                      Loading classes...
+                                    </SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              {type === "update" && !field.value && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                  Not attached
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Tuition fees set here lock for this cohort from 1st Year throughout their tenure.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="fees_plan.quota_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Admission Quota / Category</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(Number.parseInt(value))}
-                            value={field.value ? field.value.toString() : undefined}
-                            disabled={type === "update"}
+                            onValueChange={(value) => field.onChange(value === "0" ? null : Number.parseInt(value))}
+                            value={field.value ? field.value.toString() : "0"}
+                            disabled={type === "update" && !isFullyEditable}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={t("select_a_class")} />
+                                <SelectValue placeholder="General / All Quotas" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {ClassesWithOutFeesPlan &&
-                                ClassesWithOutFeesPlan.map((cls) => (
-                                   <SelectItem key={cls.id} value={cls.id.toString()} className="hover:bg-slate-50">
-                                     {cls.class}
-                                   </SelectItem>
-                                ))}
-                              {(isClassWithOutFeesPlanLoading || !ClassesWithOutFeesPlan) && (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
+                              <SelectItem value="0">General / All Quotas</SelectItem>
+                              {quotasList?.map((q) => (
+                                <SelectItem key={q.id} value={q.id.toString()}>
+                                  {q.name}
                                 </SelectItem>
-                              )}
+                              ))}
                             </SelectContent>
                           </Select>
-                          {type === "update" && !field.value && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300">
-                              Not attached
-                            </Badge>
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Standardizes fee structure by quota (e.g. Government Quota, Management Quota, NRI Quota).
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -1380,4 +1546,4 @@ export const AddFeePlanForm: React.FC<AddFeePlanFormProps> = ({ onCancel, onSucc
       )}
     </Form>
   )
-}
+}

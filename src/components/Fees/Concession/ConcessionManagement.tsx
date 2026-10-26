@@ -1,4 +1,5 @@
 "use client"
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
@@ -62,6 +63,7 @@ interface FilterState {
 }
 
 export const ConcessionManagement: React.FC = () => {
+  const { canByTemplate } = useCan()
   const authState = useAppSelector(selectAuthState)
   const AcademicSessionsForSchool = useAppSelector(selectAccademicSessionsForSchool)
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -378,7 +380,7 @@ export const ConcessionManagement: React.FC = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || isFetching ? "animate-spin" : ""}`} />
             {t("refresh")}
           </Button>
-          {(authState.user?.role === UserRole.ADMIN || authState.user?.role === UserRole.PRINCIPAL) && (
+          {(authState.user?.role === UserRole.ADMIN || authState.user?.role === UserRole.PRINCIPAL || canByTemplate("create", "Fees")) && (
             <Button onClick={() => openDialog("add")}>
               <Plus className="mr-2 h-4 w-4" /> {t("add_concession")}
             </Button>
@@ -596,14 +598,14 @@ export const ConcessionManagement: React.FC = () => {
                             {t("view")}
                           </Button>
 
-                          {authState.user?.role === UserRole.ADMIN && (
+                          {(authState.user?.role === UserRole.ADMIN || canByTemplate("update", "Fees")) && (
                             <Button variant="outline" size="sm" onClick={() => openDialog("edit", concession)}>
                               <Pencil className="h-3 w-3 mr-1" />
                               {t("edit")}
                             </Button>
                           )}
 
-                          {authState.user?.role === UserRole.ADMIN && (
+                          {(authState.user?.role === UserRole.ADMIN || canByTemplate("create", "Fees")) && (
                             <Button variant="outline" size="sm" onClick={() => openDialog("apply", concession)}>
                               <Link className="h-3 w-3 mr-1" />
                               {t("apply")}

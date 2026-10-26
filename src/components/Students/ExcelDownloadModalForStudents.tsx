@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { AcademicClasses, Division } from "@/types/academic"
-import { useDownloadExcelTemplateMutation, useFetchStudentColumnSettingsQuery } from "@/services/StudentServices"
+import { useDownloadExcelTemplateMutation } from "@/services/StudentServices"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectAccademicSessionsForSchool, selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -18,172 +18,17 @@ import { studentHeaderMappings, collegeStudentHeaderMappings, formatKeyToHeader 
 import * as XLSX from 'xlsx'
 import { useToast } from "@/hooks/use-toast"
 import { selectCurrentSchool } from "@/redux/slices/authSlice"
+import { uploadExportToStorage } from "@/services/StorageService"
+import { studentFieldGroups } from "@/utils/studentColumns"
 
 interface ExcelDownloadModalProps {
   academicClasses: AcademicClasses[] | null
   selctedDivisionFromParent : Division | null
 }
 
-// Define field groups for student data based on the provided mapping
-const fieldGroups = {
-  personal: [
-    { id: "first_name", label: "First Name", table: "students" },
-    { id: "middle_name", label: "Middle Name", table: "students" },
-    { id: "last_name", label: "Last Name", table: "students" },
-    { id: "first_name_in_guj", label: "First Name (Gujarati)", table: "students" },
-    { id: "middle_name_in_guj", label: "Middle Name (Gujarati)", table: "students" },
-    { id: "last_name_in_guj", label: "Last Name (Gujarati)", table: "students" },
-    { id: "gender", label: "Gender", table: "students" },
-    { id: "birth_date", label: "Birth Date", table: "students" },
-    { id: "birth_place", label: "Birth Place", table: "student_meta" },
-    { id: "birth_place_in_guj", label: "Birth Place (Gujarati)", table: "student_meta" },
-    { id: "aadhar_no", label: "Aadhar Number", table: "students" },
-    { id: "aadhar_dise_no", label: "Aadhar DISE Number", table: "student_meta" },
-  ],
-  family: [
-    { id: "father_name", label: "Father's Name", table: "students" },
-    { id: "father_name_in_guj", label: "Father's Name (Gujarati)", table: "students" },
-    { id: "mother_name", label: "Mother's Name", table: "students" },
-    { id: "mother_name_in_guj", label: "Mother's Name (Gujarati)", table: "students" },
-    { id: "primary_mobile", label: "Primary Mobile", table: "students" },
-    { id: "secondary_mobile", label: "Secondary Mobile", table: "student_meta" },
-  ],
-  academic: [
-    { id: "gr_no", label: "GR Number", table: "students" },
-    { id: "roll_number", label: "Roll Number", table: "students" },
-    { id: "admission_date", label: "Admission Date", table: "student_meta" },
-    { id: "admission_class", label: "Admission Class", table: "student_meta" },
-    { id: "class", label: "Current Class", table: "students" },
-    { id: "privious_school", label: "Previous School", table: "student_meta" },
-    { id: "privious_school_in_guj", label: "Previous School (Gujarati)", table: "student_meta" },
-  ],
-  other: [
-    { id: "religion", label: "Religion", table: "student_meta" },
-    { id: "religion_in_guj", label: "Religion (Gujarati)", table: "student_meta" },
-    { id: "caste", label: "Caste", table: "student_meta" },
-    { id: "caste_in_guj", label: "Caste (Gujarati)", table: "student_meta" },
-    { id: "category", label: "Category", table: "student_meta" },
-  ],
-  address: [
-    { id: "address", label: "Address", table: "student_meta" },
-    { id: "district", label: "District", table: "student_meta" },
-    { id: "city", label: "City", table: "student_meta" },
-    { id: "state", label: "State", table: "student_meta" },
-    { id: "postal_code", label: "Postal Code", table: "student_meta" },
-  ],
-  bank: [
-    { id: "bank_name", label: "Bank Name", table: "student_meta" },
-    { id: "account_no", label: "Account Number", table: "student_meta" },
-    { id: "IFSC_code", label: "IFSC Code", table: "student_meta" },
-  ],
-}
-
-const collegeFieldGroups = {
-  personal: [
-    { id: "admission_number", label: "Admission ID", table: "students" },
-    { id: "gr_no", label: "GR Number", table: "students" },
-    { id: "first_name", label: "First Name", table: "students" },
-    { id: "middle_name", label: "Middle Name", table: "students" },
-    { id: "last_name", label: "Last Name", table: "students" },
-    { id: "gender", label: "Gender", table: "students" },
-    { id: "birth_date", label: "Date of Birth", table: "students" },
-    { id: "first_name_in_guj", label: "First Name (Guj)", table: "students" },
-    { id: "middle_name_in_guj", label: "Middle Name (Guj)", table: "students" },
-    { id: "last_name_in_guj", label: "Last Name (Guj)", table: "students" },
-    { id: "nationality", label: "Nationality", table: "student_meta" },
-    { id: "country_code", label: "Country Code", table: "student_meta" },
-    { id: "is_active", label: "Is Active", table: "students" },
-  ],
-  academic: [
-    { id: "enrollment_code", label: "Student Code", table: "students" },
-    { id: "admission_date", label: "Admission Date", table: "student_meta" },
-    { id: "admission_standard", label: "Admission Standard", table: "student_meta" },
-    { id: "roll_number", label: "Roll Number", table: "students" },
-    { id: "subject_group", label: "Subject Group", table: "student_meta" },
-    { id: "admission_year", label: "Admission Year", table: "student_meta" },
-    { id: "ayush_id", label: "Ayush ID", table: "student_meta" },
-    { id: "abc_id", label: "ABC ID", table: "student_meta" },
-  ],
-  contact: [
-    { id: "primary_mobile", label: "Mobile No 1", table: "students" },
-    { id: "secondary_mobile", label: "Mobile No 2", table: "student_meta" },
-    { id: "email_id", label: "Email ID", table: "student_meta" },
-    { id: "website", label: "Website", table: "student_meta" },
-    { id: "mother_tongue", label: "Mother Tongue", table: "student_meta" },
-  ],
-  address: [
-    { id: "address", label: "Current Address", table: "student_meta" },
-    { id: "current_area", label: "Current Area", table: "student_meta" },
-    { id: "city", label: "Current City", table: "student_meta" },
-    { id: "state", label: "Current State", table: "student_meta" },
-    { id: "postal_code", label: "Current PIN Code", table: "student_meta" },
-    { id: "current_country", label: "Current Country", table: "student_meta" },
-    { id: "permanent_address", label: "Permanent Address", table: "student_meta" },
-    { id: "permanent_area", label: "Permanent Area", table: "student_meta" },
-    { id: "permanent_city", label: "Permanent City", table: "student_meta" },
-    { id: "permanent_state", label: "Permanent State", table: "student_meta" },
-    { id: "permanent_pincode", label: "Permanent PIN Code", table: "student_meta" },
-    { id: "permanent_country", label: "Permanent Country", table: "student_meta" },
-  ],
-  family: [
-    { id: "father_name", label: "Father Name", table: "students" },
-    { id: "father_name_in_guj", label: "Father Name (Guj)", table: "students" },
-    { id: "father_qualification", label: "Father Qualification", table: "student_meta" },
-    { id: "father_occupation", label: "Father Occupation", table: "student_meta" },
-    { id: "mother_name", label: "Mother Name", table: "students" },
-    { id: "mother_name_in_guj", label: "Mother Name (Guj)", table: "students" },
-    { id: "mother_qualification", label: "Mother Qualification", table: "student_meta" },
-    { id: "guardian_name", label: "Guardian Name", table: "student_meta" },
-    { id: "guardian_name_in_guj", label: "Guardian Name (Guj)", table: "student_meta" },
-    { id: "relation_with_local_guardian", label: "Relation with Guardian", table: "student_meta" },
-  ],
-  qualification: [
-    { id: "ssc_passing_year", label: "SSC Passing Year", table: "student_meta" },
-    { id: "hsc_passing_year", label: "HSC Passing Year", table: "student_meta" },
-    { id: "hsc_attempts", label: "HSC Attempts", table: "student_meta" },
-    { id: "hsc_obtained_marks", label: "HSC Obtained Marks", table: "student_meta" },
-    { id: "hsc_pcb_marks_with_practical", label: "HSC PCB Marks", table: "student_meta" },
-  ],
-  college_entrance: [
-    { id: "entrance_exam_name", label: "Entrance Exam Name", table: "student_meta" },
-    { id: "neet_score", label: "NEET Score", table: "student_meta" },
-    { id: "neet_roll_no", label: "NEET Roll No", table: "student_meta" },
-    { id: "neet_application_number", label: "NEET App No", table: "student_meta" },
-    { id: "neet_all_india_rank", label: "NEET Rank", table: "student_meta" },
-    { id: "neet_percentile", label: "NEET Percentile", table: "student_meta" },
-    { id: "general_merit", label: "General Merit", table: "student_meta" },
-    { id: "category_merit", label: "Category Merit", table: "student_meta" },
-  ],
-  other: [
-    { id: "religion", label: "Religion", table: "student_meta" },
-    { id: "caste", label: "Caste", table: "student_meta" },
-    { id: "sub_caste", label: "Sub Caste", table: "student_meta" },
-    { id: "category", label: "Category", table: "student_meta" },
-    { id: "blood_group", label: "Blood Group", table: "student_meta" },
-    { id: "birth_place", label: "Birth Place", table: "student_meta" },
-    { id: "birth_taluka", label: "Birth Taluka", table: "student_meta" },
-    { id: "birth_district", label: "Birth District", table: "student_meta" },
-  ],
-  bank: [
-    { id: "bank_name", label: "Bank Name", table: "student_meta" },
-    { id: "bank_branch_name", label: "Bank Branch", table: "student_meta" },
-    { id: "account_no", label: "Account No", table: "student_meta" },
-    { id: "IFSC_code", label: "IFSC Code", table: "student_meta" },
-  ],
-  internship: [
-    { id: "internship_provisional_number", label: "Internship Prov No", table: "student_meta" },
-    { id: "internship_provisional_date", label: "Internship Prov Date", table: "student_meta" },
-    { id: "internship_starting_date", label: "Internship Start Date", table: "student_meta" },
-    { id: "internship_completion_date", label: "Internship Comp Date", table: "student_meta" },
-  ],
-  administrative: [
-    { id: "admission_cancel", label: "Admission Cancel", table: "student_meta" },
-    { id: "admission_cancel_date", label: "Cancel Date", table: "student_meta" },
-    { id: "admission_transfer", label: "Admission Transfer", table: "student_meta" },
-    { id: "admission_transfer_date", label: "Transfer Date", table: "student_meta" },
-    { id: "school_udise_no", label: "School UDISE No", table: "student_meta" },
-  ]
-}
+// The heads of the final student sheet
+const fieldGroups = studentFieldGroups
+const collegeFieldGroups = studentFieldGroups
 
 export default function ExcelDownloadModalForStudents({ academicClasses , selctedDivisionFromParent  }: ExcelDownloadModalProps) {
   const { toast } = useToast()
@@ -208,21 +53,21 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
   )
 
   const [getExcelForClass, { isLoading: isDownloadingExcle, isError }] = useDownloadExcelTemplateMutation()
-  const { data: serverColumnSettings } = useFetchStudentColumnSettingsQuery()
+
+  const computedFieldGroups: Record<string, Array<{ id: string; label: string; table: string }>> = isCollege
+    ? collegeFieldGroups
+    : fieldGroups
+  const effectiveHeaderMapping = currentHeaderMapping
 
   useEffect(() => {
     const initialSelectedFields: Record<string, boolean> = {}
-    const enabledSet = serverColumnSettings?.enabled_columns && Array.isArray(serverColumnSettings.enabled_columns)
-      ? new Set(serverColumnSettings.enabled_columns)
-      : null
-
-    Object.entries(activeFieldGroups).forEach(([_, fields]) => {
+    Object.values(computedFieldGroups).forEach((fields) => {
       fields.forEach((field) => {
-        initialSelectedFields[field.id] = enabledSet ? enabledSet.has(field.id) : true
+        initialSelectedFields[field.id] = true
       })
     })
     setSelectedFields(initialSelectedFields)
-  }, [isCollege, serverColumnSettings])
+  }, [computedFieldGroups])
 
   const availableDivisions =
     academicClasses && selectedClass ? academicClasses.find((cls) => cls.id.toString() === selectedClass) : null
@@ -250,10 +95,13 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
 
   const handleSelectAllFieldsInGroup = (groupName: string, checked: boolean) => {
     const newSelectedFields = { ...selectedFields }
-    activeFieldGroups[groupName as keyof typeof activeFieldGroups].forEach((field) => {
-      newSelectedFields[field.id] = checked
-    })
-    setSelectedFields(newSelectedFields)
+    const group = computedFieldGroups[groupName]
+    if (group) {
+      group.forEach((field) => {
+        newSelectedFields[field.id] = checked
+      })
+      setSelectedFields(newSelectedFields)
+    }
   }
 
   const handleFieldSelect = (fieldId: string, checked: boolean) => {
@@ -387,7 +235,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
           }
 
           const transformedHeaders = originalHeaders.map((header) => {
-            return currentHeaderMapping[header] || formatKeyToHeader(header);
+            return effectiveHeaderMapping[header] || formatKeyToHeader(header);
           });
 
           sheetData[0] = transformedHeaders;
@@ -435,12 +283,13 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
     Object.entries(selectedFields)
       .filter(([_, isSelected]) => isSelected)
       .forEach(([fieldId]) => {
-        const field = Object.values(activeFieldGroups).flat().find(f => f.id === fieldId)
+        const field = Object.values(computedFieldGroups).flat().find(f => f.id === fieldId)
         if (field) {
-          if (!fieldsToInclude[field.table]) {
-            fieldsToInclude[field.table] = []
+          const targetTable = field.table === 'students' ? 'students' : 'student_meta'
+          if (!fieldsToInclude[targetTable]) {
+            fieldsToInclude[targetTable] = []
           }
-          fieldsToInclude[field.table].push(fieldId)
+          fieldsToInclude[targetTable].push(fieldId)
         }
       })
 
@@ -481,6 +330,12 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
 
       URL.revokeObjectURL(url)
       document.body.removeChild(link)
+
+      // Store in cloud storage (DigitalOcean Spaces)
+      uploadExportToStorage(transformedExcel, 'students', fileName).catch((err) =>
+        console.error("Failed to archive transformed student excel to cloud:", err)
+      )
+
       setIsOpen(false)
     } catch (error) {
       console.error("Error downloading Excel:", error)
@@ -604,7 +459,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
             <CardContent className="space-y-4">
               <ScrollArea className="h-[300px] pr-4">
                 <div className="space-y-6">
-                  {Object.entries(activeFieldGroups).map(([groupName, fields]) => (
+                  {Object.entries(computedFieldGroups).map(([groupName, fields]) => (
                     <div key={groupName} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -632,7 +487,7 @@ export default function ExcelDownloadModalForStudents({ academicClasses , selcte
                         ))}
                       </div>
 
-                      {groupName !== Object.keys(activeFieldGroups)[Object.keys(activeFieldGroups).length - 1] && (
+                      {groupName !== Object.keys(computedFieldGroups)[Object.keys(computedFieldGroups).length - 1] && (
                         <Separator className="my-2" />
                       )}
                     </div>

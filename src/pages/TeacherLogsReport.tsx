@@ -15,13 +15,15 @@ import {
   CheckCircle2,
   Plus,
   Trash2,
-  ClipboardList
+  ClipboardList,
+  Layers,
 } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
 import DailyDiaryService from "@/services/DailyDiaryService"
 import LessonPlanService from "@/services/LessonPlanService"
+import ApiService from "@/services/ApiService"
 import LogManualWorkDialog from "@/components/TimeTable/LogManualWorkDialog"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -38,6 +40,7 @@ export default function TeacherLogsReport() {
   
   const [logs, setLogs] = useState<any[]>([])
   const [manualLogs, setManualLogs] = useState<any[]>([])
+  const [nonLectureLogs, setNonLectureLogs] = useState<any[]>([])
   const [isManualDialogOpen, setIsManualDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState<string>("all")
@@ -72,6 +75,18 @@ export default function TeacherLogsReport() {
         setManualLogs(manualResp.data.data || [])
       }
 
+      // Fetch Non-Lecture Clinical & Practical Logs
+      try {
+        const nlResp = await ApiService.get("non-lecture-templates/logs", {
+          params: {
+            staff_id: isTeacher ? (user?.staff_id ?? undefined) : undefined,
+          },
+        })
+        setNonLectureLogs(nlResp.data?.data || [])
+      } catch (nlErr) {
+        console.error("Error fetching non-lecture logs:", nlErr)
+      }
+
       const allSubtopicIds = new Set<number>()
       logsData.forEach((log: any) => {
         if (log.subtopicIds && Array.isArray(log.subtopicIds)) {
@@ -104,6 +119,24 @@ export default function TeacherLogsReport() {
         variant: "destructive",
         title: t("error") || "Error",
         description: "Failed to delete manual work entry."
+      })
+    }
+  }
+
+  const handleDeleteNonLectureLog = async (id: number) => {
+    try {
+      await ApiService.delete(`non-lecture-templates/logs/${id}`)
+      toast({
+        title: t("success") || "Success",
+        description: "Non-lecture activity log deleted successfully."
+      })
+      fetchLogs()
+    } catch (error) {
+      console.error("Failed to delete non-lecture log:", error)
+      toast({
+        variant: "destructive",
+        title: t("error") || "Error",
+        description: "Failed to delete non-lecture activity log."
       })
     }
   }
@@ -217,7 +250,9 @@ export default function TeacherLogsReport() {
       setIsLoading(true)
       const isTeacher = user?.system_role === 'SCHOOL_TEACHER' || user?.system_role === 'HEAD_TEACHER'
       const response = await DailyDiaryService.exportPDF({
-        staffId: isTeacher ? (user?.staff_id ?? undefined) : undefined
+        staffId: isTeacher ? (user?.staff_id ?? undefined) : undefined,
+        subject: selectedSubject !== 'all' ? selectedSubject : undefined,
+        className: selectedClass !== 'all' ? selectedClass : undefined
       })
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
       const link = document.createElement('a')
@@ -256,25 +291,40 @@ export default function TeacherLogsReport() {
         doc.setFont("helvetica", "normal")
         doc.text("DAILY DIARY / TEACHER LOGS REPORT", pageWidth / 2, 16, { align: "center" })
 
+        // Extract teacher heading & subject heading
+        const teachersSet = new Set<string>()
+        dataToExport.forEach((l) => {
+          if (l.teacherName && l.teacherName !== '-') teachersSet.add(l.teacherName)
+        })
+        manualLogs.forEach((m) => {
+          if (m.staff) teachersSet.add(`${m.staff.first_name} ${m.staff.last_name}`.trim())
+        })
+        const teacherHeading = teachersSet.size > 0 ? Array.from(teachersSet).join(', ') : 'All Teachers'
+
+        const subjectsSet = new Set<string>()
+        dataToExport.forEach((l) => {
+          if (l.subjectName && l.subjectName !== '-') subjectsSet.add(l.subjectName)
+        })
+        const subjectHeading = selectedSubject !== 'all'
+          ? selectedSubject
+          : (subjectsSet.size > 0 ? Array.from(subjectsSet).join(', ') : 'All Subjects')
+
         doc.setTextColor(15, 23, 42)
         doc.setFontSize(8.5)
         doc.setFont("helvetica", "bold")
-        const filterText = `Class: ${selectedClass === 'all' ? 'All Classes' : selectedClass}   |   Subject: ${selectedSubject === 'all' ? 'All Subjects' : selectedSubject}   |   Scheduled Logs: ${dataToExport.length}   |   Manual Work Logs: ${manualLogs.length}`
-        doc.text(filterText, margin, 26)
+        doc.text(`Teacher: ${teacherHeading}`, margin, 26)
+        doc.text(`Subject: ${subjectHeading}`, pageWidth - margin, 26, { align: "right" })
 
         doc.setDrawColor(203, 213, 225)
         doc.setLineWidth(0.5)
         doc.line(margin, 28, pageWidth - margin, 28)
 
         const columns = [
-          { header: "Date", width: 24 },
-          { header: "Class", width: 22 },
-          { header: "Subject", width: 35 },
-          { header: "Teacher", width: 38 },
-          { header: "Topics Covered", width: 85 },
-          { header: "LP No.", width: 18 },
-          { header: "Hrs", width: 14 },
-          { header: "Remarks / Resources", width: 37 }
+          { header: "Date", width: 28 },
+          { header: "Class", width: 28 },
+          { header: "Topics Covered", width: 140 },
+          { header: "Hrs", width: 18 },
+          { header: "Remarks / Resources", width: 59 }
         ]
 
         let currentY = 32
@@ -307,19 +357,14 @@ export default function TeacherLogsReport() {
         dataToExport.forEach((log, index) => {
           const dateStr = formatDateStr(log.date)
           const className = log.className || "-"
-          const subjectName = log.subjectName || "-"
-          const teacherName = log.teacherName || "-"
           const topicCovered = log.topicCovered || "-"
-          const lpNo = log.lessonPlanNumber || "-"
           const hrs = log.hours && log.hours !== "-" ? `${log.hours}h` : "-"
           const remarks = [log.resourcesUsed, log.attendanceRemarks].filter(Boolean).join(" | ") || "-"
 
-          const topicLines = doc.splitTextToSize(topicCovered, columns[4].width - 4)
-          const remarksLines = doc.splitTextToSize(remarks, columns[7].width - 4)
-          const teacherLines = doc.splitTextToSize(teacherName, columns[3].width - 4)
-          const subjectLines = doc.splitTextToSize(subjectName, columns[2].width - 4)
+          const topicLines = doc.splitTextToSize(topicCovered, columns[2].width - 4)
+          const remarksLines = doc.splitTextToSize(remarks, columns[4].width - 4)
 
-          const maxLines = Math.max(topicLines.length, remarksLines.length, teacherLines.length, subjectLines.length, 1)
+          const maxLines = Math.max(topicLines.length, remarksLines.length, 1)
           const rowHeight = maxLines * 4 + 3
 
           if (currentY + rowHeight > pageHeight - 20) {
@@ -342,16 +387,10 @@ export default function TeacherLogsReport() {
           x += columns[0].width
           doc.text(doc.splitTextToSize(className, columns[1].width - 4), x + 2, currentY + 3.8)
           x += columns[1].width
-          doc.text(subjectLines, x + 2, currentY + 3.8)
-          x += columns[2].width
-          doc.text(teacherLines, x + 2, currentY + 3.8)
-          x += columns[3].width
           doc.text(topicLines, x + 2, currentY + 3.8)
-          x += columns[4].width
-          doc.text(lpNo, x + 2, currentY + 3.8)
-          x += columns[5].width
+          x += columns[2].width
           doc.text(hrs, x + 2, currentY + 3.8)
-          x += columns[6].width
+          x += columns[3].width
           doc.text(remarksLines, x + 2, currentY + 3.8)
 
           doc.setDrawColor(226, 232, 240)
@@ -375,10 +414,9 @@ export default function TeacherLogsReport() {
           currentY += 4
 
           const manualCols = [
-            { header: "Date", width: 30 },
+            { header: "Date", width: 35 },
             { header: "Time / Duration", width: 45 },
-            { header: "Description of Work Done", width: 140 },
-            { header: "Teacher", width: 58 }
+            { header: "Description of Work Done", width: 193 }
           ]
 
           doc.setFillColor(241, 245, 249)
@@ -406,12 +444,9 @@ export default function TeacherLogsReport() {
             const dateStr = formatDateStr(m.date)
             const timeStr = m.time || "-"
             const descStr = m.description || "-"
-            const teacherStr = m.staff ? `${m.staff.first_name} ${m.staff.last_name}` : "-"
 
             const descLines = doc.splitTextToSize(descStr, manualCols[2].width - 4)
-            const teacherLines = doc.splitTextToSize(teacherStr, manualCols[3].width - 4)
-
-            const maxMLines = Math.max(descLines.length, teacherLines.length, 1)
+            const maxMLines = Math.max(descLines.length, 1)
             const mRowHeight = maxMLines * 4 + 3
 
             if (currentY + mRowHeight > pageHeight - 20) {
@@ -445,8 +480,6 @@ export default function TeacherLogsReport() {
             doc.text(timeStr, curX + 2, currentY + 3.8)
             curX += manualCols[1].width
             doc.text(descLines, curX + 2, currentY + 3.8)
-            curX += manualCols[2].width
-            doc.text(teacherLines, curX + 2, currentY + 3.8)
 
             doc.setDrawColor(226, 232, 240)
             doc.line(margin, currentY + mRowHeight, margin + 273, currentY + mRowHeight)
@@ -740,6 +773,130 @@ export default function TeacherLogsReport() {
                         size="sm"
                         className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg"
                         onClick={() => handleDeleteManualLog(m.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Non-Lecture, Clinical & Practical Work Logs */}
+      <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
+        <CardHeader className="pb-4 border-b bg-indigo-50/50 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-100 rounded-xl text-indigo-700 shadow-sm">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold text-gray-900">Non-Lecture, Clinical &amp; Practical Work Logs</h2>
+              <p className="text-xs text-gray-500 font-medium">Hospital postings, bedside clinics, practical demonstrations, and tutorials recorded by faculty</p>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 font-bold px-3 py-1">
+            {nonLectureLogs.length} Logged Entries
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-0">
+          {nonLectureLogs.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p className="text-sm font-medium text-gray-700">No non-lecture activity logs recorded yet.</p>
+              <p className="text-xs text-gray-400 mt-1">Teachers can record clinical and non-lecture sessions directly from their Teacher Dashboard.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/80">
+                <TableRow className="hover:bg-transparent border-b border-gray-100">
+                  <TableHead className="w-[120px] text-[10px] font-black text-gray-400 uppercase py-4 pl-8">Date</TableHead>
+                  <TableHead className="w-[200px] text-[10px] font-black text-gray-400 uppercase">Session / Posting</TableHead>
+                  <TableHead className="w-[180px] text-[10px] font-black text-gray-400 uppercase">Topic / Unit</TableHead>
+                  <TableHead className="w-[90px] text-[10px] font-black text-gray-400 uppercase">Hours</TableHead>
+                  <TableHead className="w-[110px] text-[10px] font-black text-gray-400 uppercase">Batch</TableHead>
+                  <TableHead className="text-[10px] font-black text-gray-400 uppercase">Activity Details &amp; Work Done</TableHead>
+                  <TableHead className="w-[150px] text-[10px] font-black text-gray-400 uppercase">Teacher</TableHead>
+                  <TableHead className="w-[60px] text-[10px] font-black text-gray-400 uppercase text-center pr-8">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {nonLectureLogs.map((nl: any) => (
+                  <TableRow key={nl.id} className="hover:bg-indigo-50/20 border-gray-50 transition-colors">
+                    <TableCell className="pl-8 py-4">
+                      <span className="text-xs font-bold text-gray-900">{formatDateStr(nl.date)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 leading-tight">
+                          {nl.template?.title || "Non-Lecture Session"}
+                        </p>
+                        <Badge variant="outline" className="text-[10px] mt-1 bg-white text-indigo-700 border-indigo-200">
+                          {nl.template?.activity_type || "Clinical"}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-semibold text-gray-700">
+                        {nl.topic?.title || "Custom Unit"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-indigo-50 text-indigo-800 border-indigo-200 font-bold text-xs">
+                        {nl.hours_spent || nl.hoursSpent} hrs
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-gray-600 font-medium">
+                        {nl.batch_name || nl.batchName || "All"}
+                        {nl.students_count || nl.studentsCount ? ` (${nl.students_count || nl.studentsCount} stds)` : ""}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-gray-800 leading-relaxed">
+                          {nl.activity_details || nl.activityDetails}
+                        </p>
+                        {nl.clinical_cases && (
+                          <p className="text-[11px] text-emerald-700 font-medium">
+                            <strong>Cases:</strong> {nl.clinical_cases}
+                          </p>
+                        )}
+                        {nl.learning_outcomes && (
+                          <p className="text-[11px] text-gray-500">
+                            <strong>Outcomes:</strong> {nl.learning_outcomes}
+                          </p>
+                        )}
+                        {nl.lesson_plan_number && (
+                          <p className="text-[11px] text-indigo-600">
+                            <strong>Lesson Plan No.:</strong> {nl.lesson_plan_number}
+                            {Array.isArray(nl.row_ids) && nl.row_ids.length > 0 ? ` (${nl.row_ids.length} syllabus row${nl.row_ids.length > 1 ? "s" : ""})` : ""}
+                          </p>
+                        )}
+                        {nl.conclusion && (
+                          <p className="text-[11px] text-gray-500">
+                            <strong>Conclusion:</strong> {nl.conclusion}
+                          </p>
+                        )}
+                        {nl.reference_book && (
+                          <p className="text-[11px] text-gray-500">
+                            <strong>Reference:</strong> {nl.reference_book}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-bold text-indigo-600">
+                        {nl.staff ? `${nl.staff.first_name} ${nl.staff.last_name}` : "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center pr-8">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                        onClick={() => handleDeleteNonLectureLog(nl.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

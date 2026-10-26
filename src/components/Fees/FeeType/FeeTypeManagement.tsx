@@ -1,3 +1,4 @@
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -73,6 +74,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 
 export const FeeTypeManagement: React.FC = () => {
   const authState = useAppSelector(selectAuthState)
+  const { canByTemplate } = useCan()
+  const isAdminOrPrincipal = authState.user?.role == UserRole.ADMIN || authState.user?.role == UserRole.PRINCIPAL
   const [getFeesType, { data: FeesType, isLoading: loadingFeesType, error: feesTypeError, isFetching }] =
     useLazyGetFeesTypeQuery()
   const [createFeesType, { isLoading: isCreateFeesTypeLoading }] = useCreateFeesTypeMutation()
@@ -277,7 +280,7 @@ export const FeeTypeManagement: React.FC = () => {
             }}
           >
             <DialogTrigger asChild>
-              {(authState.user?.role == UserRole.ADMIN || authState.user?.role == UserRole.PRINCIPAL) && (
+              {(isAdminOrPrincipal || canByTemplate("create", "Fees")) && (
                 <Button>
                   <Plus className="mr-2 h-4 w-4" /> {t("add_fee_type")}
                 </Button>
@@ -422,7 +425,7 @@ export const FeeTypeManagement: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              {(authState.user?.role == UserRole.ADMIN || authState.user?.role == UserRole.PRINCIPAL) && (
+                              {(isAdminOrPrincipal || canByTemplate("update", "Fees")) && (
                                 <Button
                                   variant="outline"
                                   size="icon"
@@ -437,7 +440,7 @@ export const FeeTypeManagement: React.FC = () => {
                                 size="icon"
                                 onClick={() => handleDelete(feeType)}
                                 className="text-red-500 hover:text-red-600 hover:border-red-600"
-                                disabled={(authState.user?.role !== UserRole.ADMIN && authState.user?.role !== UserRole.PRINCIPAL)}
+                                disabled={!isAdminOrPrincipal && !canByTemplate("delete", "Fees")}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

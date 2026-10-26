@@ -18,7 +18,9 @@ import { useToast } from "@/hooks/use-toast"
 import TeacherService from "@/services/TeacherService"
 import LessonPlanService from "@/services/LessonPlanService"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
-import { AlertTriangle } from "lucide-react"
+import LogNonLectureDialog from "@/components/TimeTable/LogNonLectureDialog"
+import { useGetMyAssignedSessionsQuery, NonLectureAssignment } from "@/services/NonLectureService"
+import { AlertTriangle, Layers } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function TeacherDashboard() {
@@ -37,6 +39,17 @@ export default function TeacherDashboard() {
   
   const [availability, setAvailability] = useState<any>(null)
   const [coverageReports, setCoverageReports] = useState<any[]>([])
+
+  // Non-Lecture Sessions state
+  const [selectedNonLectureAssignment, setSelectedNonLectureAssignment] = useState<NonLectureAssignment | null>(null)
+  const [isNonLectureDialogOpen, setIsNonLectureDialogOpen] = useState(false)
+  const [viewingAssignmentLogs, setViewingAssignmentLogs] = useState<NonLectureAssignment | null>(null)
+
+  const { data: nonLectureRes, refetch: refetchNonLecture } = useGetMyAssignedSessionsQuery(
+    { academic_session_id: currentAcademicSession?.id },
+    { skip: !currentAcademicSession }
+  )
+  const assignedNonLectureSessions = nonLectureRes?.data || []
 
   // Support / Contact Leadership state
   const [isContactSupportOpen, setIsContactSupportOpen] = useState(false)
@@ -354,6 +367,223 @@ export default function TeacherDashboard() {
         subjectName={selectedPeriod?.period_config_subject?.subject?.name}
         date={format(getActiveDateObj(), 'yyyy-MM-dd')}
       />
+
+      {/* Non-Lecture / Clinical & Practical Sessions Section */}
+      <Card className="border-none shadow-md overflow-hidden bg-white">
+        <CardHeader className="border-b bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/30">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <CardTitle className="text-xl flex items-center gap-2 text-indigo-950 font-bold">
+                <Layers className="h-5 w-5 text-indigo-600" />
+                Non-Lecture, Clinical &amp; Practical Workload
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-500 mt-0.5">
+                Assigned hospital postings, bedside clinics, practicals, and tutorial sessions. Log your conducted sessions here.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs shadow-xs"
+                onClick={() => navigate('/d/teacher/logs')}
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                View All Logs Report
+              </Button>
+              {assignedNonLectureSessions.length > 0 && (
+                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                  {assignedNonLectureSessions.length} Assigned Session{assignedNonLectureSessions.length > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {assignedNonLectureSessions.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="mx-auto w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
+                <Layers className="h-6 w-6 text-indigo-400" />
+              </div>
+              <h4 className="text-base font-semibold text-gray-800">No Non-Lecture Sessions Assigned</h4>
+              <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1">
+                You currently do not have any non-lecture or clinical posting templates assigned to your account for this session.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedNonLectureSessions.map((assign) => {
+                const logged = Number(assign.logged_hours || 0)
+                const target = Number(assign.target_hours || 0)
+                const pct = assign.completion_percentage || 0
+
+                return (
+                  <Card
+                    key={assign.id}
+                    className="relative group hover:shadow-md transition-all duration-200 border-l-4 border-l-indigo-600 bg-white"
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between gap-1">
+                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 font-semibold text-xs">
+                          {assign.template?.activity_type || "Non-Lecture"}
+                        </Badge>
+                        <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                          Batch: {assign.batch_name || "All"}
+                        </span>
+                      </div>
+                      <CardTitle className="text-base font-bold text-gray-900 mt-2 line-clamp-1">
+                        {assign.template?.title}
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-1 font-medium text-indigo-600 text-xs">
+                        <BookOpen className="h-3 w-3" />
+                        {assign.class?.class || assign.template?.class?.class || "General Batch"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 pb-4">
+                      {/* Hours progress bar */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          <span>Logged: {logged} / {target} hrs</span>
+                          <span className="font-bold text-indigo-700">{pct}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-gray-500 bg-gray-50 p-2 rounded">
+                        <strong>Curriculum Units:</strong> {assign.template?.topics?.length || 0} Topics • {assign.logged_sessions_count || 0} Activity Logs
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs h-9 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          onClick={() => setViewingAssignmentLogs(assign)}
+                        >
+                          <Clock className="h-3.5 w-3.5 mr-1" />
+                          History ({assign.logs?.length || 0})
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs text-xs h-9"
+                          onClick={() => {
+                            setSelectedNonLectureAssignment(assign)
+                            setIsNonLectureDialogOpen(true)
+                          }}
+                        >
+                          <ClipboardList className="h-3.5 w-3.5 mr-1" />
+                          Log Work
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <LogNonLectureDialog
+        isOpen={isNonLectureDialogOpen}
+        onOpenChange={setIsNonLectureDialogOpen}
+        assignment={selectedNonLectureAssignment}
+        onSuccess={() => refetchNonLecture()}
+      />
+
+      {/* View Session Historical Logs Dialog */}
+      <Dialog open={!!viewingAssignmentLogs} onOpenChange={(open) => !open && setViewingAssignmentLogs(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Layers className="h-5 w-5 text-indigo-600" />
+              {viewingAssignmentLogs?.template?.title} - Log History
+            </DialogTitle>
+            <DialogDescription>
+              {viewingAssignmentLogs?.template?.activity_type} • Batch: {viewingAssignmentLogs?.batch_name || "All"} • Total Logged: {viewingAssignmentLogs?.logged_hours || 0} / {viewingAssignmentLogs?.target_hours || 0} hrs
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewingAssignmentLogs && (
+            <div className="space-y-4 py-2">
+              {(!viewingAssignmentLogs.logs || viewingAssignmentLogs.logs.length === 0) ? (
+                <div className="p-8 text-center text-gray-500 border border-dashed rounded-xl">
+                  <p className="text-sm font-medium text-gray-700">No activity logs recorded yet for this session.</p>
+                  <p className="text-xs text-gray-400 mt-1">Click &quot;Log Work&quot; to submit your first clinical or practical entry.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {viewingAssignmentLogs.logs.map((log: any) => (
+                    <Card key={log.id} className="border shadow-xs bg-gray-50/50">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-white font-bold text-gray-800">
+                              {log.date}
+                            </Badge>
+                            <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                              {log.hours_spent || log.hoursSpent} hrs
+                            </Badge>
+                            {log.batch_name && (
+                              <span className="text-gray-500 font-mono">({log.batch_name})</span>
+                            )}
+                          </div>
+                          {log.students_count && (
+                            <span className="text-gray-500 font-medium">{log.students_count} students</span>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">
+                            {log.topic?.title || "Curriculum Unit / Practical Session"}
+                          </p>
+                          <p className="text-xs text-gray-700 mt-1 leading-relaxed">
+                            {log.activity_details || log.activityDetails}
+                          </p>
+                        </div>
+
+                        {log.clinical_cases && (
+                          <p className="text-xs text-emerald-700">
+                            <strong>Cases Discussed:</strong> {log.clinical_cases}
+                          </p>
+                        )}
+                        {log.learning_outcomes && (
+                          <p className="text-xs text-gray-500">
+                            <strong>Outcomes:</strong> {log.learning_outcomes}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingAssignmentLogs(null)}>
+              Close
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={() => {
+                const target = viewingAssignmentLogs
+                setViewingAssignmentLogs(null)
+                setSelectedNonLectureAssignment(target)
+                setIsNonLectureDialogOpen(true)
+              }}
+            >
+              + Log New Work
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isContactSupportOpen} onOpenChange={setIsContactSupportOpen}>
         <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-3xl overflow-hidden bg-white p-0">

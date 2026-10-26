@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
+import LogNonLectureDialog from "@/components/TimeTable/LogNonLectureDialog"
+import { fetchNonLecturePlansForSubject, NonLectureAssignment } from "@/services/NonLectureService"
 
 interface LogLectureDialogProps {
   isOpen: boolean
@@ -47,6 +49,8 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
   const [lessonPlan, setLessonPlan] = useState<any>(null)
   const [isLoadingLessonPlan, setIsLoadingLessonPlan] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [nonLecturePlans, setNonLecturePlans] = useState<NonLectureAssignment[]>([])
+  const [nonLecturePlan, setNonLecturePlan] = useState<NonLectureAssignment | null>(null)
 
   // Flatten topics and subtopics for grid display
   const flattenedSyllabus = useMemo(() => {
@@ -109,6 +113,11 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
       const sId = propSubjectId || period.period_config_subject?.subject_id || period.subjects_division_masters_id
       if (sId) {
         fetchLessonPlan(sId)
+        fetchNonLecturePlansForSubject(Number(sId))
+          .then(setNonLecturePlans)
+          .catch(() => setNonLecturePlans([]))
+      } else {
+        setNonLecturePlans([])
       }
     }
   }, [isOpen, period, propSubjectId])
@@ -262,6 +271,7 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[95vw] lg:max-w-[1000px] max-h-[90vh] flex flex-col">
         <DialogHeader>
@@ -498,6 +508,16 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
         </div>
 
         <DialogFooter className="mt-4 pt-4 border-t">
+          {nonLecturePlans.map((plan) => (
+            <Button
+              key={plan.template_id}
+              variant="outline"
+              onClick={() => setNonLecturePlan(plan)}
+              className="h-10 border-indigo-200 text-indigo-700"
+            >
+              Log Non-Lecture: {plan.template?.title}
+            </Button>
+          ))}
           <Button variant="outline" onClick={() => onOpenChange(false)} className="h-10">
             {t("cancel")}
           </Button>
@@ -512,5 +532,13 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <LogNonLectureDialog
+      isOpen={!!nonLecturePlan}
+      onOpenChange={(open) => { if (!open) setNonLecturePlan(null) }}
+      assignment={nonLecturePlan}
+      periodsConfigId={period?.id}
+      onSuccess={() => { setNonLecturePlan(null); onSuccess?.() }}
+    />
+    </>
   )
 }

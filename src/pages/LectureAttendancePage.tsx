@@ -16,8 +16,16 @@ const LectureAttendancePage: React.FC = () => {
 
   const academicYear = academicSession?.id ?? academicSession?.start_year ?? 1
 
-  // Teachers (role_id === 5 or UserRole.SCHOOL_TEACHER or UserRole.HEAD_TEACHER)
-  const isTeacher = hasAnyRole([UserRole.SCHOOL_TEACHER, UserRole.HEAD_TEACHER]) || Number(user?.role_id) === 5
+  // Teachers (role_id === 5, teacher roles, or non-admin staff)
+  const isTeacher =
+    hasAnyRole([
+      UserRole.SCHOOL_TEACHER,
+      UserRole.HEAD_TEACHER,
+      UserRole.HOD,
+      UserRole.FACULTY,
+    ]) ||
+    Number(user?.role_id) === 5 ||
+    Boolean(user?.staff_id && !hasAnyRole([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.IT_ADMIN]))
 
   const [fetchSubjects, { data: subjectsData, isLoading }] = useLazyGetMySubjectsQuery()
   const [selectedSubject, setSelectedSubject] = useState<AssignedSubject | null>(null)

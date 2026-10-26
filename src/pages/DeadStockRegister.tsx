@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useCan } from "@/permissions/useCan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
 } from "@/services/DeadStockService";
 
 export default function DeadStockRegister() {
+  const { can } = useCan();
   const { toast } = useToast();
 
   const { data: response, isLoading, refetch } = useGetDeadStocksQuery();
@@ -186,25 +188,62 @@ export default function DeadStockRegister() {
     }
   };
 
+  // Helper to calculate active department allocations for any stock
+  const getStockDeptAllocations = (stock: DeadStock) => {
+    const map = new Map<number, { id: number; name: string; quantity: number }>();
+    stock.transactions?.forEach((t) => {
+      const dId = t.departmentId ?? (t as any).department_id;
+      const type = t.transactionType ?? (t as any).transaction_type;
+      const qty = Number(t.quantity) || 0;
+      const deptName = t.department?.name || departments.find((d) => d.id === dId)?.name || `Dept #${dId}`;
+
+      if (dId) {
+        if (!map.has(dId)) {
+          map.set(dId, { id: dId, name: deptName, quantity: 0 });
+        }
+        const curr = map.get(dId)!;
+        if (type === 'ISSUE') curr.quantity += qty;
+        else if (type === 'RETURN' || type === 'DISCARD') curr.quantity -= qty;
+      }
+    });
+    return Array.from(map.values()).filter((item) => item.quantity > 0);
+  };
+
   // Filtered Dead Stocks
   const filteredStocks = useMemo(() => {
     return deadStocks.filter((stock) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = 
-        stock.itemName.toLowerCase().includes(q) ||
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        stock.itemName?.toLowerCase().includes(q) ||
         (stock.invoiceNumber && stock.invoiceNumber.toLowerCase().includes(q)) ||
         (stock.supplierName && stock.supplierName.toLowerCase().includes(q));
 
       if (!matchesSearch) return false;
 
       if (selectedDeptFilter === "ALL") return true;
-      if (selectedDeptFilter === "STORE") return stock.availableQuantity > 0;
+      if (selectedDeptFilter === "STORE") return (stock.availableQuantity ?? 0) > 0;
 
-      // Check if stock has any issue transaction for this department
-      const hasDept = stock.transactions?.some(
-        (t) => t.departmentId === Number(selectedDeptFilter) && t.transactionType === 'ISSUE'
-      );
-      return hasDept;
+      const targetDeptId = Number(selectedDeptFilter);
+      let netDeptQty = 0;
+      let hasDeptTxn = false;
+
+      stock.transactions?.forEach((t) => {
+        const dId = t.departmentId ?? (t as any).department_id;
+        const type = t.transactionType ?? (t as any).transaction_type;
+        const qty = Number(t.quantity) || 0;
+
+        if (dId === targetDeptId) {
+          hasDeptTxn = true;
+          if (type === 'ISSUE') {
+            netDeptQty += qty;
+          } else if (type === 'RETURN' || type === 'DISCARD') {
+            netDeptQty -= qty;
+          }
+        }
+      });
+
+      return netDeptQty > 0 || hasDeptTxn;
     });
   }, [deadStocks, searchQuery, selectedDeptFilter]);
 
@@ -235,7 +274,8 @@ export default function DeadStockRegister() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button
+          {can("import", "DeadStock") && (
+<Button
             variant="outline"
             onClick={() => setIsImportOpen(true)}
             className="rounded-2xl h-12 px-5 border-slate-200 hover:bg-slate-50 font-bold text-sm shadow-sm"
@@ -243,13 +283,16 @@ export default function DeadStockRegister() {
             <Upload className="mr-2 h-4 w-4 text-emerald-600" />
             Bulk Import (Excel)
           </Button>
-          <Button
+)}
+          {can("create", "DeadStock") && (
+<Button
             onClick={openAdd}
             className="rounded-2xl h-12 px-6 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 font-bold text-sm transition-all hover:scale-[1.02]"
           >
             <Plus className="mr-2 h-5 w-5" />
             Add New Stock
           </Button>
+)}
         </div>
       </div>
 
@@ -385,6 +428,7 @@ export default function DeadStockRegister() {
                   filteredStocks.map((stock, idx) => {
                     const isFullyIssued = stock.availableQuantity === 0;
                     const isPartiallyIssued = stock.availableQuantity > 0 && stock.availableQuantity < stock.totalQuantity;
+                    const deptAllocations = getStockDeptAllocations(stock);
 
                     return (
                       <tr key={stock.id} className="hover:bg-slate-50/80 transition-colors">
@@ -422,22 +466,39 @@ export default function DeadStockRegister() {
                           ₹{stock.totalAmount ? stock.totalAmount.toLocaleString('en-IN') : 0}
                         </td>
                         <td className="p-4 text-center">
-                          {isFullyIssued ? (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs font-semibold">
-                              Issued to Dept
-                            </Badge>
-                          ) : isPartiallyIssued ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-semibold">
-                              Partially In Store
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
-                              In Central Store
-                            </Badge>
-                          )}
+                          <div className="flex flex-col items-center gap-1">
+                            {isFullyIssued ? (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs font-semibold">
+                                Issued to Dept
+                              </Badge>
+                            ) : isPartiallyIssued ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-semibold">
+                                Partially In Store
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
+                                In Central Store
+                              </Badge>
+                            )}
+
+                            {deptAllocations.length > 0 && (
+                              <div className="flex flex-wrap justify-center gap-1 mt-1 max-w-[220px]">
+                                {deptAllocations.map((alloc) => (
+                                  <span
+                                    key={alloc.name}
+                                    className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                    title={`${alloc.name}: ${alloc.quantity} units`}
+                                  >
+                                    {alloc.name}: <strong className="font-bold">{alloc.quantity}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="flex justify-center items-center gap-1.5 flex-wrap">
+                          {can("update", "DeadStock") && (
+<div className="flex justify-center items-center gap-1.5 flex-wrap">
                             <Button 
                               size="sm"
                               onClick={() => openAction(stock, 'ISSUE')} 
@@ -464,7 +525,8 @@ export default function DeadStockRegister() {
                             >
                               <ArrowRightLeft className="h-3 w-3 mr-1" /> Transfer
                             </Button>
-                            <Button 
+                            {can("delete", "DeadStock") && (
+<Button 
                               size="sm"
                               onClick={() => openAction(stock, 'DISCARD')} 
                               disabled={stock.availableQuantity < 1} 
@@ -473,7 +535,9 @@ export default function DeadStockRegister() {
                             >
                               <Trash2 className="h-3 w-3 mr-1" /> Discard
                             </Button>
+)}
                           </div>
+)}
                         </td>
                       </tr>
                     );
@@ -525,8 +589,33 @@ export default function DeadStockRegister() {
                       </div>
                     </div>
 
+                    {/* Department Allocations */}
+                    {(() => {
+                      const deptAllocations = getStockDeptAllocations(stock);
+                      if (deptAllocations.length === 0) return null;
+                      return (
+                        <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-100 text-xs">
+                          <p className="text-indigo-900 font-bold mb-1.5 flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-indigo-600" />
+                            Department Allocations:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {deptAllocations.map((d) => (
+                              <span
+                                key={d.name}
+                                className="bg-white border border-indigo-200 text-indigo-800 font-semibold px-2.5 py-1 rounded-lg text-xs shadow-xs"
+                              >
+                                {d.name}: <strong className="font-bold text-indigo-950">{d.quantity}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Actions */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                    {can("update", "DeadStock") && (
+<div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                       <Button 
                         onClick={() => openAction(stock, 'ISSUE')} 
                         disabled={stock.availableQuantity < 1} 
@@ -547,14 +636,17 @@ export default function DeadStockRegister() {
                       >
                         <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
                       </Button>
-                      <Button 
+                      {can("delete", "DeadStock") && (
+<Button 
                         onClick={() => openAction(stock, 'DISCARD')} 
                         disabled={stock.availableQuantity < 1} 
                         className="rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20"
                       >
                         <Trash2 className="mr-2 h-4 w-4" /> Discard
                       </Button>
+)}
                     </div>
+)}
                   </CardContent>
                 </Card>
               </motion.div>

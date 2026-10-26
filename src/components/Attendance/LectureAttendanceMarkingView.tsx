@@ -1,3 +1,4 @@
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useState, useEffect } from "react"
 import {
@@ -31,6 +32,7 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
   userId,
   onBack,
 }) => {
+  const { can } = useCan()
   const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [lectureNumber, setLectureNumber] = useState<number>(1)
@@ -387,7 +389,7 @@ const LectureAttendanceMarkingView: React.FC<LectureAttendanceMarkingViewProps> 
 
               {!isMarked && (
                 <div className="flex justify-end pt-2">
-                  <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2 px-6">
+                  <Button onClick={handleSubmit} disabled={isSubmitting || !can("create", "Attendance")} className="gap-2 px-6">
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (

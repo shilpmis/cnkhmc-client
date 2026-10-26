@@ -64,6 +64,7 @@ export interface Student {
   middle_name: string | null;
   last_name: string;
   enrollment_code: string;
+  admission_number?: string | null;
   first_name_in_guj: string | null;
   middle_name_in_guj: string | null;
   last_name_in_guj: string | null;
@@ -82,6 +83,7 @@ export interface Student {
   fourth_year_roll_number: number | null;
   aadhar_no: number | null;
   is_active: boolean;
+  profile_photo?: string | null;
   practical_batch?: string | null;
   student_meta?: StudentMeta;
   academic_class: StudentEnrollment[];
@@ -103,8 +105,13 @@ export interface StudentEntry {
   students_data: Omit<
     Student,
     "id" | "student_meta" | "school_id" | "academic_class"
-  >;
+  > & {
+    quota_id?: number | null;
+    fees_plan_id?: number | null;
+  };
   student_meta_data: StudentMeta;
+  quota_id?: number | null;
+  fees_plan_id?: number | null;
 }
 
 export interface ReqBodyForOnBoardingStudent {
@@ -118,11 +125,15 @@ export interface ReqBodyForOnBoardingStudent {
   primary_mobile : number;
   father_name : string | null;
   academic_session_id : number;
+  quota_id?: number | null;
+  fees_plan_id?: number | null;
 }
 
 export interface UpdateStudent {
   students_data: Partial<Student>;
   student_meta_data: Partial<StudentMeta>;
+  quota_id?: number | null;
+  fees_plan_id?: number | null;
 }
 
 export interface AddStudentsRequest {

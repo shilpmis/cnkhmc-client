@@ -185,12 +185,14 @@
 
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SaralPagination } from "../ui/common/SaralPagination"
 import type { StaffType } from "@/types/staff"
 import dynamic from "next/dynamic"
 import StaffPdfDilog from "./StaffPdfDilog"
 import ExperienceCertificateModal from "./ExperienceCertificateModal"
+import { useCan } from "@/permissions/useCan"
 import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Trash2, FileText } from "lucide-react"
 import type { PageMeta } from "@/types/global"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -229,6 +231,7 @@ export default function StaffTable({
   onPageChange,
   filteredStaff,
 }: StaffTableProps) {
+  const { can } = useCan()
   const StafftDetailsPDF = dynamic(() => import("./StaffPdf"), {
     ssr: false,
     loading: () => <p>Loading PDF generator...</p>,
@@ -422,12 +425,20 @@ export default function StaffTable({
               {sortedStaff.map((staff) => (
                 <TableRow key={staff.id}>
                   <TableCell>
-                    <button
-                      className="text-blue-600 hover:underline focus:outline-none"
-                      onClick={() => handleStaffClick(staff)}
-                    >
-                      {staff.first_name} {staff.middle_name} {staff.last_name}
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={staff.profile_photo || undefined} alt={staff.first_name} />
+                        <AvatarFallback className="text-xs font-semibold bg-primary/10">
+                          {staff.first_name?.[0]}{staff.last_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        className="text-blue-600 hover:underline focus:outline-none font-medium text-left"
+                        onClick={() => handleStaffClick(staff)}
+                      >
+                        {staff.first_name} {staff.middle_name} {staff.last_name}
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell>{staff.gender}</TableCell>
                   <TableCell>
@@ -465,9 +476,11 @@ export default function StaffTable({
                         <FileText className="h-3.5 w-3.5" />
                         <span className="text-xs font-medium">Certificate</span>
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => onEdit(staff.id)} className="h-8 px-2.5 text-xs">
+                      {can("update", "Staff") && (
+<Button variant="outline" size="sm" onClick={() => onEdit(staff.id)} className="h-8 px-2.5 text-xs">
                         {t("edit")}
                       </Button>
+)}
                       <Button
                         variant="outline"
                         size="sm"

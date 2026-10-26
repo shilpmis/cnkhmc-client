@@ -18,6 +18,8 @@ import {
   FileText,
   Tag,
   ScrollText,
+  ReceiptText,
+  Layers,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -161,17 +163,22 @@ const navigationSections: NavSection[] = [
             icon: Settings,
             href: "manage/batches",
           },
-          {
-            title: "Import / Export Columns",
-            icon: Settings,
-            href: "manage/columns",
-          },
         ],
       },
       {
         title: "certificate_templates",
         icon: ScrollText,
         href: "certificate-templates",
+      },
+      {
+        title: "fee_receipt_templates",
+        icon: ReceiptText,
+        href: "fee-receipt-templates",
+      },
+      {
+        title: "non_lecture_templates",
+        icon: Layers,
+        href: "non-lecture-templates",
       },
       {
         title: "hostel_management",

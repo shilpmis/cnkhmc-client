@@ -43,7 +43,7 @@ import {
   UserRole,
   UserStatus,
 } from "@/types/user";
-import { AcademicSession } from "@/types/user";
+import { AcademicSession, PolicyTemplate } from "@/types/user";
 
 // Mapping from role_id (from your DB) to UserRole
 const roleMapping: Record<number, UserRole> = {
@@ -58,6 +58,7 @@ const roleMapping: Record<number, UserRole> = {
   9: UserRole.HOD,
   10: UserRole.FACULTY,
   11: UserRole.DEVELOPER,
+  12: UserRole.STAFF,
 };
 
 const getSwitchedSchoolId = () => {
@@ -223,6 +224,7 @@ const authSlice = createSlice({
           school_id: apiUser.school_id,
           username: apiUser.username,
           permissions: buildEffectivePermissions(derivedSystemRole, apiUser.permissions),
+          policies: (apiUser as { policies?: PolicyTemplate[] }).policies ?? [],
           staff: apiUser.staff,
           school: apiUser.school,
         };

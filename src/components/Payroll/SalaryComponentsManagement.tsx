@@ -2,6 +2,7 @@
 
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,6 +29,7 @@ import { useSalaryComponents } from "./useSalaryComponents"
 import type { SalaryComponent } from "@/types/payroll"
 
 const SalaryComponentsManagement = () => {
+  const { can } = useCan()
   const { t } = useTranslation()
   const { components, isLoading, isRefreshing, fetchComponents, deleteComponent, isDeleting, error } =
     useSalaryComponents()
@@ -202,10 +204,12 @@ const SalaryComponentsManagement = () => {
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
 
-          <Button onClick={handleAddComponent}>
+          {can("create", "Payroll") && (
+<Button onClick={handleAddComponent}>
             <Plus className="mr-2 h-4 w-4" />
             {t("add_component")}
           </Button>
+)}
         </div>
       </div>
 
@@ -305,10 +309,12 @@ const SalaryComponentsManagement = () => {
                         <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
                         <h3 className="text-lg font-medium">{t("no_components_found")}</h3>
                         <p className="text-muted-foreground mt-1">{t("no_salary_components_have_been_created_yet")}</p>
-                        <Button onClick={handleAddComponent} className="mt-4">
+                        {can("create", "Payroll") && (
+<Button onClick={handleAddComponent} className="mt-4">
                           <Plus className="mr-2 h-4 w-4" />
                           {t("add_your_first_component")}
                         </Button>
+)}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -347,10 +353,13 @@ const SalaryComponentsManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditComponent(component)}>
+                          {can("update", "Payroll") && (
+<Button variant="ghost" size="sm" onClick={() => handleEditComponent(component)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
+)}
+                          {can("delete", "Payroll") && (
+<Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteComponent(component)}
@@ -359,6 +368,7 @@ const SalaryComponentsManagement = () => {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+)}
                         </div>
                       </TableCell>
                     </TableRow>

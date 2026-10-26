@@ -33,6 +33,7 @@ import {
   MessageSquare,
   Package,
   BookOpen,
+  ReceiptText,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { Permission, UserRole } from "@/types/user"
@@ -49,31 +50,25 @@ interface SidebarItem {
   url: string
   icon: any
   requiredRole?: UserRole
-  requiredPermission?: Permission
+  requiredPermission?: Permission | Permission[]
 }
 
 const SideBarItems: SidebarItem[] = [
-  { title: "messaging", url: "/d/chat", icon: MessageSquare },
+  { title: "messaging", url: "/d/chat", icon: MessageSquare, requiredPermission: Permission.VIEW_DASHBOARD },
   { title: "teacher_dashboard", url: "/d/teacher/dashboard", icon: LayoutDashboard, requiredRole: UserRole.SCHOOL_TEACHER },
-  { title: "daily_diary", url: "/d/teacher/logs", icon: ClipboardList },
+  { title: "daily_diary", url: "/d/teacher/logs", icon: ClipboardList, requiredPermission: Permission.MARK_ATTENDANCE },
   { title: "student", url: "/d/students", icon: Users, requiredPermission: Permission.MANAGE_STUDENTS },
   { title: "staff", url: "/d/staff", icon: UserCheck, requiredPermission: Permission.MANAGE_STAFF },
   { title: "subjects", url: "/d/subjects", icon: FileText, requiredPermission: Permission.MANAGE_SUBJECTS },
-  { title: "academic_calendar", url: "/d/calendar", icon: Calendar },
+  { title: "academic_calendar", url: "/d/calendar", icon: Calendar, requiredPermission: Permission.VIEW_DASHBOARD },
   { title: "my_leaves", url: "/d/leave-applications", icon: Bed, requiredPermission: Permission.MARK_LEAVES },
-  { title: "leave_management", url: "/d/leaves", icon: Bed },
+  { title: "leave_management", url: "/d/leaves", icon: Bed, requiredPermission: Permission.MANAGE_LEAVES },
   {
     title: "attendance_management",
     url: "/d/attendance",
     icon: ClipboardList,
     requiredPermission: Permission.MANAGE_ATTENDANCE,
   },
-  // {
-  //   title: "staff_attendance_management",
-  //   url: "/d/staff/attendance",
-  //   icon: ClipboardList,
-  //   requiredPermission: Permission.MANAGE_ATTENDANCE,
-  // },
   {
     title: "attendance",
     url: "/d/mark-attendance",
@@ -84,16 +79,13 @@ const SideBarItems: SidebarItem[] = [
     title: "lecture_attendance",
     url: "/d/lecture-attendance",
     icon: BookOpen,
+    requiredPermission: [Permission.MARK_ATTENDANCE, Permission.MANAGE_ATTENDANCE],
   },
-  // {
-  //   title: "staff-attendance",
-  //   url: "/d/staff/mark-attendance",
-  //   icon: ClipboardList,
-  //   requiredPermission: Permission.MARK_ATTENDANCE,
-  // },
   { title: "payments", url: "/d/pay-fees", icon: IndianRupee, requiredPermission: Permission.PAY_FEES },
   { title: "manage_fees", url: "/d/fee", icon: IndianRupee, requiredPermission: Permission.MANAGE_FEES },
+  { title: "fee_receipts", url: "/d/fee-receipts", icon: ReceiptText, requiredPermission: Permission.MANAGE_FEES },
   { title: "admissions", url: "/d/admissions", icon: ClipboardList, requiredPermission: Permission.MANAGE_ADMISSION },
+  { title: "hostels", url: "/d/hostels", icon: Building2, requiredPermission: Permission.MANAGE_HOSTEL },
   { title: "timetable", url: "/d/timetable", icon: Calendar, requiredPermission: Permission.MANAGE_TIMETABLE },
   { title: "lesson_plans", url: "/d/curriculum", icon: FileText, requiredPermission: Permission.MANAGE_LESSON_PLAN },
 ]
@@ -162,7 +154,10 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
 
   const canViewManageSection = SideBarFooter.some((item: SidebarItem) => {
     if (hasRole(UserRole.SUPER_ADMIN) || hasRole(UserRole.DEVELOPER)) return true
-    if (item.requiredPermission && hasPermission(item.requiredPermission)) return true
+    if (item.requiredPermission) {
+      const perms = Array.isArray(item.requiredPermission) ? item.requiredPermission : [item.requiredPermission]
+      if (perms.some((p) => hasPermission(p))) return true
+    }
     if (item.requiredRole && hasRole(item.requiredRole)) return true
     return !item.requiredPermission && !item.requiredRole
   })
@@ -210,8 +205,13 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
                   // Admin can see everything except maybe things that strictly require ORG_ADMIN if they aren't one.
                   // But usually SUPER_ADMIN should see everything.
                 } else {
-                  if (item.requiredPermission && !hasPermission(item.requiredPermission)) {
-                    return null
+                  if (item.requiredPermission) {
+                    const perms = Array.isArray(item.requiredPermission)
+                      ? item.requiredPermission
+                      : [item.requiredPermission]
+                    if (!perms.some((p) => hasPermission(p))) {
+                      return null
+                    }
                   }
                   if (item.requiredRole && !hasRole(item.requiredRole)) {
                     return null
@@ -358,13 +358,21 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
                     </SidebarMenuItem>
                   )
                   if (item.title === "settings") {
-                    return <Can I="read" a="SystemSettings" key={item.title}>{content}</Can>
+                    // Role or permission template (System Settings); "manage all" users pass through Can
+                    return hasPermission(Permission.MANAGE_SETTINGS)
+                      ? content
+                      : <Can I="read" a="SystemSettings" key={item.title}>{content}</Can>
                   }
                   if (hasRole(UserRole.SUPER_ADMIN) || hasRole(UserRole.DEVELOPER)) {
                     // Show all footer items to super admin
                   } else {
-                    if (item.requiredPermission && !hasPermission(item.requiredPermission)) {
-                      return null
+                    if (item.requiredPermission) {
+                      const perms = Array.isArray(item.requiredPermission)
+                        ? item.requiredPermission
+                        : [item.requiredPermission]
+                      if (!perms.some((p) => hasPermission(p))) {
+                        return null
+                      }
                     }
                     if (item.requiredRole && !hasRole(item.requiredRole)) {
                       return null

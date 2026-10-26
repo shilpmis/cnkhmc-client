@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Filter, ArrowUpDown, Eye, ExternalLink } from "lucide-react"
+import { Search, Filter, ArrowUpDown, Eye, ExternalLink, FileText } from "lucide-react"
 import { useLazyGetStudentFeesDetailsForClassQuery } from "@/services/feesService"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
@@ -23,6 +23,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { SaralPagination } from "@/components/ui/common/SaralPagination"
 import StudentFeesStatus from "@/pages/StundetFeesStatus"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { StudentFinancialStatementModal } from "../Reports/StudentFinancialStatementModal"
 
 // Session storage keys for this page
 const SESSION_SELECTED_CLASS_KEY = "studentFeeMgmt_selected_class_id"
@@ -53,6 +54,8 @@ const StudentFeesManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
   const [selectedStudentName, setSelectedStudentName] = useState<string>("")
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false)
+  const [statementStudentId, setStatementStudentId] = useState<number | null>(null)
   const [hasRestoredSession, setHasRestoredSession] = useState(false)
 
   // Load state from sessionStorage ONLY after academicClasses are loaded
@@ -505,6 +508,18 @@ const StudentFeesManagement: React.FC = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => {
+                                  setStatementStudentId(student.id)
+                                  setIsStatementModalOpen(true)
+                                }}
+                                title="Financial Statement & Ledger"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() =>
                                   handleViewDetails(student.id)
                                 }
@@ -579,6 +594,12 @@ const StudentFeesManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <StudentFinancialStatementModal
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        studentId={statementStudentId}
+      />
 
     </div>
   )

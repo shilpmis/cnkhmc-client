@@ -99,11 +99,8 @@ export function StudentSearchResults({ results, isLoading, error, onSelectStuden
                     )}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {className && division ? (
-                      <>
-                        {className} - {division}
-                        {divisionAlias ? ` (${divisionAlias})` : ""}
-                      </>
+                    {className ? (
+                      className
                     ) : (
                       "Class information not available"
                     )}

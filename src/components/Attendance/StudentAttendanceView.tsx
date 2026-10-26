@@ -601,6 +601,7 @@
 
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
@@ -646,6 +647,7 @@ interface StudentAttendanceViewProps {
 }
 
 const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ classId }) => {
+  const { can } = useCan()
   const user = useAppSelector(selectCurrentUser)
   const [fetchAttendanceForDate, { data: attendanceData, isLoading }] = useLazyFetchAttendanceForDateQuery()
   const [markAttendanceForDate, { isLoading: isMarkingAttendance }] = useMarkAttendanceMutation()
@@ -1458,7 +1460,7 @@ const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ classId }
                 </p>
                 <Button
                   onClick={handleUpdateSelectedStudents}
-                  disabled={false || selectedStudents.length === 0}
+                  disabled={false || selectedStudents.length === 0 || !can("update", "Attendance")}
                   className="gap-2"
                 >
                   {false ? (
@@ -1475,7 +1477,7 @@ const StudentAttendanceView: React.FC<StudentAttendanceViewProps> = ({ classId }
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleSubmit} disabled={isMarkingAttendance} className="gap-2">
+              <Button onClick={handleSubmit} disabled={isMarkingAttendance || !can("create", "Attendance")} className="gap-2">
                 {isMarkingAttendance ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />

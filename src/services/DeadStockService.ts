@@ -1,13 +1,27 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import baseUrl from "@/utils/base-urls";
 
+export interface IssuedItemDetail {
+  id: number;
+  itemName: string;
+  quantity: number;
+  invoiceNumber?: string | null;
+  supplierName?: string | null;
+  purchaseDate?: string | null;
+  unitPrice?: number;
+  totalQuantity?: number;
+  totalAmount?: number;
+  availableQuantity?: number;
+  expiryDate?: string | null;
+}
+
 export interface InventoryDepartment {
   id: number;
   name: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  issuedItems?: { id: number; itemName: string; quantity: number }[];
+  issuedItems?: IssuedItemDetail[];
 }
 
 export interface DeadStock {

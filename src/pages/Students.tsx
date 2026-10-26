@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Upload, Loader2, AlertCircle, CheckCircle2, FileText, FileDown, School } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useCan } from "@/permissions/useCan"
 import StudentForm from "@/components/Students/StudentForm"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectAcademicClasses, selectAllAcademicClasses } from "@/redux/slices/academicSlice"
@@ -22,10 +23,12 @@ import {
   useLazyFetchStudentForClassQuery,
   useBulkUploadStudentsMutation,
 } from "@/services/StudentServices"
+import { studentHeaderMappings, collegeStudentHeaderMappings } from "@/utils/headerMappings"
 import { toast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { downloadCSVTemplate } from "@/utils/CSVTemplateForStudents"
 import ExcelDownloadModalForStudents from "@/components/Students/ExcelDownloadModalForStudents"
+import { Badge } from "@/components/ui/badge"
 import { z } from "zod"
 import type { AcademicSession } from "@/types/user"
 import { useTranslation } from "@/redux/hooks/useTranslation"
@@ -169,15 +172,27 @@ export const Students: React.FC = () => {
   const isCollege = authState.user?.school?.school_type === 'COLLEGE'
   const activeUploadSchema = isCollege ? CollegeStudentSchemaForUploadData : StudentSchemaForUploadData
 
+  const { can } = useCan()
+
   const handleClassChange = useCallback((value: string) => {
     setSelectedClass(value)
-    setSelectedDivision(null) // Reset division when class changes
+    const selectedClassObj = AcademicClasses?.find((cls) => cls.id.toString() === value)
+    const defaultDiv = selectedClassObj?.divisions?.[0] || null
+    setSelectedDivision(defaultDiv)
     setCurrentPage(1)
     setSearchValue("") // Clear search when class changes
     sessionStorage.setItem(SESSION_SELECTED_CLASS_KEY, value)
-    sessionStorage.setItem(SESSION_SELECTED_DIVISION_KEY, "")
+    sessionStorage.setItem(SESSION_SELECTED_DIVISION_KEY, defaultDiv ? defaultDiv.id.toString() : "")
     sessionStorage.setItem(SESSION_SELECTED_PAGE_KEY, "1")
-  }, [])
+
+    if (defaultDiv && SelectedSession) {
+      getStudentForClass({
+        class_id: defaultDiv.id,
+        academic_session: SelectedSession,
+        page: 1,
+      })
+    }
+  }, [AcademicClasses, SelectedSession, getStudentForClass])
 
   const handleDivisionChange = useCallback(
     async (value: string) => {
@@ -295,13 +310,13 @@ export const Students: React.FC = () => {
     fileInputRef.current?.click()
   }, [])
 
-  // Function to validate CSV data with Zod
-
   const validateCsvData = useCallback((data: any[]): ValidationResult[] => {
     const results: ValidationResult[] = []
 
     data.forEach((row, index) => {
-      // Set all optional fields to null if not provided
+      const errors: { field: string; message: string }[] = []
+
+      // Soft schema validation for basic formats without hardcoded required field errors
       const sanitizedRow = Object.keys(activeUploadSchema.shape).reduce(
         (acc, key) => {
           acc[key] = row[key] !== undefined && row[key] !== "" ? row[key] : null
@@ -311,46 +326,32 @@ export const Students: React.FC = () => {
       )
 
       try {
-        // Attempt to validate the sanitized row data against the schema
         activeUploadSchema.parse(sanitizedRow)
-
-        // If validation passes, add a success result
-        results.push({
-          row: index + 2, // +2 because index is 0-based and we skip the header row
-          hasErrors: false,
-          errors: [],
-          rawData: sanitizedRow,
-        })
       } catch (error) {
         if (error instanceof z.ZodError) {
-          // Format Zod validation errors
-          const formattedErrors = error.errors.map((err) => ({
-            field: err.path.join("."),
-            message: err.message,
-          }))
-
-          results.push({
-            row: index + 2,
-            hasErrors: true,
-            errors: formattedErrors,
-            rawData: sanitizedRow,
+          error.errors.forEach((err) => {
+            const fieldPath = err.path.join(".")
+            // Avoid duplicate error message if already captured
+            if (!errors.some((e) => e.field === fieldPath)) {
+              errors.push({
+                field: fieldPath,
+                message: err.message,
+              })
+            }
           })
         }
       }
 
-      // Add a warning for optional fields with null values (highlight in yellow)
-      Object.keys(sanitizedRow).forEach((key) => {
-        if (sanitizedRow[key] === null) {
-          results[results.length - 1].errors.push({
-            field: key,
-            message: "Optional field not provided (valid)",
-          })
-        }
+      results.push({
+        row: index + 2, // +2 because index is 0-based and we skip header row
+        hasErrors: errors.length > 0,
+        errors: errors,
+        rawData: row,
       })
     })
 
     return results
-  }, [])
+  }, [activeUploadSchema])
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,17 +370,15 @@ export const Students: React.FC = () => {
         // Parse and validate the CSV file
         parseCSV(file)
           .then((parsedData) => {
-            setParsedData(parsedData)
-
-            const headers = Object.keys(parsedData[0])
-            const requiredHeaders = activeUploadSchema.shape
-            const missingHeaders = Object.keys(requiredHeaders).filter((header) => !headers.includes(header))
-
-            if (missingHeaders.length > 0) {
-              setUploadError(`Missing required headers: ${missingHeaders.join(", ")}`)
+            if (!parsedData || parsedData.length === 0) {
+              setUploadError("CSV file is empty")
               setIsValidating(false)
               return
             }
+
+            setParsedData(parsedData)
+
+            const fileHeaders = Object.keys(parsedData[0] || {})
 
             // Validate the parsed data
             const validationResults = validateCsvData(parsedData)
@@ -568,11 +567,9 @@ export const Students: React.FC = () => {
     if (savedClass && AcademicClasses.some((cls) => cls.id.toString() === savedClass)) {
       classToSet = savedClass
       const classObj = AcademicClasses.find((cls) => cls.id.toString() === savedClass)
-      if (classObj && savedDivision) {
-        const division = classObj.divisions.find((div) => div.id.toString() === savedDivision)
-        if (division) {
-          divisionToSet = division
-        }
+      if (classObj) {
+        const division = savedDivision ? classObj.divisions.find((div) => div.id.toString() === savedDivision) : null
+        divisionToSet = division || classObj.divisions[0] || null
       }
       if (savedPage && !isNaN(Number(savedPage))) {
         pageToSet = Number(savedPage)
@@ -668,7 +665,8 @@ export const Students: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
           <h2 className="text-3xl font-bold">{t("student_managment")}</h2>
           <div className="flex space-x-2">
-            <Button
+            {can("create", "Student") && (
+<Button
               onClick={() =>
                 setOpenDialogForStudent({ ...openDialogForStudent, isOpen: true, type: "add", selectedStudent: null })
               }
@@ -676,9 +674,11 @@ export const Students: React.FC = () => {
             >
               <Plus className="mr-2 h-4 w-4" /> {t("add_student")}
             </Button>
+)}
 
             {/* Upload CSV */}
-            <Dialog
+            {can("import", "Student") && (
+<Dialog
               open={dialogOpenForBulkUpload}
               onOpenChange={(open) => {
                 if (!open) {
@@ -743,30 +743,6 @@ export const Students: React.FC = () => {
                           {AcademicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id.toString()}>
                               {cls.class}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label htmlFor="upload-division" className="text-sm font-medium">
-                        {t("division")}
-                      </label>
-                      <Select
-                        value={selectedDivision ? selectedDivision.id.toString() : " "}
-                        onValueChange={handleDivisionChange}
-                        disabled={!availableDivisions.length}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Division" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value=" " disabled>
-                            {t("divisions")}
-                          </SelectItem>
-                          {availableDivisions.map((division) => (
-                            <SelectItem key={division.id} value={division.id.toString()}>
-                              {`${division.division} ${division.aliases ? "-" + division.aliases : ""}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -861,7 +837,6 @@ export const Students: React.FC = () => {
                         isUploading ||
                         !selectedFile ||
                         !selectedClass ||
-                        !selectedDivision ||
                         !validationPassed ||
                         isValidating
                       }
@@ -879,6 +854,7 @@ export const Students: React.FC = () => {
                 </div>
               </DialogContent>
             </Dialog>
+)}
 
             {/* Separate Dialog for Validation Results */}
             <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
@@ -897,12 +873,6 @@ export const Students: React.FC = () => {
                     <div className="flex items-center">
                       <span className="bg-red-50 px-2 py-1 rounded border border-red-200 text-red-500 mr-1">i</span>
                       <span>{t("invalid_data_with_error_message")}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="bg-yellow-50 px-2 py-1 rounded border border-yellow-200 text-yellow-500 mr-1">
-                        !
-                      </span>
-                      <span>Optional field not provided (valid)</span>
                     </div>
                   </div>
                 </div>
@@ -951,39 +921,28 @@ export const Students: React.FC = () => {
                               {result.row - 1}
                             </td>
                             {getUniqueFields.map((field) => {
-                              // Find if this field has an error or warning
-                              const fieldError = result.errors.find((err) => err.field === field)
+                              const fieldError = result.errors.find(
+                                (err) => err.field.trim().toLowerCase() === field.trim().toLowerCase()
+                              )
 
                               return (
                                 <td
                                   key={field}
                                   className={`px-3 py-2 text-sm border-r ${
-                                    fieldError?.message.includes("Optional field not provided")
-                                      ? "bg-yellow-50" // Highlight warnings in yellow
-                                      : fieldError
-                                        ? "bg-red-50" // Highlight errors in red
-                                        : "bg-green-50" // Highlight valid fields in green
+                                    fieldError ? "bg-red-50" : "bg-green-50"
                                   }`}
                                 >
                                   <div className="flex items-center justify-between">
                                     <span
                                       className={
-                                        fieldError?.message.includes("Optional field not provided")
-                                          ? "text-yellow-500 text-xs"
-                                          : fieldError
-                                            ? "text-red-500 text-xs"
-                                            : "sr-only"
+                                        fieldError ? "text-red-500 text-xs" : "sr-only"
                                       }
                                     >
                                       {fieldError ? fieldError.message : "Valid field"}
                                     </span>
                                     <span
                                       className={`ml-2 ${
-                                        fieldError?.message.includes("Optional field not provided")
-                                          ? "text-yellow-500 font-bold"
-                                          : fieldError
-                                            ? "text-red-500 font-bold"
-                                            : "text-green-500"
+                                        fieldError ? "text-red-500 font-bold" : "text-green-500"
                                       }`}
                                     >
                                       {fieldError ? "!" : "✓"}
@@ -1011,7 +970,8 @@ export const Students: React.FC = () => {
               </DialogContent>
             </Dialog>
 
-            <Button
+            {can("export", "Student") && (
+<Button
               variant="outline"
               onClick={() => setDialogOpenForDownLoadExcel(true)}
               className="flex items-center"
@@ -1019,6 +979,7 @@ export const Students: React.FC = () => {
             >
               <FileDown className="mr-2 h-4 w-4" /> {t("download_excel")}
             </Button>
+)}
           </div>
         </div>
 
@@ -1107,25 +1068,6 @@ export const Students: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select
-                  value={selectedDivision ? selectedDivision.id.toString() : " "}
-                  onValueChange={handleDivisionChange}
-                  disabled={!availableDivisions.length}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Division" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value=" " disabled>
-                      {t("divisions")}
-                    </SelectItem>
-                    {availableDivisions.map((division) => (
-                      <SelectItem key={division.id} value={division.id.toString()}>
-                        {`${division.division} ${division.aliases ? "-" + division.aliases : ""}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Input
                   placeholder={t("search_students")}
                   value={searchValue || ""}
@@ -1136,32 +1078,7 @@ export const Students: React.FC = () => {
             </CardContent>
           </Card>
         )}
-        {selectedClass && !selectedDivision && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>{t("division_not_selected")}</AlertTitle>
-            <AlertDescription>
-              {t("please_select_a_division_to_view_students")}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {selectedClass && !selectedDivision && !listedStudentForSelectedClass && (
-          <div className="text-center py-4 text-gray-500">{t("no_records_found")}</div>
-        )}
-
-      {showHostelModal && newStudentData && (
-        <HostelAllotmentModal
-          isOpen={showHostelModal}
-          onClose={() => setShowHostelModal(false)}
-          studentId={newStudentData.id}
-          schoolId={authState.user!.school_id}
-          studentGender={newStudentData.gender}
-          onSuccess={() => setShowHostelModal(false)}
-        />
-      )}
-
-      {selectedClass && selectedDivision && (
+      {selectedClass && (
         <Tabs defaultValue="directory" className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-6">
             <TabsTrigger value="directory">{t("student_directory") || "Student Directory"}</TabsTrigger>

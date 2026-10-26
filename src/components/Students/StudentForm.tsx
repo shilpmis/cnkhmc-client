@@ -24,11 +24,14 @@ import {
   useUpdateStudentMutation,
 } from "@/services/StudentServices"
 import { useConvertQueryToStudentMutation } from "@/services/InquiryServices"
-import type { z } from "zod"
 import type { Student, StudentEntry, UpdateStudent } from "@/types/student"
-import { Loader2 } from 'lucide-react'
+import { Loader2, Landmark, Award, ShieldCheck, Coins } from 'lucide-react'
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { NumberInput } from "../ui/NumberInput"
+import { AvatarUpload } from "@/components/ui/AvatarUpload"
+import { uploadImageToStorage } from "@/services/StorageService"
+import ApiService from "@/services/ApiService"
+import { Badge } from "@/components/ui/badge"
 
 interface StudentFormProps {
   onClose: () => void
@@ -78,11 +81,56 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
   const AcademicClasses = useAppSelector(selectAcademicClasses)
   const authState = useAppSelector(selectAuthState)
-  const isCollege = authState.user?.school?.school_type === 'COLLEGE'
+  // The final student sheet applies to every institution, so the full set of heads is always shown
+  const isCollege = true
   const isLoading = useAppSelector((state) => state.academic.loading)
   const { t } = useTranslation()
 
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
+
+  // ── Admission Quota & Fee Templates State ─────────────────────────────────
+  const [quotas, setQuotas] = useState<any[]>([])
+  const [feePlans, setFeePlans] = useState<any[]>([])
+  const [isLoadingQuotas, setIsLoadingQuotas] = useState(false)
+  const [isLoadingFeePlans, setIsLoadingFeePlans] = useState(false)
+
+  useEffect(() => {
+    const fetchQuotasAndPlans = async () => {
+      try {
+        setIsLoadingQuotas(true)
+        const qRes = await ApiService.get("quota/all")
+        if (Array.isArray(qRes?.data)) {
+          setQuotas(qRes.data)
+        } else if (qRes?.data?.data && Array.isArray(qRes.data.data)) {
+          setQuotas(qRes.data.data)
+        }
+      } catch (err) {
+        console.warn("Could not load quotas:", err)
+      } finally {
+        setIsLoadingQuotas(false)
+      }
+
+      if (CurrentAcademicSessionForSchool?.id) {
+        try {
+          setIsLoadingFeePlans(true)
+          const fpRes = await ApiService.get(
+            `feesplan?academic_session=${CurrentAcademicSessionForSchool.id}&status=Active&limit=100`
+          )
+          if (Array.isArray(fpRes?.data?.data)) {
+            setFeePlans(fpRes.data.data)
+          } else if (Array.isArray(fpRes?.data)) {
+            setFeePlans(fpRes.data)
+          }
+        } catch (err) {
+          console.warn("Could not load fee plans:", err)
+        } finally {
+          setIsLoadingFeePlans(false)
+        }
+      }
+    }
+
+    fetchQuotasAndPlans()
+  }, [CurrentAcademicSessionForSchool?.id])
 
   const customStudentSchema = studentSchema
     .refine(
@@ -113,6 +161,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
   const form = useForm<StudentFormData>({
     resolver: zodResolver(customStudentSchema),
     defaultValues: {
+      profile_photo: null,
       first_name: "",
       middle_name: null,
       last_name: "",
@@ -141,6 +190,8 @@ const StudentForm: React.FC<StudentFormProps> = ({
       admission_division: null,
       class: undefined,
       division: undefined,
+      quota_id: null,
+      fees_plan_id: null,
       privious_school: null,
       privious_school_in_guj: null,
 
@@ -240,14 +291,41 @@ const StudentForm: React.FC<StudentFormProps> = ({
       admission_year: "",
       sub_caste: "",
       quota_fees: "",
+      admission_quota: null,
       activity_house: "",
       bank_branch_name: "",
+      admission_number: null,
+      name_as_per_aadhar: null,
+      nationality: null,
+      blood_group: null,
+      university_spid_no: null,
+      admission_category: null,
+      tuition_fees: null,
+      roll_no_internship: null,
+      bank_branch_pincode: null,
+      first_year_roll_number: null,
+      second_year_roll_number: null,
+      third_year_roll_number: null,
+      fourth_year_roll_number: null,
       practical_batch: "",
     },
   })
 
   const tabMapping: { [key: string]: string } = {
     enrollment_code: "personal",
+    admission_number: "personal",
+    name_as_per_aadhar: "personal",
+    nationality: "personal",
+    blood_group: "personal",
+    university_spid_no: "academic",
+    admission_category: "academic",
+    tuition_fees: "academic",
+    first_year_roll_number: "academic",
+    second_year_roll_number: "academic",
+    third_year_roll_number: "academic",
+    fourth_year_roll_number: "academic",
+    roll_no_internship: "academic",
+    bank_branch_pincode: "college",
     first_name: "personal",
     middle_name: "personal",
     last_name: "personal",
@@ -273,6 +351,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
     admission_division: "academic",
     class: "academic",
     division: "academic",
+    quota_id: "academic",
+    admission_quota: "academic",
+    fees_plan_id: "academic",
     privious_school: "academic",
     privious_school_in_guj: "academic",
     religion: "other",
@@ -290,11 +371,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
     IFSC_code: "bank",
     current_area: "college",
     current_country: "college",
-    permanent_address: "college",
+    permanent_address: "address",
     permanent_area: "college",
     permanent_city: "college",
     permanent_state: "college",
-    permanent_pincode: "college",
+    permanent_pincode: "address",
     permanent_country: "college",
     country_code: "college",
     student_code: "college",
@@ -312,28 +393,28 @@ const StudentForm: React.FC<StudentFormProps> = ({
     website: "college",
     mother_tongue: "college",
     father_qualification: "college",
-    father_occupation: "college",
+    father_occupation: "family",
     father_email: "college",
     father_organisation: "college",
     father_office_address: "college",
     father_office_phone: "college",
-    father_mobile: "college",
+    father_mobile: "family",
     mother_qualification: "college",
-    mother_occupation: "college",
+    mother_occupation: "family",
     mother_email: "college",
     mother_organisation: "college",
     mother_office_address: "college",
     mother_office_phone: "college",
-    mother_mobile: "college",
-    guardian_name: "college",
+    mother_mobile: "family",
+    guardian_name: "family",
     guardian_qualification: "college",
-    guardian_occupation: "college",
+    guardian_occupation: "family",
     guardian_email: "college",
     guardian_organisation: "college",
     guardian_office_address: "college",
     guardian_office_phone: "college",
-    guardian_mobile: "college",
-    guardian_relation: "college",
+    guardian_mobile: "family",
+    guardian_relation: "family",
     ssc_passing_year: "college",
     hsc_passing_year: "college",
     hsc_attempts: "college",
@@ -365,7 +446,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
     admission_transfer_date: "college",
     admission_transfer_to_college: "college",
     admission_transfer_from_college: "college",
-    admission_year: "college",
+    admission_year: "academic",
     sub_caste: "college",
     quota_fees: "college",
     activity_house: "college",
@@ -393,6 +474,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
   // const [selectedAdmissionDivision, setselectedAdmissionDivision] = useState<Division | null>(null)
   const [selectedAdmissionClass, setselectedAdmissionClass] = useState<string>("")
   const [activeTab, setActiveTab] = useState("personal")
+
   const [getStudentForClass, { data: studentDataForSelectedClass }] = useLazyFetchStudentForClassQuery()
 
   const availableDivisions = useMemo<AcademicClasses | null>(() => {
@@ -464,7 +546,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
     [availableDivisions, availableDivisionsForAdmissionClass],
   )
 
-  const handleSubmit: SubmitHandler<StudentFormData> = async (values: z.infer<typeof customStudentSchema>) => {
+  const handleSubmit: SubmitHandler<StudentFormData> = async (values: StudentFormData) => {
     const errors = form.formState.errors
     if (Object.keys(errors).length > 0) {
       const firstErrorField = Object.keys(errors)[0]
@@ -500,20 +582,26 @@ const StudentForm: React.FC<StudentFormProps> = ({
           gender: values.gender,
           birth_date: values.birth_date,
           enrollment_code: values.enrollment_code ?? "",
-          gr_no: values.gr_no,
+          gr_no: undefined as unknown as number, // GR number is not one of the final student heads
           primary_mobile: values.primary_mobile,
           father_name: values.father_name ?? null,
           father_name_in_guj: values.father_name_in_guj ?? null,
           mother_name: values.mother_name ?? null,
           mother_name_in_guj: values.mother_name_in_guj ?? null,
-          first_year_roll_number: values.roll_number ? Number(values.roll_number) : null,
-          second_year_roll_number: null,
-          third_year_roll_number: null,
-          fourth_year_roll_number: null,
+          admission_number: values.admission_number ?? null,
+          first_year_roll_number: values.first_year_roll_number ?? null,
+          second_year_roll_number: values.second_year_roll_number ?? null,
+          third_year_roll_number: values.third_year_roll_number ?? null,
+          fourth_year_roll_number: values.fourth_year_roll_number ?? null,
           aadhar_no: values.aadhar_no,
           is_active: true,
+          profile_photo: values.profile_photo ?? null,
           practical_batch: values.practical_batch ?? null,
+          quota_id: values.quota_id ? Number(values.quota_id) : null,
+          fees_plan_id: values.fees_plan_id ? Number(values.fees_plan_id) : null,
         },
+        quota_id: values.quota_id ? Number(values.quota_id) : null,
+        fees_plan_id: values.fees_plan_id ? Number(values.fees_plan_id) : null,
         student_meta_data: {
           aadhar_dise_no: values.aadhar_dise_no ?? null,
           birth_place: values.birth_place ?? null,
@@ -541,25 +629,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
       if (isCollege) {
         const collegeFields = [
-          "current_area", "current_country", "permanent_address", "permanent_area", "permanent_city", 
-          "permanent_state", "permanent_pincode", "permanent_country", "country_code", "student_code", 
-          "admission_standard", "subject_group", "birth_taluka", "birth_district", "student_leaving_reason", 
-          "student_lc_date", "student_lc_no", "pen", "abha_card_no", "school_udise_no", "email_id", "website", 
-          "mother_tongue", "father_qualification", "father_occupation", "father_email", "father_organisation", 
-          "father_office_address", "father_office_phone", "father_mobile", "mother_qualification", 
-          "mother_occupation", "mother_email", "mother_organisation", "mother_office_address", 
-          "mother_office_phone", "mother_mobile", "guardian_name", "guardian_qualification", 
-          "guardian_occupation", "guardian_email", "guardian_organisation", "guardian_office_address", 
-          "guardian_office_phone", "guardian_mobile", "guardian_relation", "ssc_passing_year", 
-          "hsc_passing_year", "hsc_attempts", "hsc_obtained_marks", "hsc_pcb_marks_with_practical", 
-          "entrance_exam_name", "neet_score", "neet_roll_no", "neet_application_number", "neet_all_india_rank", 
-          "neet_percentile", "general_merit", "category_merit", "internship_provisional_number", 
-          "internship_provisional_date", "internship_starting_date", "internship_completion_date", 
-          "first_year_attempt", "second_year_attempt", "third_year_attempt", "fourth_year_attempt", 
-          "final_bhms_passing_date", "ayush_id", "abc_id", "admission_cancel", "admission_cancel_year", 
-          "admission_cancel_date", "admission_transfer", "admission_transfer_date", "admission_transfer_to_college", 
-          "admission_transfer_from_college", "admission_year", "sub_caste", "quota_fees", "activity_house", 
-          "bank_branch_name"
+          "name_as_per_aadhar", "address", "postal_code", "permanent_address", "permanent_pincode", "country_code", "nationality", "university_spid_no", "admission_year", "admission_date", "admission_quota", "admission_category", "tuition_fees", "roll_no_internship", "secondary_mobile", "religion", "caste", "category", "blood_group", "birth_place", "student_leaving_reason", "student_lc_date", "student_lc_no", "privious_school", "aadhar_dise_no", "bank_name", "bank_branch_name", "account_no", "IFSC_code", "bank_branch_pincode", "email_id", "father_occupation", "father_mobile", "mother_occupation", "mother_mobile", "guardian_name", "guardian_occupation", "guardian_mobile", "guardian_relation", "ssc_passing_year", "hsc_passing_year", "hsc_attempts", "hsc_obtained_marks", "hsc_pcb_marks_with_practical", "neet_score", "neet_roll_no", "neet_application_number", "neet_all_india_rank", "neet_percentile", "general_merit", "category_merit", "internship_provisional_number", "internship_provisional_date", "internship_starting_date", "internship_completion_date", "first_year_attempt", "second_year_attempt", "third_year_attempt", "fourth_year_attempt", "final_bhms_passing_date", "ayush_id", "abc_id", "admission_cancel", "admission_cancel_year", "admission_cancel_date", "admission_transfer", "admission_transfer_date", "admission_transfer_to_college", "admission_transfer_from_college", "school_udise_no"
         ];
         collegeFields.forEach((field) => {
           const val = values[field as keyof typeof values];
@@ -633,7 +703,9 @@ const StudentForm: React.FC<StudentFormProps> = ({
       const payload: UpdateStudent = {
         student_meta_data: {},
         students_data: {},
-      }
+        quota_id: values.quota_id ? Number(values.quota_id) : null,
+        fees_plan_id: values.fees_plan_id ? Number(values.fees_plan_id) : null,
+      };
 
       // Compare form values with initial data for student_meta_data fields
       if (values.aadhar_dise_no !== initial_data!.student_meta!.aadhar_dise_no) {
@@ -730,9 +802,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (values.enrollment_code !== initial_data?.enrollment_code) {
         payload.students_data.enrollment_code = values.enrollment_code ?? undefined
       }
-      if (values.gr_no !== initial_data?.gr_no) {
-        payload.students_data.gr_no = values.gr_no
-      }
       if (values.primary_mobile !== initial_data?.primary_mobile) {
         payload.students_data.primary_mobile = values.primary_mobile
       }
@@ -749,38 +818,26 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (values.mother_name_in_guj !== initial_data?.mother_name_in_guj) {
         payload.students_data.mother_name_in_guj = values.mother_name_in_guj
       }
-      const initialRollNumber = initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number;
-      if (values.roll_number?.toString() !== initialRollNumber?.toString()) {
-        payload.students_data.first_year_roll_number = values.roll_number ? Number(values.roll_number) : null;
-      }
+      ;(["admission_number", "first_year_roll_number", "second_year_roll_number", "third_year_roll_number", "fourth_year_roll_number"] as const).forEach((key) => {
+        const nextValue = values[key] ?? null
+        const previousValue = (initial_data as any)?.[key] ?? null
+        if (String(nextValue ?? "") !== String(previousValue ?? "")) {
+          ;(payload.students_data as any)[key] = nextValue
+        }
+      })
       if (values.aadhar_no !== initial_data?.aadhar_no) {
         payload.students_data.aadhar_no = values.aadhar_no
       }
       if (values.practical_batch !== initial_data?.practical_batch) {
         payload.students_data.practical_batch = values.practical_batch || null
       }
+      if (values.profile_photo !== initial_data?.profile_photo) {
+        payload.students_data.profile_photo = values.profile_photo ?? null
+      }
 
       if (isCollege) {
         const collegeFields = [
-          "current_area", "current_country", "permanent_address", "permanent_area", "permanent_city", 
-          "permanent_state", "permanent_pincode", "permanent_country", "country_code", "student_code", 
-          "admission_standard", "subject_group", "birth_taluka", "birth_district", "student_leaving_reason", 
-          "student_lc_date", "student_lc_no", "pen", "abha_card_no", "school_udise_no", "email_id", "website", 
-          "mother_tongue", "father_qualification", "father_occupation", "father_email", "father_organisation", 
-          "father_office_address", "father_office_phone", "father_mobile", "mother_qualification", 
-          "mother_occupation", "mother_email", "mother_organisation", "mother_office_address", 
-          "mother_office_phone", "mother_mobile", "guardian_name", "guardian_qualification", 
-          "guardian_occupation", "guardian_email", "guardian_organisation", "guardian_office_address", 
-          "guardian_office_phone", "guardian_mobile", "guardian_relation", "ssc_passing_year", 
-          "hsc_passing_year", "hsc_attempts", "hsc_obtained_marks", "hsc_pcb_marks_with_practical", 
-          "entrance_exam_name", "neet_score", "neet_roll_no", "neet_application_number", "neet_all_india_rank", 
-          "neet_percentile", "general_merit", "category_merit", "internship_provisional_number", 
-          "internship_provisional_date", "internship_starting_date", "internship_completion_date", 
-          "first_year_attempt", "second_year_attempt", "third_year_attempt", "fourth_year_attempt", 
-          "final_bhms_passing_date", "ayush_id", "abc_id", "admission_cancel", "admission_cancel_year", 
-          "admission_cancel_date", "admission_transfer", "admission_transfer_date", "admission_transfer_to_college", 
-          "admission_transfer_from_college", "admission_year", "sub_caste", "quota_fees", "activity_house", 
-          "bank_branch_name"
+          "name_as_per_aadhar", "address", "postal_code", "permanent_address", "permanent_pincode", "country_code", "nationality", "university_spid_no", "admission_year", "admission_date", "admission_quota", "admission_category", "tuition_fees", "roll_no_internship", "secondary_mobile", "religion", "caste", "category", "blood_group", "birth_place", "student_leaving_reason", "student_lc_date", "student_lc_no", "privious_school", "aadhar_dise_no", "bank_name", "bank_branch_name", "account_no", "IFSC_code", "bank_branch_pincode", "email_id", "father_occupation", "father_mobile", "mother_occupation", "mother_mobile", "guardian_name", "guardian_occupation", "guardian_mobile", "guardian_relation", "ssc_passing_year", "hsc_passing_year", "hsc_attempts", "hsc_obtained_marks", "hsc_pcb_marks_with_practical", "neet_score", "neet_roll_no", "neet_application_number", "neet_all_india_rank", "neet_percentile", "general_merit", "category_merit", "internship_provisional_number", "internship_provisional_date", "internship_starting_date", "internship_completion_date", "first_year_attempt", "second_year_attempt", "third_year_attempt", "fourth_year_attempt", "final_bhms_passing_date", "ayush_id", "abc_id", "admission_cancel", "admission_cancel_year", "admission_cancel_date", "admission_transfer", "admission_transfer_date", "admission_transfer_to_college", "admission_transfer_from_college", "school_udise_no"
         ];
         collegeFields.forEach((field) => {
           const val = values[field as keyof typeof values];
@@ -847,7 +904,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
     else if (activeTab === "academic") setActiveTab("other")
     else if (activeTab === "other") setActiveTab("address")
     else if (activeTab === "address") setActiveTab("bank")
-    else if (activeTab === "bank" && isCollege) setActiveTab("college")
+    else if (activeTab === "bank") setActiveTab(isCollege ? "college" : "bank")
   }, [activeTab, setActiveTab, isCollege])
 
   const handlePreviousTab = useCallback(() => {
@@ -857,7 +914,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
     else if (activeTab === "address") setActiveTab("other")
     else if (activeTab === "bank") setActiveTab("address")
     else if (activeTab === "college") setActiveTab("bank")
-  }, [activeTab])
+  }, [activeTab, isCollege])
 
   useEffect(() => {
     if (form_type === "update" && initial_data) {
@@ -874,6 +931,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
       if (AdmissionClass) handleClassChange(AdmissionClass.id.toString(), "admission_Class")
 
       form.reset({
+        profile_photo: initial_data?.profile_photo || null,
         first_name: initial_data?.first_name || "",
         last_name: initial_data?.last_name || "",
         middle_name: initial_data?.middle_name ? initial_data?.middle_name : null,
@@ -889,6 +947,19 @@ const StudentForm: React.FC<StudentFormProps> = ({
         mother_name: initial_data?.mother_name || null,
         mother_name_in_guj: initial_data?.mother_name_in_guj || null,
         roll_number: initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number || null,
+        admission_number: (initial_data as any)?.admission_number || null,
+        first_year_roll_number: (initial_data as any)?.first_year_roll_number ?? null,
+        second_year_roll_number: (initial_data as any)?.second_year_roll_number ?? null,
+        third_year_roll_number: (initial_data as any)?.third_year_roll_number ?? null,
+        fourth_year_roll_number: (initial_data as any)?.fourth_year_roll_number ?? null,
+        name_as_per_aadhar: (initial_data as any)?.student_meta?.name_as_per_aadhar || null,
+        nationality: (initial_data as any)?.student_meta?.nationality || null,
+        blood_group: (initial_data as any)?.student_meta?.blood_group || null,
+        university_spid_no: (initial_data as any)?.student_meta?.university_spid_no || null,
+        admission_category: (initial_data as any)?.student_meta?.admission_category || null,
+        tuition_fees: (initial_data as any)?.student_meta?.tuition_fees || null,
+        roll_no_internship: (initial_data as any)?.student_meta?.roll_no_internship || null,
+        bank_branch_pincode: (initial_data as any)?.student_meta?.bank_branch_pincode || null,
         aadhar_no: (initial_data?.aadhar_no !== undefined && initial_data?.aadhar_no !== null && String(initial_data?.aadhar_no).trim() !== "") ? Number(initial_data?.aadhar_no) : null,
         aadhar_dise_no: (initial_data?.student_meta?.aadhar_dise_no !== undefined && initial_data?.student_meta?.aadhar_dise_no !== null && String(initial_data?.student_meta?.aadhar_dise_no).trim() !== "")
           ? Number(initial_data?.student_meta?.aadhar_dise_no)
@@ -999,9 +1070,12 @@ const StudentForm: React.FC<StudentFormProps> = ({
         admission_year: initial_data?.student_meta?.admission_year || "",
         sub_caste: initial_data?.student_meta?.sub_caste || "",
         quota_fees: initial_data?.student_meta?.quota_fees || "",
+        admission_quota: (initial_data as any)?.student_meta?.admission_quota || (initial_data as any)?.academic_class?.[0]?.quota?.name || null,
         activity_house: initial_data?.student_meta?.activity_house || "",
         bank_branch_name: initial_data?.student_meta?.bank_branch_name || "",
         practical_batch: initial_data?.practical_batch || "",
+        quota_id: initial_data?.academic_class?.[0]?.quota_id || initial_data?.academic_class?.[0]?.quota?.id || (initial_data as any)?.quota_id || null,
+        fees_plan_id: initial_data?.academic_class?.[0]?.fees_status?.fees_plan_id || (initial_data as any)?.fees_plan_id || null,
       })
 
     } else if (form_type === "create" && initial_data && is_use_for_onBoarding) {
@@ -1045,6 +1119,19 @@ const StudentForm: React.FC<StudentFormProps> = ({
         mother_name_in_guj: initial_data.mother_name_in_guj || null,
         class: initial_data?.class_id ? initial_data?.class_id.toString() : undefined,
         roll_number: initial_data?.first_year_roll_number || initial_data?.second_year_roll_number || initial_data?.third_year_roll_number || initial_data?.fourth_year_roll_number || null,
+        admission_number: (initial_data as any)?.admission_number || null,
+        first_year_roll_number: (initial_data as any)?.first_year_roll_number ?? null,
+        second_year_roll_number: (initial_data as any)?.second_year_roll_number ?? null,
+        third_year_roll_number: (initial_data as any)?.third_year_roll_number ?? null,
+        fourth_year_roll_number: (initial_data as any)?.fourth_year_roll_number ?? null,
+        name_as_per_aadhar: (initial_data as any)?.student_meta?.name_as_per_aadhar || null,
+        nationality: (initial_data as any)?.student_meta?.nationality || null,
+        blood_group: (initial_data as any)?.student_meta?.blood_group || null,
+        university_spid_no: (initial_data as any)?.student_meta?.university_spid_no || null,
+        admission_category: (initial_data as any)?.student_meta?.admission_category || null,
+        tuition_fees: (initial_data as any)?.student_meta?.tuition_fees || null,
+        roll_no_internship: (initial_data as any)?.student_meta?.roll_no_internship || null,
+        bank_branch_pincode: (initial_data as any)?.student_meta?.bank_branch_pincode || null,
         aadhar_no: initial_data?.aadhar_no ? Number(initial_data?.aadhar_no) : null,
         aadhar_dise_no: initial_data?.student_meta?.aadhar_dise_no
           ? Number(initial_data?.student_meta?.aadhar_dise_no)
@@ -1152,8 +1239,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
         admission_year: initial_data?.student_meta?.admission_year || "",
         sub_caste: initial_data?.student_meta?.sub_caste || "",
         quota_fees: initial_data?.student_meta?.quota_fees || "",
+        admission_quota: (initial_data as any)?.student_meta?.admission_quota || (initial_data as any)?.academic_class?.[0]?.quota?.name || null,
         activity_house: initial_data?.student_meta?.activity_house || "",
         bank_branch_name: initial_data?.student_meta?.bank_branch_name || "",
+        quota_id: (initial_data as any)?.quota_type || (initial_data as any)?.quota_id || null,
+        fees_plan_id: (initial_data as any)?.fees_plan_id || null,
       })
     }
     else {
@@ -1194,7 +1284,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${isCollege ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+          <TabsList className="grid h-auto w-full grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-1 p-1.5 [&>button]:py-1.5">
             <TabsTrigger value="personal">{t("personal")}</TabsTrigger>
             <TabsTrigger value="family">{t("family")}</TabsTrigger>
             <TabsTrigger value="academic">{t("academic")}</TabsTrigger>
@@ -1210,6 +1300,26 @@ const StudentForm: React.FC<StudentFormProps> = ({
                 <CardTitle>{t("personal_details")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 pb-4 border-b">
+                  <AvatarUpload
+                    currentPhotoUrl={form.watch("profile_photo")}
+                    fallbackText={`${form.watch("first_name")?.[0] || ""}${form.watch("last_name")?.[0] || ""}`}
+                    size="md"
+                    onUpload={async (file) => {
+                      const url = await uploadImageToStorage(file, "photos/students")
+                      form.setValue("profile_photo", url, { shouldDirty: true })
+                      return url
+                    }}
+                    onDelete={async () => {
+                      form.setValue("profile_photo", null, { shouldDirty: true })
+                    }}
+                  />
+                  <div>
+                    <h4 className="font-medium text-sm">Student Profile Photo</h4>
+                    <p className="text-xs text-muted-foreground">Upload photo to DigitalOcean cloud storage (max 5MB)</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -1219,6 +1329,24 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         <FormLabel>Enrollment Number</FormLabel>
                         <FormControl>
                           <Input {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="admission_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission ID</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1271,65 +1399,26 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="name_as_per_aadhar"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name as Per Aadhar</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="first_name_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("first_name")} (Gujarati)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="middle_name_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("middle_name")} (Gujarati)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="last_name_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("last_name")} (Gujarati)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1415,19 +1504,46 @@ const StudentForm: React.FC<StudentFormProps> = ({
                   />
                   <FormField
                     control={form.control}
-                    name="birth_place_in_guj"
+                    name="nationality"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t("birth_place")} (Gujarati)</FormLabel>
+                        <FormLabel>Nationality</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="blood_group"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Blood Group</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(value || null)}
+                          value={field.value ?? undefined}
+                          disabled={form_type === "view"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Blood Group" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((group) => (
+                              <SelectItem key={group} value={group}>
+                                {group}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1502,25 +1618,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="father_name_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("father's_name")} (Gujarati)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1529,25 +1626,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("mother's_name")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="mother_name_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("mother's_name")} (Gujarati)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1602,6 +1680,176 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     )}
                   />
                 </div>
+                <hr className="border-border" />
+                {/* Extended Parent & Guardian Details */}
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Extended Parent & Guardian Details
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="border border-border rounded-lg p-4 space-y-4">
+                      <h4 className="text-sm font-medium text-foreground">Father's Additional Info</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="father_occupation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Occupation</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="father_mobile"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mobile No.</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border border-border rounded-lg p-4 space-y-4">
+                      <h4 className="text-sm font-medium text-foreground">Mother's Additional Info</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="mother_occupation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Occupation</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="mother_mobile"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mobile No.</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border border-border rounded-lg p-4 space-y-4">
+                      <h4 className="text-sm font-medium text-foreground">Local Guardian's Info</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="guardian_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="guardian_relation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Relation with Student</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="guardian_occupation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Occupation</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="guardian_mobile"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mobile No.</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button
@@ -1625,44 +1873,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="gr_no"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel required>{t("gr_no")}</FormLabel>
-                        <FormControl>
-                          <NumberInput
-                            {...field}
-                            value={field.value ? String(field.value) : ""}
-                            onChange={(value) =>
-                              field.onChange(value ? Number(value) : undefined)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="roll_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("roll_number")}</FormLabel>
-                        <FormControl>
-                          <NumberInput
-                            {...field}
-                            value={field.value ? String(field.value) : ""}
-                            onChange={(value) =>
-                              field.onChange(value ? Number(value) : undefined)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1691,6 +1901,168 @@ const StudentForm: React.FC<StudentFormProps> = ({
                                 }
                               }
                             }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="admission_year"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Year</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="university_spid_no"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>University SPID Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="admission_category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Category</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tuition_fees"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tuition Fees</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="first_year_roll_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Roll No. 1st BHMS</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field} type="number"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="second_year_roll_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Roll No. 2nd BHMS</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field} type="number"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="third_year_roll_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Roll No. 3rd BHMS</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field} type="number"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fourth_year_roll_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Roll No. 4th BHMS</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field} type="number"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                            disabled={form_type === "view"}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="roll_no_internship"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Roll No. Internship</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            disabled={form_type === "view"}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1727,80 +2099,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     />
                   )}
                 </div>
-                {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="admission_class"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("admission_class")}</FormLabel>
-                        <Select
-                          value={field.value ||  ""}
-                          onValueChange={(value) => {
-                            field.onChange(value)
-                            handleClassChange(value, "admission_Class")
-                          }}
-                          disabled={is_use_for_onBoarding}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("select_class")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value=" " disabled>
-                              {t("classes")}
-                            </SelectItem>
-
-                            {AcademicClasses.map(
-                              (cls, index) => (
-                                  <SelectItem key={index} value={cls.id.toString()}>
-                                    {cls.class}
-                                  </SelectItem>
-                                ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="admission_division"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("admission_division")}</FormLabel>
-                        <Select
-                          value={field.value ||  ""}
-                          onValueChange={(value) => {
-                            field.onChange(value)
-                            handleDivisionChange(value, "admission_Class")
-                          }}
-                          disabled={!selectedAdmissionClass}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("select_division")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value=" " disabled>
-                              {t("divisions")}
-                            </SelectItem>
-                            {availableDivisionsForAdmissionClass &&
-                              availableDivisionsForAdmissionClass.divisions.map((division, index) => (
-                                <SelectItem key={index} value={division.id.toString()}>
-                                  {`${division.division} ${division.aliases ? "- " + division.aliases : ""}`}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>   */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1844,6 +2142,118 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     )}
                   />
                 </div>
+                {/* ── Admission Quota & Fee Structure Template ────────────── */}
+                <div className="p-4 rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50/50 via-white to-slate-50 space-y-3.5 shadow-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-emerald-100">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-md bg-emerald-600 text-white">
+                        <Landmark className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">
+                          Admission Quota & Fee Structure Template
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Assign student's admission quota and lock their grandfathered cohort fee plan.
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+                      <ShieldCheck className="h-3 w-3 mr-1 text-emerald-600" />
+                      Cohort Grandfathered
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 1. Admission Quota */}
+                    <FormField
+                      control={form.control}
+                      name="admission_quota"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                            <Award className="h-3.5 w-3.5 text-blue-600" />
+                            Admission Quota
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              placeholder="e.g. Government Quota"
+                              className="h-9 text-xs bg-white"
+                              disabled={form_type === "view"}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* 2. Fee Structure Template */}
+                    <FormField
+                      control={form.control}
+                      name="fees_plan_id"
+                      render={({ field }) => {
+                        const currentQuotaId = form.watch("quota_id")
+                        const relevantPlans = currentQuotaId
+                          ? feePlans.filter((p) => Number(p.quota_id) === Number(currentQuotaId))
+                          : feePlans
+                        const displayPlans = relevantPlans.length > 0 ? relevantPlans : feePlans
+
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                              <Coins className="h-3.5 w-3.5 text-amber-600" />
+                              Assigned Fee Template (Cohort Plan)
+                            </FormLabel>
+                            <Select
+                              value={field.value ? String(field.value) : "none"}
+                              onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                              disabled={form_type === "view"}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-9 text-xs bg-white">
+                                  <SelectValue placeholder="Select fee template to lock..." />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none" className="text-xs">
+                                  Do not assign fee template yet
+                                </SelectItem>
+                                {displayPlans.map((plan) => (
+                                  <SelectItem key={plan.id} value={String(plan.id)} className="text-xs">
+                                    {plan.name} — ₹{Number(plan.total_amount || 0).toLocaleString("en-IN")} {plan.quota ? `(${plan.quota.name})` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )
+                      }}
+                    />
+                  </div>
+
+                  {/* Summary Card if Fee Plan is selected */}
+                  {(() => {
+                    const currentPlanId = form.watch("fees_plan_id")
+                    const planObj = feePlans.find((p) => Number(p.id) === Number(currentPlanId))
+                    if (!planObj) return null
+
+                    return (
+                      <div className="p-3 bg-emerald-50/70 border border-emerald-200/90 rounded-md text-xs space-y-1">
+                        <div className="flex justify-between items-center font-medium text-emerald-900">
+                          <span>Selected Plan: <strong className="font-semibold">{planObj.name}</strong></span>
+                          <span className="text-emerald-700 font-bold text-sm">₹{Number(planObj.total_amount || 0).toLocaleString("en-IN")}</span>
+                        </div>
+                        <p className="text-[11px] text-emerald-800 leading-relaxed">
+                          This fee structure will be grandfathered and locked for this student across all terms in their academic cohort.
+                        </p>
+                      </div>
+                    )
+                  })()}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1851,25 +2261,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("previous_school")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="privious_school_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("previous_school")} (Gujarati)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -1926,25 +2317,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="religion_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("religion")} (Gujarati)</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -1953,25 +2325,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("caste")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="caste_in_guj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("caste")} (Gujarati)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -2046,65 +2399,8 @@ const StudentForm: React.FC<StudentFormProps> = ({
                   )}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="district"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("district")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("city")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("state")}</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={form.control}
                     name="postal_code"
@@ -2122,6 +2418,51 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       </FormItem>
                     )}
                   />
+                </div>
+                <hr className="border-border" />
+                {/* Extended Addresses */}
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Extended Address Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="permanent_address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Permanent Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              disabled={form_type === "view"}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="permanent_pincode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Permanent Pin Code</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value || null)}
+                              disabled={form_type === "view"}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
@@ -2255,24 +2596,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         NEET & Entrance Exam Details
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="entrance_exam_name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Entrance Exam Name</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                         <FormField
                           control={form.control}
                           name="neet_score"
@@ -2590,24 +2913,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                             </FormItem>
                           )}
                         />
-                        <FormField
-                          control={form.control}
-                          name="admission_year"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Admission Year</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                       </div>
                     </div>
                     <hr className="border-border" />
@@ -2697,603 +3002,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                     </div>
                     <hr className="border-border" />
 
-                    {/* Extended Parent & Guardian Details */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                        Extended Parent & Guardian Details
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="border border-border rounded-lg p-4 space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Father's Additional Info</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="father_qualification"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Qualification</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_occupation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Occupation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Email</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="email"
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_organisation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Organisation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_office_address"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_office_phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Phone</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="father_mobile"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Mobile No.</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
 
-                        <div className="border border-border rounded-lg p-4 space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Mother's Additional Info</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="mother_qualification"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Qualification</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_occupation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Occupation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Email</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="email"
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_organisation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Organisation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_office_address"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_office_phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Phone</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="mother_mobile"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Mobile No.</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="border border-border rounded-lg p-4 space-y-4">
-                          <h4 className="text-sm font-medium text-foreground">Local Guardian's Info</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="guardian_name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_relation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Relation with Student</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_qualification"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Qualification</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_occupation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Occupation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Email</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="email"
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_organisation"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Organisation</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_office_address"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_office_phone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Office Phone</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="guardian_mobile"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Mobile No.</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value || null)}
-                                      disabled={form_type === "view"}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <hr className="border-border" />
-
-                    {/* Extended Addresses */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                        Extended Address Details
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="current_area"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Current Area</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="current_country"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Current Country</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent Address</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_area"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent Area</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent City</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent State</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_pincode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent Pin Code</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="permanent_country"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Permanent Country</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <hr className="border-border" />
 
                     {/* Administrative & Miscellaneous */}
                     <div>
@@ -3307,96 +3016,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Country Code</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="student_code"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Student Code</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="admission_standard"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Admission Standard</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="subject_group"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Subject Group</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="birth_taluka"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Birth Taluka</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="birth_district"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Birth District</FormLabel>
                               <FormControl>
                                 <Input
                                   {...field}
@@ -3466,42 +3085,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         />
                         <FormField
                           control={form.control}
-                          name="pen"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>PEN</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="abha_card_no"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>ABHA Card No.</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
                           name="school_udise_no"
                           render={({ field }) => (
                             <FormItem>
@@ -3527,42 +3110,6 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               <FormControl>
                                 <Input
                                   type="email"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="website"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Website</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="mother_tongue"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Mother Tongue</FormLabel>
-                              <FormControl>
-                                <Input
                                   {...field}
                                   value={field.value ?? ""}
                                   onChange={(e) => field.onChange(e.target.value || null)}
@@ -3611,64 +3158,28 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         />
                         <FormField
                           control={form.control}
-                          name="sub_caste"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Sub Caste</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="quota_fees"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Quota Fees</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="activity_house"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Activity House</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value || null)}
-                                  disabled={form_type === "view"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
                           name="bank_branch_name"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Bank Branch Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  onChange={(e) => field.onChange(e.target.value || null)}
+                                  disabled={form_type === "view"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="bank_branch_pincode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Branch Pin Code</FormLabel>
                               <FormControl>
                                 <Input
                                   {...field}
@@ -3845,7 +3356,8 @@ const StudentForm: React.FC<StudentFormProps> = ({
                   >
                     {t("previous")}
                   </Button>
-                  <Button
+                  {(
+                    <Button
                     type="submit"
                     disabled={
                       isStundetGetingUpdate ||
@@ -3865,6 +3377,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
                         <Loader2 className="animate-spin" />
                       )}
                   </Button>
+                  )}
                 </CardFooter>
               </Card>
             </TabsContent>

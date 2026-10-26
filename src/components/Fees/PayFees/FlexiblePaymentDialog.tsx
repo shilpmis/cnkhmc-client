@@ -80,6 +80,14 @@ interface FlexiblePaymentDialogProps {
     plan_concession: number
   }
   getFeeTypeName: (feeTypeId: number) => string
+  initialPaymentAmount?: number
+  initialValues?: {
+    payment_mode?: "Cash" | "Online" | "Bank Transfer" | "Cheque" | "UPI"
+    transaction_reference?: string
+    payment_date?: string
+    remarks?: string
+  }
+  skipAmountConfirmation?: boolean
 }
 
 const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
@@ -94,6 +102,9 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
   enrolled_academic_session_id,
   availableConcessionBalance = { student_concession: 0, plan_concession: 0 },
   getFeeTypeName,
+  initialPaymentAmount,
+  initialValues,
+  skipAmountConfirmation = false,
 }) => {
   const { t } = useTranslation()
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -117,6 +128,19 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
       include_carry_forward: true,
     },
   })
+
+  useEffect(() => {
+    if (isOpen && initialPaymentAmount && initialPaymentAmount > 0) {
+      form.setValue("payment_amount", initialPaymentAmount)
+    }
+    if (isOpen && initialValues) {
+      if (initialValues.payment_mode) form.setValue("payment_mode", initialValues.payment_mode)
+      if (initialValues.transaction_reference !== undefined)
+        form.setValue("transaction_reference", initialValues.transaction_reference)
+      if (initialValues.payment_date) form.setValue("payment_date", initialValues.payment_date)
+      if (initialValues.remarks !== undefined) form.setValue("remarks", initialValues.remarks)
+    }
+  }, [isOpen, initialPaymentAmount])
 
   const paymentAmount = form.watch("payment_amount")
   const autoDistribute = form.watch("auto_distribute")
@@ -450,6 +474,11 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
       })
       return
     }
+    if (skipAmountConfirmation) {
+      // Amount was already entered and reviewed by the caller (e.g. the receipt maker)
+      void handleConfirmedPayment(values)
+      return
+    }
     setPendingPaymentValues(values)
     setShowConfirmDialog(true)
     setConfirmAmount("")
@@ -458,9 +487,10 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
   }
 
   // Actual payment logic, called after confirmation
-  const handleConfirmedPayment = async () => {
-    if (!pendingPaymentValues) return
-    if (Number(confirmAmount) !== Number(paymentAmount)) {
+  const handleConfirmedPayment = async (valuesOverride?: z.infer<typeof flexiblePaymentSchema>) => {
+    const values = valuesOverride ?? pendingPaymentValues
+    if (!values) return
+    if (!valuesOverride && Number(confirmAmount) !== Number(paymentAmount)) {
       setConfirmError("Entered amount does not match the payment amount.")
       return
     }
@@ -498,11 +528,11 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
             discounted_amount: preAppliedDiscount,
             paid_as_refund: false,
             refunded_amount: 0,
-            payment_mode: pendingPaymentValues.payment_mode,
-            transaction_reference: pendingPaymentValues.transaction_reference || "",
-            payment_date: pendingPaymentValues.payment_date,
+            payment_mode: values.payment_mode,
+            transaction_reference: values.transaction_reference || "",
+            payment_date: values.payment_date,
             remarks:
-              pendingPaymentValues.remarks ||
+              values.remarks ||
               `Flexible payment - Regular: ${formatCurrency(regularPaidAmount)}${amountPaidAsCarryForward > 0 ? `, Carry Forward: ${formatCurrency(amountPaidAsCarryForward)}` : ""}`,
             remaining_amount: remainingAmount,
             amount_paid_as_carry_forward: amountPaidAsCarryForward,
@@ -628,7 +658,7 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
             {t("cancel")}
           </Button>
           <Button
-            onClick={handleConfirmedPayment}
+            onClick={() => handleConfirmedPayment()}
             disabled={isPaymentProcessing || !confirmAmount}
           >
             {isPaymentProcessing ? (
@@ -646,7 +676,18 @@ const FlexiblePaymentDialog: React.FC<FlexiblePaymentDialogProps> = ({
   )
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) return
+        // Closing with the cross after a successful payment must still run the success callback
+        if (paymentStep === "success") {
+          setPaymentStep("confirm")
+          onSuccessfulSubmit()
+        }
+        onClose()
+      }}
+    >
       <DialogContent className="sm:max-w-[800px] h-[90vh] overflow-y-auto">
         {paymentStep === "success" ? (
           renderSuccessStep()

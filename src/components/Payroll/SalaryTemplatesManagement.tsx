@@ -1,3 +1,4 @@
+import { useCan } from "@/permissions/useCan"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ import { SaralPagination } from "../ui/common/SaralPagination"
 import { useNavigate } from "react-router-dom"
 
 const SalaryTemplatesManagement = () => {
+  const { can } = useCan()
   const { t } = useTranslation()
   
   const navigate = useNavigate()
@@ -337,10 +339,12 @@ const SalaryTemplatesManagement = () => {
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
 
-          <Button onClick={handleAddTemplate} disabled={isLoadingComponents}>
+          {can("create", "Payroll") && (
+<Button onClick={handleAddTemplate} disabled={isLoadingComponents}>
             <Plus className="mr-2 h-4 w-4" />
             {t("add_template")}
           </Button>
+)}
         </div>
       </div>
 
@@ -441,14 +445,18 @@ const SalaryTemplatesManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
+                            {can("update", "Payroll") && (
+<DropdownMenuItem onClick={() => handleEditTemplate(template)}>
                               <Edit className="h-4 w-4 mr-2" />
                               {t("edit")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
+)}
+                            {can("create", "Payroll") && (
+<DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
                               <Copy className="h-4 w-4 mr-2" />
                               {t("clone")}
                             </DropdownMenuItem>
+)}
                             <DropdownMenuItem onClick={() => handleToggleStatus(template)}>
                               {template.is_active ? (
                                 <>
@@ -463,13 +471,15 @@ const SalaryTemplatesManagement = () => {
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
+                            {can("delete", "Payroll") && (
+<DropdownMenuItem
                               onClick={() => handleDeleteTemplate(template)}
                               className="text-red-600 hover:text-red-700 focus:text-red-700"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               {t("delete")}
                             </DropdownMenuItem>
+)}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

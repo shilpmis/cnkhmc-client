@@ -9,6 +9,8 @@ import type { UseFormReturn } from "react-hook-form"
 import type { StaffFormData } from "@/utils/staff.validation"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { NumberInput } from "../../ui/NumberInput"
+import { AvatarUpload } from "@/components/ui/AvatarUpload"
+import { uploadImageToStorage } from "@/services/StorageService"
 
 interface PersonalDetailsSectionProps {
   form: UseFormReturn<StaffFormData>
@@ -29,6 +31,26 @@ export const PersonalDetailsSection: React.FC<PersonalDetailsSectionProps> = ({
         <CardTitle>{t("personal_details")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-col items-center sm:flex-row sm:items-center gap-4 pb-4 border-b">
+          <AvatarUpload
+            currentPhotoUrl={form.watch("profile_photo")}
+            fallbackText={`${form.watch("first_name")?.[0] || ""}${form.watch("last_name")?.[0] || ""}`}
+            size="md"
+            onUpload={async (file) => {
+              const url = await uploadImageToStorage(file, "photos/staff")
+              form.setValue("profile_photo", url, { shouldDirty: true })
+              return url
+            }}
+            onDelete={async () => {
+              form.setValue("profile_photo", null, { shouldDirty: true })
+            }}
+          />
+          <div>
+            <h4 className="font-medium text-sm">Staff Profile Photo</h4>
+            <p className="text-xs text-muted-foreground">Upload photo to DigitalOcean cloud storage (max 5MB)</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             control={form.control}

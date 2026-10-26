@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   User,
   GraduationCap,
@@ -26,6 +26,8 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useNavigate } from "react-router-dom"
 import type { StaffType } from "@/types/staff"
 import ExperienceCertificateModal from "./ExperienceCertificateModal"
+import { AvatarUpload } from "@/components/ui/AvatarUpload"
+import { useUploadStaffPhotoMutation, useDeleteStaffPhotoMutation } from "@/services/StaffService"
 
 interface StaffProfileViewProps {
   staff: StaffType
@@ -51,6 +53,13 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
   }
 
   const [certModalOpen, setCertModalOpen] = useState(false)
+  const [uploadPhoto] = useUploadStaffPhotoMutation()
+  const [deletePhoto] = useDeleteStaffPhotoMutation()
+  const [currentPhoto, setCurrentPhoto] = useState<string | null | undefined>(staff.profile_photo)
+
+  useEffect(() => {
+    setCurrentPhoto(staff.profile_photo)
+  }, [staff.profile_photo])
 
   return (
     <div className="container mx-auto py-6 space-y-8 max-w-7xl">
@@ -85,16 +94,24 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
             <div className="relative">
-              <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-                <AvatarImage
-                  src={staff.profile_photo || "/placeholder.svg?height=128&width=128"}
-                  alt={staff.first_name}
-                />
-                <AvatarFallback className="text-4xl bg-primary/10">
-                  {staff.first_name?.[0]}
-                  {staff.last_name?.[0]}
-                </AvatarFallback>
-              </Avatar>
+              <AvatarUpload
+                currentPhotoUrl={currentPhoto}
+                fallbackText={`${staff.first_name?.[0] || ""}${staff.last_name?.[0] || ""}`}
+                altText={staff.first_name}
+                size="lg"
+                onUpload={async (file) => {
+                  const res = await uploadPhoto({ staffId: staff.id, file }).unwrap()
+                  const uploadedUrl = res?.data?.url || res?.url
+                  if (uploadedUrl) {
+                    setCurrentPhoto(uploadedUrl)
+                  }
+                  return res
+                }}
+                onDelete={async () => {
+                  await deletePhoto(staff.id).unwrap()
+                  setCurrentPhoto(null)
+                }}
+              />
               <Badge className={`absolute -top-2 -right-2 ${staff.is_active ? "bg-green-500" : "bg-red-500"}`}>
                 {staff.is_active ? "Active" : "Inactive"}
               </Badge>

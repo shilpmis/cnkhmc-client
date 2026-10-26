@@ -80,6 +80,7 @@ export const useStaffFormReset = (
       const branchName = initialData.bank_branch_name || anyData.branch_details || null
 
       form.reset({
+        profile_photo: initialData.profile_photo || null,
         is_teaching_role: Boolean(initialData.is_teching_staff || initialData.is_teaching_role),
         staff_role_id: initialData.staff_role_id,
         first_name: initialData.first_name || "",

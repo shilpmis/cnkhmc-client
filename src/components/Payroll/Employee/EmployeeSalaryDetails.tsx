@@ -1,5 +1,6 @@
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +28,7 @@ interface EmployeeSalaryDetailsProps {
 }
 
 const EmployeeSalaryDetails = ({ employee }: EmployeeSalaryDetailsProps) => {
+  const { can } = useCan()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const CurrentAcademicSessionForSchool = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -221,13 +223,17 @@ const EmployeeSalaryDetails = ({ employee }: EmployeeSalaryDetailsProps) => {
                   <AlertDescription>{t("you_need_to_create_a_salary_template_for_this_employee")}</AlertDescription>
                 </Alert>
                 <div className="flex flex-col sm:flex-row gap-4 justify-end">
-                  <Button onClick={() => handleNavigateToSalaryPage("create")} variant="outline">
+                  {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button onClick={() => handleNavigateToSalaryPage("create")} variant="outline">
                     <ExternalLink className="mr-2 h-4 w-4" />
                     {t("advanced_create")}
                   </Button>
-                  <Button onClick={() => handleNavigateToSalaryPage("create")}>
+)}
+                  {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button onClick={() => handleNavigateToSalaryPage("create")}>
                     <Plus className="mr-2 h-4 w-4" /> {t("create_salary_template")}
                   </Button>
+)}
                 </div>
               </div>
             ) : (
@@ -272,23 +278,31 @@ const EmployeeSalaryDetails = ({ employee }: EmployeeSalaryDetailsProps) => {
           <div className="flex gap-2">
             {salary ? (
               <>
-                {/* <Button variant="outline" onClick={() => handleNavigateToSalaryPage("edit")}>
+                {/* {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button variant="outline" onClick={() => handleNavigateToSalaryPage("edit")}>
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {t("advanced_edit")}
-                </Button> */}
-                <Button onClick={() => handleNavigateToSalaryPage("edit")}>
+                </Button>
+)} */}
+                {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button onClick={() => handleNavigateToSalaryPage("edit")}>
                   <Edit className="mr-2 h-4 w-4" /> {t("edit_salary")}
                 </Button>
+)}
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => handleNavigateToSalaryPage("create")}>
+                {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button variant="outline" onClick={() => handleNavigateToSalaryPage("create")}>
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {t("advanced_create")}
                 </Button>
-                <Button onClick={() => handleNavigateToSalaryPage("create")}>
+)}
+                {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button onClick={() => handleNavigateToSalaryPage("create")}>
                   <Plus className="mr-2 h-4 w-4" /> {t("create_salary_template")}
                 </Button>
+)}
               </>
             )}
           </div>
@@ -561,9 +575,11 @@ const EmployeeSalaryDetails = ({ employee }: EmployeeSalaryDetailsProps) => {
                     <p className="text-sm text-muted-foreground mb-4">
                       {t("use_this_option_to_quickly_set_up_a_salary_template_with_basic_components")}
                     </p>
-                    <Button onClick={() => handleNavigateToSalaryPage("create")} className="w-full">
+                    {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button onClick={() => handleNavigateToSalaryPage("create")} className="w-full">
                       <Plus className="mr-2 h-4 w-4" /> {t("create_salary_template")}
                     </Button>
+)}
                   </CardContent>
                 </Card>
 
@@ -576,9 +592,11 @@ const EmployeeSalaryDetails = ({ employee }: EmployeeSalaryDetailsProps) => {
                     <p className="text-sm text-muted-foreground mb-4">
                       {t("use_this_option_for_more_advanced_configuration_and_detailed_setup")}
                     </p>
-                    <Button variant="outline" onClick={() => handleNavigateToSalaryPage("create")} className="w-full">
+                    {(can("update", "Payroll") || can("create", "Payroll")) && (
+<Button variant="outline" onClick={() => handleNavigateToSalaryPage("create")} className="w-full">
                       <ExternalLink className="mr-2 h-4 w-4" /> {t("advanced_create")}
                     </Button>
+)}
                   </CardContent>
                 </Card>
               </div>

@@ -1,4 +1,4 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, isPlain } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import feesReducer from "./slices/feesSlice";
 import schoolReducer from "./slices/schoolSlice";
@@ -36,6 +36,7 @@ import { ExamApi } from "@/services/ExamService";
 import { HostelApi } from "@/services/HostelService";
 import { DeadStockApi } from "@/services/DeadStockService";
 import { LectureAttendanceApi } from "@/services/LectureAttendanceService";
+import { NonLectureApi } from "@/services/NonLectureService";
 
 const store = configureStore({
   reducer: {
@@ -74,9 +75,16 @@ const store = configureStore({
     [HostelApi.reducerPath]: HostelApi.reducer,
     [DeadStockApi.reducerPath]: DeadStockApi.reducer,
     [LectureAttendanceApi.reducerPath]: LectureAttendanceApi.reducer,
+    [NonLectureApi.reducerPath]: NonLectureApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(
+    // Downloaded files (Excel, PDF) arrive as Blobs and are held in the RTK Query mutation result.
+    // Treat them as serializable so the dev check does not warn, while still checking everything else.
+    getDefaultMiddleware({
+      serializableCheck: {
+        isSerializable: (value: unknown) => isPlain(value) || value instanceof Blob,
+      },
+    }).concat(
       Authapi.middleware,
       SchoolApi.middleware,
       AcademicApi.middleware,
@@ -103,7 +111,8 @@ const store = configureStore({
       ExamApi.middleware,
       HostelApi.middleware,
       DeadStockApi.middleware,
-      LectureAttendanceApi.middleware
+      LectureAttendanceApi.middleware,
+      NonLectureApi.middleware
     ),
 });
 

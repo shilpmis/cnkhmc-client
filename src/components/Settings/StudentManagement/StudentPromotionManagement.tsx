@@ -304,7 +304,8 @@ export function StudentPromotionManagement() {
   // Handle source class change
   const handleSourceClassChange = (value: string) => {
     setSourceClass(value)
-    setSourceDivision("")
+    const srcClsObj = academicClasses.find((cls) => cls.class === value)
+    setSourceDivision(srcClsObj?.divisions?.[0]?.id?.toString() || "")
     setHasSearched(false)
 
     // Auto-select target class (same or next class)
@@ -381,7 +382,14 @@ export function StudentPromotionManagement() {
       }
     }
 
-    setTargetDivision("")
+    const targetClsObj = academicClasses.find((cls) => cls.class === (nextClassExists ? nextClass : value))
+    setTargetDivision(targetClsObj?.divisions?.[0]?.id?.toString() || "")
+  }
+
+  const handleTargetClassChange = (value: string) => {
+    setTargetClass(value)
+    const tgtClsObj = academicClasses.find((cls) => cls.class === value)
+    setTargetDivision(tgtClsObj?.divisions?.[0]?.id?.toString() || "")
   }
 
   // Handle source division change
@@ -465,7 +473,7 @@ export function StudentPromotionManagement() {
         source_academic_session_id: Number.parseInt(sourceAcademicSession),
         target_academic_session_id: Number.parseInt(targetAcademicSession),
         target_class_id: Number.parseInt(targetClass),
-        target_division_id: targetDivision && targetDivision !== "auto" ? Number.parseInt(targetDivision) : null,
+        target_division_id: targetDivision && targetDivision !== "auto" ? Number.parseInt(targetDivision) : (academicClasses.find((cls) => cls.class === targetClass)?.divisions?.[0]?.id || null),
         student_ids: selectedStudents,
         status: "promoted",
       }).unwrap()
@@ -502,13 +510,11 @@ export function StudentPromotionManagement() {
     if (
       !selectedStudentForAction ||
       !targetClass ||
-      !targetAcademicSession ||
-      !targetDivision ||
-      targetDivision === "auto"
+      !targetAcademicSession
     ) {
       toast({
         title: "Validation Error",
-        description: "Please select target class, division, and academic session",
+        description: "Please select target class and academic session",
         variant: "destructive",
       })
       return
@@ -529,7 +535,7 @@ export function StudentPromotionManagement() {
         source_academic_session_id: Number.parseInt(sourceAcademicSession),
         target_academic_session_id: Number.parseInt(targetAcademicSession),
         source_division_id: selectedStudentForAction.division_id,
-        target_division_id: Number.parseInt(targetDivision),
+        target_division_id: targetDivision && targetDivision !== "auto" ? Number.parseInt(targetDivision) : (academicClasses.find((cls) => cls.class === targetClass)?.divisions?.[0]?.id || selectedStudentForAction.division_id),
         student_id: selectedStudentForAction?.student?.id,
         status: "promoted",
         remarks: promotionRemarks || "Promoted to next class",
@@ -910,23 +916,6 @@ export function StudentPromotionManagement() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>{t("division")}</Label>
-                      <Select value={sourceDivision} onValueChange={handleSourceDivisionChange} disabled={!sourceClass}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("select_division")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">{t("all_divisions")}</SelectItem>
-                          {availableSourceDivisions.map((div) => (
-                            <SelectItem key={div.id} value={div.id.toString()}>
-                              {div.division || "Unnamed"} {div.aliases && `(${div.aliases})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                 </div>
 
@@ -935,7 +924,7 @@ export function StudentPromotionManagement() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t("class")}</Label>
-                      <Select value={targetClass} onValueChange={setTargetClass}>
+                      <Select value={targetClass} onValueChange={handleTargetClassChange}>
                         <SelectTrigger>
                           <SelectValue placeholder={t("select_class")} />
                         </SelectTrigger>
@@ -943,23 +932,6 @@ export function StudentPromotionManagement() {
                           {academicClasses?.map((cls) => (
                             <SelectItem key={cls.id} value={cls.class}>
                               {cls.class}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>{t("division")}</Label>
-                      <Select value={targetDivision} onValueChange={setTargetDivision} disabled={!targetClass}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("select_division")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">{t("auto_assign")}</SelectItem>
-                          {availableTargetDivisions.map((div) => (
-                            <SelectItem key={div.id} value={div.id.toString()}>
-                              {div.division || "Unnamed"} {div.aliases && `(${div.aliases})`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1399,7 +1371,6 @@ export function StudentPromotionManagement() {
                 {academicClassesFromStore
                   ? academicClassesFromStore.find(cls => cls.id === selectedStudentForAction?.class.class)?.class
                   : "Loading.."}
-                {selectedStudentForAction?.class?.division}
               </p>
               <p className="text-xs text-muted-foreground">
                 {academicSessions.find((s: any) => s.id.toString() === sourceAcademicSession)?.session_name}
@@ -1471,7 +1442,6 @@ export function StudentPromotionManagement() {
                   {academicClassesFromStore ?
                     academicClassesFromStore.find(cls => cls.id === selectedStudentForAction?.class.class)?.class
                    :  "Loading.."}
-                  {selectedStudentForAction?.class?.division}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {academicSessions.find((s: any) => s.id.toString() === sourceAcademicSession)?.session_name}
@@ -1582,8 +1552,7 @@ export function StudentPromotionManagement() {
                             typeof selectedStudentForAction.class.class === "object"
                             ? selectedStudentForAction.class.id
                             : "")
-                        : ""}{" "}
-                      {selectedStudentForAction?.class?.division}
+                        : ""}
                     </p>
                   )}
                 </div>

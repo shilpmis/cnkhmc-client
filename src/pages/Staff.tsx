@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { useCan } from "@/permissions/useCan"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -250,6 +251,7 @@ const FilterOptions: React.FC<FilterOptionsProps> = ({
 // ------------------------
 
 export const Staff: React.FC = () => {
+  const { can } = useCan()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const authState = useAppSelector(selectAuthState)
@@ -1253,7 +1255,8 @@ export const Staff: React.FC = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-4 sm:mb-0">{t("staff_management")}</h2>
           <div className="flex flex-wrap justify-center sm:justify-end gap-2">
             {/* Add Staff */}
-            <Button
+            {can("create", "Staff") && (
+<Button
               onClick={() =>
                 setOpenDialogForStaffForm({
                   isOpen: true,
@@ -1265,9 +1268,11 @@ export const Staff: React.FC = () => {
             >
               <Plus className="mr-2 h-4 w-4" /> {t("add_staff")}
             </Button>
+)}
 
             {/* Upload Experience */}
-            <Dialog open={openDialogForExperienceUpload} onOpenChange={setOpenDialogForExperienceUpload}>
+            {can("import", "Staff") && (
+<Dialog open={openDialogForExperienceUpload} onOpenChange={setOpenDialogForExperienceUpload}>
               <DialogTrigger asChild>
                 <Button variant="outline" disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}>
                   <Upload className="h-4 w-4 ms-2 mr-2" />
@@ -1281,9 +1286,11 @@ export const Staff: React.FC = () => {
                 <ExperienceUploadModal onClose={() => setOpenDialogForExperienceUpload(false)} />
               </DialogContent>
             </Dialog>
+)}
 
             {/* Bulk Upload */}
-            <Dialog open={openDialogForStaffBulkUpload} onOpenChange={setOpenDialogForStaffBulkUpload}>
+            {can("import", "Staff") && (
+<Dialog open={openDialogForStaffBulkUpload} onOpenChange={setOpenDialogForStaffBulkUpload}>
               <DialogTrigger asChild>
                 <Button variant="outline" disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}>
                   <Upload className="h-4 w-4 ms-2 mr-2" />
@@ -1446,9 +1453,11 @@ export const Staff: React.FC = () => {
                 </div>
               </DialogContent>
             </Dialog>
+)}
 
             {/* Download Excel */}
-            <Button
+            {can("export", "Staff") && (
+<Button
               variant="outline"
               onClick={() => setOpenDialogForDownloadExcel(true)}
               disabled={!StaffRolesForSchool || StaffRolesForSchool.length === 0}
@@ -1456,6 +1465,7 @@ export const Staff: React.FC = () => {
               <FileDown className="h-4 w-4 mr-2" />
               {t("download_excel")}
             </Button>
+)}
           </div>
         </div>
 
@@ -1531,7 +1541,8 @@ export const Staff: React.FC = () => {
                 <AlertDescription>
                   There are no teaching staff records available.
                   <div className="mt-2">
-                    <Button
+                    {can("create", "Staff") && (
+<Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
@@ -1544,6 +1555,7 @@ export const Staff: React.FC = () => {
                     >
                       <Plus className="mr-2 h-4 w-4" /> Add teaching staff
                     </Button>
+)}
                   </div>
                 </AlertDescription>
               </Alert>
@@ -1576,7 +1588,8 @@ export const Staff: React.FC = () => {
                 <AlertDescription>
                   There are no non-teaching staff records available.
                   <div className="mt-2">
-                    <Button
+                    {can("create", "Staff") && (
+<Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
@@ -1589,6 +1602,7 @@ export const Staff: React.FC = () => {
                     >
                       <Plus className="mr-2 h-4 w-4" /> Add non-teaching staff
                     </Button>
+)}
                   </div>
                 </AlertDescription>
               </Alert>
@@ -1621,7 +1635,8 @@ export const Staff: React.FC = () => {
                 <AlertDescription>
                   There are no hospital staff records available.
                   <div className="mt-2">
-                    <Button
+                    {can("create", "Staff") && (
+<Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
@@ -1634,6 +1649,7 @@ export const Staff: React.FC = () => {
                     >
                       <Plus className="mr-2 h-4 w-4" /> Add hospital staff
                     </Button>
+)}
                   </div>
                 </AlertDescription>
               </Alert>

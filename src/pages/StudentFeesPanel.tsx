@@ -1,4 +1,5 @@
 "use client"
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -110,6 +111,17 @@ type StudentFeesPanelProps = {}
 
 const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
   const { t } = useTranslation()
+  const { can } = useCan()
+  // Collecting money needs "create" on Fees; changing or reversing a payment needs "update"
+  const requireFees = (action: "create" | "update"): boolean => {
+    if (can(action, "Fees")) return true
+    toast({
+      variant: "destructive",
+      title: "Not allowed",
+      description: "Your permission template does not allow this action on Fees.",
+    })
+    return false
+  }
   const navigate = useNavigate()
   const [getStudentFeesDetails, { data: studentFeeDetails, isLoading, isError, isFetching, isSuccess , error }] =
     useLazyGetStudentFeesDetailsQuery()
@@ -262,6 +274,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
 
   // Handle pay fees button click for multiple installments
   const handlePayFees = () => {
+    if (!requireFees("create")) return
     if (selectedInstallments.length === 0) {
       toast({
         variant: "destructive",
@@ -276,6 +289,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
 
   // Keep the handlePayExtraFees function
   const handlePayExtraFees = () => {
+    if (!requireFees("create")) return
     if (selectedExtraFees.length === 0) {
       toast({
         variant: "destructive",
@@ -290,12 +304,14 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
 
   // Handle pay single installment
   const handlePaySingleInstallment = (installment: ExtendedInstallmentBreakdown) => {
+    if (!requireFees("create")) return
     setSelectedInstallmentForPayment(installment)
     setIsPayFeesDialogOpen(true)
   }
 
   // Updated: Handle pay single extra fee for new structure
   const handlePaySingleExtraFee = (extraFeeInstallment: any, installment: any) => {
+    if (!requireFees("create")) return
     const singleExtraFeeInstallment = [
       {
         key: `${extraFeeInstallment.id}-${installment.id}`,
@@ -352,6 +368,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
 
   // Add a function to handle opening the update status dialog
   const handleUpdateStatus = (payment: any) => {
+    if (!requireFees("update")) return
     setSelectedPayment(payment)
     setIsUpdateStatusDialogOpen(true)
   }
@@ -738,16 +755,19 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
   }
 
   const handleRequestReversal = (payment: any) => {
+    if (!requireFees("update")) return
     setSelectedPaymentForReversal(payment)
     setIsReversalRequestDialogOpen(true)
   }
 
   const handleUpdatePaymentStatus = (payment: any) => {
+    if (!requireFees("update")) return
     setSelectedPaymentForStatusUpdate(payment)
     setIsPaymentStatusUpdateDialogOpen(true)
   }
 
   const handleRequestExtraFeeReversal = (payment: any) => {
+    if (!requireFees("update")) return
     setSelectedExtraFeeForReversal(payment)
     setIsExtraFeeReversalDialogOpen(true)
   }
@@ -1140,10 +1160,12 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button onClick={() => setIsApplyExtraFeesDialogOpen(true)} variant="outline">
+                        {can("create", "Fees") && (
+<Button onClick={() => setIsApplyExtraFeesDialogOpen(true)} variant="outline">
                           <Plus className="mr-2 h-4 w-4" />
                           {t("apply_extra_fees")}
                         </Button>
+)}
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Apply additional charges like fines, special fees, etc.</p>
@@ -1151,14 +1173,17 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
                     </Tooltip>
                   </TooltipProvider>
                 )}
-                <Button
+                {can("create", "Fees") && (
+<Button
                   onClick={handlePayFees}
                   disabled={selectedInstallments.length === 0 || hasActiveReversalRequest()}
                   className="bg-primary hover:bg-primary/90"
                 >
                   {t("pay_selected")} ({selectedInstallments.length})
                 </Button>
-                <Button
+)}
+                {can("create", "Fees") && (
+<Button
                   onClick={() => setIsFlexiblePaymentDialogOpen(true)}
                   variant="outline"
                   className="bg-green-50 hover:bg-green-100 border-green-200"
@@ -1167,6 +1192,7 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
                   <Calculator className="mr-2 h-4 w-4" />
                   {t("flexible_payment")}
                 </Button>
+)}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -1396,10 +1422,12 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button onClick={() => setIsApplyExtraFeesDialogOpen(true)} variant="outline">
+                        {can("create", "Fees") && (
+<Button onClick={() => setIsApplyExtraFeesDialogOpen(true)} variant="outline">
                           <Plus className="mr-2 h-4 w-4" />
                           {t("apply_extra_fees")}
                         </Button>
+)}
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Apply additional charges like fines, special fees, etc.</p>
@@ -1407,13 +1435,15 @@ const StudentFeesPanel: React.FC<StudentFeesPanelProps> = () => {
                     </Tooltip>
                   </TooltipProvider>
                 )}
-                <Button
+                {can("create", "Fees") && (
+<Button
                   onClick={handlePayExtraFees}
                   disabled={selectedExtraFees.length === 0}
                   className="bg-primary hover:bg-primary/90"
                 >
                   {t("pay_selected")} ({selectedExtraFees.length})
                 </Button>
+)}
               </div>
             </CardHeader>
             <CardContent className="p-0">

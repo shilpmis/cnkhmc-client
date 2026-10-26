@@ -1,3 +1,4 @@
+import { useCan } from "@/permissions/useCan"
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ import type { PageMeta } from "@/types/global"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const EmployeeManagement = () => {
+  const { can } = useCan()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
@@ -297,10 +299,12 @@ const EmployeeManagement = () => {
             <Download className="mr-2 h-4 w-4" />
             {t("export")}
           </Button>
-          <Button size="sm" onClick={() => navigate("/d/payroll/employee/add")}>
+          {can("create", "Payroll") && (
+<Button size="sm" onClick={() => navigate("/d/payroll/employee/add")}>
             <UserPlus className="mr-2 h-4 w-4" />
             {t("add_employee")}
-          </Button> */}
+          </Button>
+)} */}
         </div>
       </div>
 
@@ -510,7 +514,8 @@ const EmployeeManagement = () => {
                   <AlertDescription>
                     There are no teaching staff records available.
                     <div className="mt-2">
-                      <Button
+                      {can("create", "Payroll") && (
+<Button
                         variant="outline"
                         size="sm"
                         onClick={() => navigate("/d/payroll/employee/add")}
@@ -518,6 +523,7 @@ const EmployeeManagement = () => {
                       >
                         <Plus className="mr-2 h-4 w-4" /> Add teaching staff
                       </Button>
+)}
                     </div>
                   </AlertDescription>
                 </Alert>
@@ -647,7 +653,8 @@ const EmployeeManagement = () => {
                   <AlertDescription>
                     There are no non-teaching staff records available.
                     <div className="mt-2">
-                      <Button
+                      {can("create", "Payroll") && (
+<Button
                         variant="outline"
                         size="sm"
                         onClick={() => navigate("/d/payroll/employee/add")}
@@ -655,6 +662,7 @@ const EmployeeManagement = () => {
                       >
                         <Plus className="mr-2 h-4 w-4" /> Add non-teaching staff
                       </Button>
+)}
                     </div>
                   </AlertDescription>
                 </Alert>

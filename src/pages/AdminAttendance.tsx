@@ -458,6 +458,7 @@
 "use client"
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -488,6 +489,7 @@ interface AttendanceChange {
 }
 
 const AdminAttendanceView: React.FC = () => {
+  const { can } = useCan()
   const user = useAppSelector(selectCurrentUser)
   const [fetchAttendanceForDate, { data: attendanceData, isLoading }] = useLazyFetchAttendanceForDateQuery()
   const [markAttendanceForDate, { isLoading: isMarkingAttendance }] = useMarkAttendanceMutation()
@@ -1093,7 +1095,7 @@ const AdminAttendanceView: React.FC = () => {
             {!attendanceRecords.is_marked ? (
               <Button
                 onClick={handleSubmit}
-                disabled={isProcessing}
+                disabled={isProcessing || !can("create", "Attendance")}
                 className="bg-primary hover:bg-primary/90 text-white px-8 py-2"
                 size="lg"
               >
@@ -1112,7 +1114,7 @@ const AdminAttendanceView: React.FC = () => {
             ) : isEditMode ? (
               <Button
                 onClick={handleUpdate}
-                disabled={isProcessing || !hasChanges}
+                disabled={isProcessing || !hasChanges || !can("update", "Attendance")}
                 className="bg-primary hover:bg-primary/90 text-white px-8 py-2"
                 size="lg"
               >

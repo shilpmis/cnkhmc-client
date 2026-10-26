@@ -19,6 +19,7 @@ import baseUrl from "@/utils/base-urls";
 
 export const StudentApi = createApi({
   reducerPath: "studentApi",
+  tagTypes: [],
   baseQuery: fetchBaseQuery({
     baseUrl: `${baseUrl.serverUrl}api/v1/`,
     prepareHeaders: (headers) => {
@@ -192,6 +193,12 @@ export const StudentApi = createApi({
           method: "GET",
         };
       },
+      transformResponse: (response: any) => {
+        if (Array.isArray(response)) return response;
+        if (response && Array.isArray(response.data)) return response.data;
+        if (response && Array.isArray(response.students)) return response.students;
+        return [];
+      },
     }),
     // Management apis
 
@@ -213,21 +220,22 @@ export const StudentApi = createApi({
       }),
     }),
 
-    fetchStudentColumnSettings: builder.query<{ id: number | null; school_id: number; enabled_columns: string[] | null }, void>({
-      query: () => ({
-        url: `student-column-settings`,
-        method: 'GET',
-      }),
+    uploadStudentPhoto: builder.mutation<any, { studentId: number; file: File }>({
+      query: ({ studentId, file }) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        return {
+          url: `students/${studentId}/photo`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
 
-    updateStudentColumnSettings: builder.mutation<
-      { id: number; school_id: number; enabled_columns: string[] },
-      { enabled_columns: string[] }
-    >({
-      query: (payload) => ({
-        url: `student-column-settings`,
-        method: 'PUT',
-        body: payload,
+    deleteStudentPhoto: builder.mutation<any, number>({
+      query: (studentId) => ({
+        url: `students/${studentId}/photo`,
+        method: 'DELETE',
       }),
     }),
 
@@ -249,8 +257,8 @@ export const {
   useBulkAssignPracticalBatchMutation,
   useFetchPracticalBatchSettingsQuery,
   useUpdatePracticalBatchSettingsMutation,
-  useFetchStudentColumnSettingsQuery,
-  useUpdateStudentColumnSettingsMutation,
+  useUploadStudentPhotoMutation,
+  useDeleteStudentPhotoMutation,
   usePrefetch
 } = StudentApi;
 

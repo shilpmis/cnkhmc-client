@@ -344,6 +344,8 @@ export const staffSchema = z
       .min(2, "Last name is required")
       .regex(/^[A-Za-z\s]+$/, "Last name is required"),
 
+    profile_photo: z.string().optional().nullable(),
+
     first_name_in_guj: z.string().nullable().optional().or(z.literal("")),
 
     // Make middle name in Gujarati optional

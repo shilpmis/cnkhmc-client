@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import baseUrl from "@/utils/base-urls";
+import ApiService from "./ApiService";
 
 export const HostelApi = createApi({
   reducerPath: "HostelApi",
@@ -103,3 +104,18 @@ export const {
   useAllocateBedMutation,
   useVacateBedMutation,
 } = HostelApi;
+
+export const exportHostelReport = async (params: {
+  school_id?: string | number;
+  hostel_id?: string | number;
+  class_id?: string | number;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params.school_id) queryParams.append('school_id', String(params.school_id));
+  if (params.hostel_id && params.hostel_id !== 'all') queryParams.append('hostel_id', String(params.hostel_id));
+  if (params.class_id && params.class_id !== 'all') queryParams.append('class_id', String(params.class_id));
+
+  return ApiService.get(`hostels/export/report?${queryParams.toString()}`, {
+    responseType: 'blob',
+  });
+};

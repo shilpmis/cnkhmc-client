@@ -315,7 +315,7 @@ export default function ExperienceCertificateModal({ open, onOpenChange, staff }
 
   if (!staff) return null
 
-  const experiences: StaffExperience[] = (currentStaff as any)?.experiences || currentStaff?.staff_experiences || []
+  const experiences: StaffExperience[] = currentStaff?.experiences || currentStaff?.staff_experiences || []
 
   const formatDate = (dateVal: string | Date | null) => {
     if (!dateVal) return "Till date"

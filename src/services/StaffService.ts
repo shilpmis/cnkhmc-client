@@ -188,6 +188,25 @@ export const StaffApi = createApi({
         }
       },
     }),
+    uploadStaffPhoto: builder.mutation<any, { staffId: number; file: File }>({
+      query: ({ staffId, file }) => {
+        const formData = new FormData()
+        formData.append('image', file)
+        return {
+          url: `staff/${staffId}/photo`,
+          method: 'POST',
+          body: formData,
+        }
+      },
+      invalidatesTags: ['Staff'],
+    }),
+    deleteStaffPhoto: builder.mutation<any, number>({
+      query: (staffId) => ({
+        url: `staff/${staffId}/photo`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Staff'],
+    }),
   }),
 })
 
@@ -215,6 +234,8 @@ export const {
   useDeleteStaffConfigurationMutation,
   useUploadStaffExperienceMutation,
   useDeleteStaffMutation,
+  useUploadStaffPhotoMutation,
+  useDeleteStaffPhotoMutation,
 } = StaffApi
 
 export const createStaffRole = createAsyncThunk(

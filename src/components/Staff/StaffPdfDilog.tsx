@@ -28,6 +28,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer"
 import type { ComponentType } from "react"
 import type { StaffType } from "@/types/staff"
 import { useTranslation } from "@/redux/hooks/useTranslation"
+import { getFullPhotoUrl } from "@/components/ui/AvatarUpload"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectCurrentUser } from "@/redux/slices/authSlice"
 import { selectSchool } from "@/redux/slices/schoolSlice"
@@ -146,11 +147,13 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                 <Avatar className="h-20 w-20 border-4 border-white shadow-md">
                   <AvatarImage
                     src={
-                      staff.gender?.toLowerCase() === "male"
+                      getFullPhotoUrl(staff.profile_photo) ||
+                      (staff.gender?.toLowerCase() === "male"
                         ? "https://img.freepik.com/premium-vector/man-professional-business-casual-young-avatar-icon-illustration_1277826-623.jpg"
-                        : "https://img.freepik.com/free-vector/woman-with-long-brown-hair-pink-shirt_90220-2940.jpg"
+                        : "https://img.freepik.com/free-vector/woman-with-long-brown-hair-pink-shirt_90220-2940.jpg")
                     }
                     alt={`${staff.first_name} ${staff.last_name}`}
+                    className="object-cover"
                   />
                   <AvatarFallback className="text-xl bg-primary/10">
                     {staff.first_name?.[0]}

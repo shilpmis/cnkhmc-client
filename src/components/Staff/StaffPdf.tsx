@@ -1,6 +1,7 @@
 import type React from "react"
 import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer"
 import gujFonts from "../Students/gujarat_noto_sans.ttf"
+import { getSafePdfImageUrl } from "@/components/ui/AvatarUpload"
 
 // Register fonts for both English and Gujarati support
 Font.register({
@@ -93,6 +94,14 @@ const styles = StyleSheet.create({
     borderColor: "#93C5FD",
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    objectFit: "cover",
+    borderWidth: 1.5,
+    borderColor: "#93C5FD",
   },
   avatarText: {
     fontSize: 14,
@@ -358,6 +367,8 @@ const StaffDetailsPDF = ({ staff, school }: any) => {
   const initials =
     ((staff.first_name?.[0] || "S") + (staff.last_name?.[0] || "")).toUpperCase()
 
+  const staffPhotoUrl = staff.profile_photo ? getSafePdfImageUrl(staff.profile_photo) : null
+
   return (
     <Document>
       {/* ================= PAGE 1 ================= */}
@@ -376,9 +387,13 @@ const StaffDetailsPDF = ({ staff, school }: any) => {
 
         {/* Profile Card */}
         <View style={styles.profileHeaderCard}>
-          <View style={styles.avatarInitials}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          {staffPhotoUrl ? (
+            <Image src={staffPhotoUrl} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarInitials}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
           <View style={styles.profileMeta}>
             <Text style={styles.nameEn}>{fullNameEn || "Staff Member"}</Text>
             {Boolean(fullNameGuj) && <Text style={styles.nameGuj}>{fullNameGuj}</Text>}

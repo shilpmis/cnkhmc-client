@@ -1,3 +1,4 @@
+import { useCan } from "@/permissions/useCan"
 import { useState, useEffect, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -86,6 +87,7 @@ const getComponentDetails = (componentId: number, salaryComponents: SalaryCompon
 }
 
 export default function PayRun() {
+  const { can } = useCan()
   // State
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1).padStart(2, "0"))
@@ -878,6 +880,7 @@ export default function PayRun() {
                                   ) : (
                                     <Select
                                       value={currentPayRun.status}
+                                      disabled={!can("update", "Payroll")}
                                       onValueChange={(value) => {
                                         setUpdatingPayrollId(currentPayRun.id)
                                         handleStatusUpdate(
@@ -1175,13 +1178,15 @@ export default function PayRun() {
             <Button variant="outline" onClick={() => handleTemplateDialogClose(false)}>
               Cancel
             </Button>
-            <Button
+            {can("create", "Payroll") && (
+<Button
               onClick={handleCreateDraft}
               disabled={isCreatingDraft || !selectedStaffEnrollment?.staff_salary_templates || !staffSalaryTemplate}
             >
               {isCreatingDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Draft
             </Button>
+)}
           </DialogFooter>
         </DialogContent>
       </Dialog>

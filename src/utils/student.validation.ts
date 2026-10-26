@@ -1,4 +1,5 @@
 import { Value } from "@radix-ui/react-select";
+import { STUDENT_HEADERS } from "@/utils/studentColumns";
 
 // Define the schema for student data
 import { z } from "zod";
@@ -6,6 +7,7 @@ import { z } from "zod";
 // Define the schema for student data
 export const studentSchema = z.object({
   enrollment_code: z.string().nullable().optional().or(z.literal("")),
+  profile_photo: z.string().nullable().optional(),
   // Personal Details
   first_name: z
     .string()
@@ -136,7 +138,9 @@ export const studentSchema = z.object({
   gr_no: z
     .number()
     .int("GR number must be an integer")
-    .positive("GR number must be positive"),
+    .positive("GR number must be positive")
+    .nullable()
+    .optional(),
 
   roll_number: z
     .number()
@@ -166,6 +170,8 @@ export const studentSchema = z.object({
   admission_class: z.string().min(1, "Admission Class is required").nullable(),
   admission_division: z.string().nullable().optional().or(z.literal("")),
   // .min(1, "Admission Division is required")
+  quota_id: z.coerce.number().nullable().optional(),
+  fees_plan_id: z.coerce.number().nullable().optional(),
 
   privious_school: z.string().nullable().optional().or(z.literal("")),
   privious_school_in_guj: z.string().nullable().optional().or(z.literal("")),
@@ -276,282 +282,55 @@ export const studentSchema = z.object({
   quota_fees: z.string().nullable().optional(),
   activity_house: z.string().nullable().optional(),
   bank_branch_name: z.string().nullable().optional(),
+  // heads of the final student sheet
+  admission_number: z.string().nullable().optional(),
+  name_as_per_aadhar: z.string().nullable().optional(),
+  admission_quota: z.string().nullable().optional(),
+  nationality: z.string().nullable().optional(),
+  blood_group: z.string().nullable().optional(),
+  university_spid_no: z.string().nullable().optional(),
+  admission_category: z.string().nullable().optional(),
+  tuition_fees: z.string().nullable().optional(),
+  roll_no_internship: z.string().nullable().optional(),
+  bank_branch_pincode: z.string().nullable().optional(),
+  first_year_roll_number: z.number().int().positive().nullable().optional(),
+  second_year_roll_number: z.number().int().positive().nullable().optional(),
+  third_year_roll_number: z.number().int().positive().nullable().optional(),
+  fourth_year_roll_number: z.number().int().positive().nullable().optional(),
   practical_batch: z.string().nullable().optional(),
 });
 
-// Define Zod schema for student data validation
-export const StudentSchemaForUploadData = z.object({
-  "First Name": z.string().min(1, "First Name is required"),
-  "Last Name": z.string().min(1, "Last Name is required"),
-  "Mobile No": z
-    .string()
-    .regex(/^\d{10}$/, "Mobile No must be exactly 10 digits"),
-  Gender: z.preprocess(
-    (val) => {
-      if (val === null || val === undefined || val === "") return null;
-      if (typeof val === "string") {
-        const str = val.trim().toLowerCase();
-        if (["male", "m"].includes(str)) return "Male";
-        if (["female", "f"].includes(str)) return "Female";
-        if (["other", "o"].includes(str)) return "Other";
-      }
-      return val;
-    },
-    z.enum(["Male", "Female", "Other"], {
+// Upload validation for the final student sheet: every head is optional text; only formats are checked.
+const genderCell = z.preprocess(
+  (val) => {
+    if (val === null || val === undefined || val === "") return null;
+    if (typeof val === "string") {
+      const str = val.trim().toLowerCase();
+      if (["male", "m"].includes(str)) return "Male";
+      if (["female", "f"].includes(str)) return "Female";
+      if (["other", "o"].includes(str)) return "Other";
+    }
+    return val;
+  },
+  z
+    .enum(["Male", "Female", "Other"], {
       errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
-    }).nullable().optional().or(z.literal(""))
-  ),
-  "GR No": z.string().nullable().or(z.literal("")),
-
-  // Optional fields with validation if provided
-  "Middle Name": z
-    .string()
-    .min(1, "Middle Name must have at least 1 character")
-    .nullable()
-    .or(z.literal("")),
-  "First Name Gujarati": z
-    .string()
-    .min(2, "First name in Gujarati is required")
-    .nullable(),
-  "Middle Name Gujarati": z
-    .string()
-    .min(2, "Middle name in Gujarati is required")
-    .nullable(),
-  "Last Name Gujarati": z
-    .string()
-    .min(2, "Last name in Gujarati is required")
-    .nullable(),
-  "Date of Birth": z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), {
-      message: "Invalid date format",
     })
-    .refine((date) => new Date(date) <= new Date(), {
-      message: "Birth date cannot be in the future",
-    })
-    .nullable(),
-  "Birth Place": z.string().min(2, "Birth place is required").nullable(),
-  "Birth Place In Gujarati": z
-    .string()
-    .min(2, "Birth place in Gujarati is required")
-    .nullable(),
-  "Aadhar No": z
-    .string()
-    .regex(/^\d{12}$/, "Aadhar Number must be exactly 12 digits")
-    .nullable(),
-  "DISE Number": z
-    .string()
-    .regex(/^\d{18}$/, "DISE Number must be exactly 18 digits")
-    .nullable(),
-  "Father Name": z
-    .string()
-    .min(2, "Father's name is required")
-    .regex(
-      /^[A-Za-z\s]+$/,
-      "Father's name should contain only alphabets and spaces"
-    )
-    .nullable(),
-  "Father Name in Gujarati": z
-    .string()
-    .min(2, "Father's name in Gujarati is required")
-    .nullable(),
-  "Mother Name": z
-    .string()
-    .min(2, "Mother's name is required")
-    .regex(
-      /^[A-Za-z\s]+$/,
-      "Mother's name should contain only alphabets and spaces"
-    )
-    .nullable(),
-  "Mother Name in Gujarati": z
-    .string()
-    .min(2, "Mother's name in Gujarati is required")
-    .nullable(),
-  "Other Mobile No": z
-    .string()
-    .regex(/^\d{10}$/, "Other Mobile No must be exactly 10 digits")
-    .nullable(),
-  "Roll Number": z
-    .number()
-    .int("Roll number must be an integer")
-    .positive("Roll number must be positive")
-    .nullable(),
-  "Admission Date": z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)), {
-      message: "Invalid date format",
-    })
-    .refine((date) => new Date(date) <= new Date(), {
-      message: "Admission date cannot be in the future",
-    })
-    .nullable(),
-  "Previous School": z.string().nullable().optional().or(z.literal("")),
-  "Previous School In Gujarati": z.string().nullable().optional().or(z.literal("")),
-
-  Religion: z.string().nullable().optional().or(z.literal("")),
-  "Religion In Gujarati": z.string().nullable().optional().or(z.literal("")),
-  Caste: z.string().nullable().optional().or(z.literal("")),
-  "Caste In Gujarati": z.string().nullable().optional().or(z.literal("")),
-  Category: z.string().nullable().optional().or(z.literal("")),
-  Address: z.string().nullable().optional().or(z.literal("")),
-  District: z.string().nullable().optional().or(z.literal("")),
-  City: z.string().nullable().optional().or(z.literal("")),
-  State: z.string().nullable().optional().or(z.literal("")),
-  "Postal Code": z
-    .string()
-    .regex(/^\d{6}$/, "Postal Code must be exactly 6 digits")
     .nullable()
     .optional()
-    .or(z.literal("")),
-  "Bank Name": z.string().nullable().optional().or(z.literal("")),
-  "Account Number": z
-    .string()
-    .refine((val) => val.length >= 9 && val.length <= 18, {
-      message: "Account number must be between 9 and 18 digits",
-    })
-    .nullable(),
-  "IFSC Code": z
-    .string()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "IFSC code must be in format ABCD0123456")
-    .nullable(),
-});
+    .or(z.literal(""))
+);
 
-export const CollegeStudentSchemaForUploadData = z.object({
-  "AdmissionID": z.string().nullable().or(z.literal("")),
-  "GR No.": z.string().nullable().or(z.literal("")),
-  "FIRST_NAME": z.string().min(1, "First Name is required"),
-  "MIDDLE_NAME": z.string().nullable().or(z.literal("")),
-  "LAST_NAME": z.string().min(1, "Last Name is required"),
-  "GENDER": z.preprocess(
-    (val) => {
-      if (val === null || val === undefined || val === "") return null;
-      if (typeof val === "string") {
-        const str = val.trim().toLowerCase();
-        if (["male", "m"].includes(str)) return "Male";
-        if (["female", "f"].includes(str)) return "Female";
-        if (["other", "o"].includes(str)) return "Other";
-      }
-      return val;
-    },
-    z.enum(["Male", "Female", "Other"], {
-      errorMap: () => ({ message: "Gender must be Male, Female, or Other" }),
-    }).nullable().optional().or(z.literal(""))
-  ),
-  "DATE_OF_BIRTH": z.string().nullable().or(z.literal("")),
-  "STANDARD": z.string().nullable().or(z.literal("")),
-  "DIVISION": z.string().nullable().or(z.literal("")),
-  "MOBILE_NO1": z.string().min(1, "Mobile No is required"),
-  "CURRENT ADDRESS": z.string().nullable().or(z.literal("")),
-  "Current Area": z.string().nullable().or(z.literal("")),
-  "Current CITY": z.string().nullable().or(z.literal("")),
-  "Current STATE": z.string().nullable().or(z.literal("")),
-  "Currrent PIN_CODE": z.string().nullable().or(z.literal("")),
-  "Current COUNTRY": z.string().nullable().or(z.literal("")),
-  "PERMANENT ADDRESS": z.string().nullable().or(z.literal("")),
-  "Permanent Area": z.string().nullable().or(z.literal("")),
-  "Permanent City": z.string().nullable().or(z.literal("")),
-  "Permanent STATE": z.string().nullable().or(z.literal("")),
-  "Permanent PIN_CODE": z.string().nullable().or(z.literal("")),
-  "Permanent COUNTRY": z.string().nullable().or(z.literal("")),
-  "COUNTRY_CODE": z.string().nullable().or(z.literal("")),
-  "NATIONALITY": z.string().nullable().or(z.literal("")),
-  "STUDENT_CODE": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_FIRST_NAME": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_MIDDLE_NAME": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_LAST_NAME": z.string().nullable().or(z.literal("")),
-  "ADMISSION_DATE": z.string().nullable().or(z.literal("")),
-  "ADMISSION_STANDARD": z.string().nullable().or(z.literal("")),
-  "ROLL_NO": z.coerce.number().nullable().or(z.literal("")),
-  "SUBJECT_GROUP": z.string().nullable().or(z.literal("")),
-  "MOBILE_NO2": z.string().nullable().or(z.literal("")),
-  "RELIGION": z.string().nullable().or(z.literal("")),
-  "CASTE": z.string().nullable().or(z.literal("")),
-  "CATEGORY": z.string().nullable().or(z.literal("")),
-  "BLOOD_GROUP": z.string().nullable().or(z.literal("")),
-  "BIRTH PLACE": z.string().nullable().or(z.literal("")),
-  "Birth Taluka": z.string().nullable().or(z.literal("")),
-  "Birth District": z.string().nullable().or(z.literal("")),
-  "ACTIVE": z.string().nullable().or(z.literal("")),
-  "STUDENT_LEAVING_REASON": z.string().nullable().or(z.literal("")),
-  "STUDENT_LC_DATE": z.string().nullable().or(z.literal("")),
-  "STUDENT_LC_NO": z.string().nullable().or(z.literal("")),
-  "PREVIOUS_SCHOOL_NAME": z.string().nullable().or(z.literal("")),
-  "STUDENT_AADHAAR_CARDNO": z.string().nullable().or(z.literal("")),
-  "STUDENT_U_DIESNO": z.string().nullable().or(z.literal("")),
-  "PEN": z.string().nullable().or(z.literal("")),
-  "AbhaCardNo": z.string().nullable().or(z.literal("")),
-  "Bank_Name": z.string().nullable().or(z.literal("")),
-  "Bank_Branch_Name": z.string().nullable().or(z.literal("")),
-  "Bank_Account_Number": z.string().nullable().or(z.literal("")),
-  "IFSC_Code": z.string().nullable().or(z.literal("")),
-  "ACTIVITY_HOUSE": z.string().nullable().or(z.literal("")),
-  "EMAIL_ID": z.string().nullable().or(z.literal("")),
-  "WEBSITE": z.string().nullable().or(z.literal("")),
-  "MOTHER_TOUNG": z.string().nullable().or(z.literal("")),
-  "FATHER_NAME": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_Father Name": z.string().nullable().or(z.literal("")),
-  "FATHER_QUALIFICATION": z.string().nullable().or(z.literal("")),
-  "FATHER_OCCUPATION": z.string().nullable().or(z.literal("")),
-  "FATHER_EMAIL": z.string().nullable().or(z.literal("")),
-  "FATHER_ORGANISATION": z.string().nullable().or(z.literal("")),
-  "FATHER_OFFICE_ADDRESS1": z.string().nullable().or(z.literal("")),
-  "FATHER_OFFICE_PHONENO": z.string().nullable().or(z.literal("")),
-  "FATHER_MOBILENO": z.string().nullable().or(z.literal("")),
-  "MOTHER_NAME": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_Mother Name": z.string().nullable().or(z.literal("")),
-  "MOTHER_QUALIFICATION": z.string().nullable().or(z.literal("")),
-  "MOTHER_OCCUPATION": z.string().nullable().or(z.literal("")),
-  "MOTHER_EMAIL": z.string().nullable().or(z.literal("")),
-  "MOTHER_ORGANISATION": z.string().nullable().or(z.literal("")),
-  "MOTHER_OFFICE_ADDRESS1": z.string().nullable().or(z.literal("")),
-  "MOTHER_OFFICE_PHONENO": z.string().nullable().or(z.literal("")),
-  "MOTHER_MOBILENO": z.string().nullable().or(z.literal("")),
-  "GARDIAN_NAME": z.string().nullable().or(z.literal("")),
-  "S.LANGUAGE_GARDIAN_Name": z.string().nullable().or(z.literal("")),
-  "GARDIAN_QUALIFICATION": z.string().nullable().or(z.literal("")),
-  "GARDIAN_OCCUPATION": z.string().nullable().or(z.literal("")),
-  "GARDIAN_EMAIL": z.string().nullable().or(z.literal("")),
-  "GARDIAN_ORGANISATION": z.string().nullable().or(z.literal("")),
-  "GARDIAN_OFFICE_ADDRESS1": z.string().nullable().or(z.literal("")),
-  "GARDIAN_OFFICE_PHONENO": z.string().nullable().or(z.literal("")),
-  "GARDIAN_MOBILENO": z.string().nullable().or(z.literal("")),
-  "Relation with Local Guardian": z.string().nullable().or(z.literal("")),
-  "S.S.C. Passing Year": z.string().nullable().or(z.literal("")),
-  "H.S.C. Passing Year": z.string().nullable().or(z.literal("")),
-  "How Many Attempt?": z.string().nullable().or(z.literal("")),
-  "H.S.C. Obtained Marks": z.string().nullable().or(z.literal("")),
-  "H.S.C. PCB Marks with Practical": z.string().nullable().or(z.literal("")),
-  "Sub Caste": z.string().nullable().or(z.literal("")),
-  "Quota Fees": z.string().nullable().or(z.literal("")),
-  "Name of Entrance Exam": z.string().nullable().or(z.literal("")),
-  "NEET score": z.string().nullable().or(z.literal("")),
-  "NEET Roll No.": z.string().nullable().or(z.literal("")),
-  "NEET Application Number": z.string().nullable().or(z.literal("")),
-  "NEET All India Rank": z.string().nullable().or(z.literal("")),
-  "NEET Percentile (%)": z.string().nullable().or(z.literal("")),
-  "General Merit": z.string().nullable().or(z.literal("")),
-  "Category Merit": z.string().nullable().or(z.literal("")),
-  "Internship Provisional Number": z.string().nullable().or(z.literal("")),
-  "Internship Provisional Date": z.string().nullable().or(z.literal("")),
-  "Internship Starting Date": z.string().nullable().or(z.literal("")),
-  "Internship Completion Date": z.string().nullable().or(z.literal("")),
-  "1st year Attempt": z.string().nullable().or(z.literal("")),
-  "2nd Year Attempt": z.string().nullable().or(z.literal("")),
-  "3rd Year Attempt": z.string().nullable().or(z.literal("")),
-  "4th year Attempt": z.string().nullable().or(z.literal("")),
-  "Final BHMS Date of Passing": z.string().nullable().or(z.literal("")),
-  "Admission Year": z.string().nullable().or(z.literal("")),
-  "Ayush ID": z.string().nullable().or(z.literal("")),
-  "ABC ID": z.string().nullable().or(z.literal("")),
-  "Admission Cancel": z.string().nullable().or(z.literal("")),
-  "Admission Cancel Year": z.string().nullable().or(z.literal("")),
-  "Admission Cancel Date": z.string().nullable().or(z.literal("")),
-  "Admission Transfer": z.string().nullable().or(z.literal("")),
-  "Admission Transfer Date": z.string().nullable().or(z.literal("")),
-  "Admission transfer to College": z.string().nullable().or(z.literal("")),
-  "Admission Transfer From College": z.string().nullable().or(z.literal("")),
-  "School UDISE No": z.string().nullable().or(z.literal("")),
-});
+export const StudentSchemaForUploadData = z.object(
+  Object.fromEntries(
+    STUDENT_HEADERS.map((head) => [
+      head,
+      head === "GENDER" ? genderCell : z.coerce.string().nullable().optional().or(z.literal("")),
+    ])
+  ) as Record<string, z.ZodTypeAny>
+);
+
+export const CollegeStudentSchemaForUploadData = StudentSchemaForUploadData;
 
 export const addressSchema = z.object({
   address: z.string().min(5, "Address is required"),

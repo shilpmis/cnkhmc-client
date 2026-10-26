@@ -1,4 +1,4 @@
-import { User } from "@/types/user";
+import { User, PolicyTemplate, PolicyRule } from "@/types/user";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { PageMeta } from "@/types/global";
 import { StaffType } from "@/types/staff";
@@ -28,7 +28,7 @@ export const UserManagementApi = createApi({
     }),
     addUser: builder.mutation<
       User,
-      Pick<User, "name" | "role_id" | "is_active" | "username"> & { password: string }
+      Pick<User, "name" | "role_id" | "is_active" | "username"> & { password: string; policy_ids?: number[] }
     >({
       query: (user) => ({
         url: "user",
@@ -39,7 +39,7 @@ export const UserManagementApi = createApi({
     updateUser: builder.mutation<
       User,
       {
-        payload: Partial<{ name: string; is_active: boolean }>;
+        payload: Partial<{ name: string; is_active: boolean; policy_ids: number[] }>;
         user_id: number;
       }
     >({
@@ -51,19 +51,19 @@ export const UserManagementApi = createApi({
     }),
     fetchOnBoardedUser: builder.query<
       { data: User[]; meta: PageMeta },
-      { page: number; school_id?: number }
+      { page: number; school_id?: number; staff_category?: string }
     >({
-      query: ({ page = 1 }) => ({
-        url: `users?type=teachers&page=${page}`,
+      query: ({ page = 1, staff_category }) => ({
+        url: `users?type=staff&page=${page}${staff_category && staff_category !== "all" ? `&staff_category=${staff_category}` : ""}`,
         method: "GET",
       }),
     }),
     fetchNonOnBoardedTeacher: builder.query<
       StaffType[],
-      { page: number; school_id: number; academic_sessions: number }
+      { page?: number; school_id?: number; academic_sessions?: number; staff_category?: string }
     >({
-      query: ({ page, academic_sessions }) => ({
-        url: `staff?type=non-activeuser&academic_sessions=${academic_sessions}&page=${page}&alldata=${true}`,
+      query: ({ page = 1, academic_sessions, staff_category } = {}) => ({
+        url: `staff?type=non-activeuser${academic_sessions ? `&academic_sessions=${academic_sessions}` : ""}${staff_category && staff_category !== "all" ? `&staff_category=${staff_category}` : ""}&page=${page}&alldata=${true}`,
         method: "GET",
       }),
     }),
@@ -76,6 +76,7 @@ export const UserManagementApi = createApi({
           username: string;
           password: string;
           is_active: boolean;
+          policy_ids?: number[];
         };
       }
     >({
@@ -93,6 +94,7 @@ export const UserManagementApi = createApi({
           assign_classes?: number[];
           unassign_classes?: number[];
           is_active?: boolean;
+          policy_ids?: number[];
         };
       }
     >({
@@ -106,6 +108,50 @@ export const UserManagementApi = createApi({
       query: (user_id) => ({
         url: `user/${user_id}`,
         method: "DELETE",
+      }),
+    }),
+
+    // Permission Templates / Policies endpoints
+    fetchPolicies: builder.query<PolicyTemplate[], void>({
+      query: () => ({
+        url: "policies",
+        method: "GET",
+      }),
+    }),
+    createPolicy: builder.mutation<
+      PolicyTemplate,
+      { name: string; description?: string; rules: PolicyRule[] }
+    >({
+      query: (body) => ({
+        url: "policies",
+        method: "POST",
+        body,
+      }),
+    }),
+    updatePolicy: builder.mutation<
+      PolicyTemplate,
+      { id: number; name?: string; description?: string; rules?: PolicyRule[] }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `policies/${id}`,
+        method: "PUT",
+        body,
+      }),
+    }),
+    deletePolicy: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `policies/${id}`,
+        method: "DELETE",
+      }),
+    }),
+    assignPoliciesToUser: builder.mutation<
+      User,
+      { userId: number; policyIds: number[] }
+    >({
+      query: ({ userId, policyIds }) => ({
+        url: `users/${userId}/policies`,
+        method: "POST",
+        body: { policyIds },
       }),
     }),
   }),
@@ -122,5 +168,12 @@ export const {
 
   useLazyFetchOnBoardedUserQuery,
   useLazyFetchNonOnBoardedTeacherQuery,
+
+  useFetchPoliciesQuery,
+  useLazyFetchPoliciesQuery,
+  useCreatePolicyMutation,
+  useUpdatePolicyMutation,
+  useDeletePolicyMutation,
+  useAssignPoliciesToUserMutation,
 } = UserManagementApi;
 

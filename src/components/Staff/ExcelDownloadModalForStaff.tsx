@@ -15,6 +15,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useToast } from "@/hooks/use-toast"
 import { staffHeaderMappings, formatKeyToHeader } from "@/utils/headerMappings"
 import * as XLSX from "xlsx"
+import { uploadExportToStorage } from "@/services/StorageService"
 
 interface ExcelDownloadModalProps {
   onClose?: () => void; // Add onClose prop to communicate with parent
@@ -105,10 +106,15 @@ const fieldGroups = {
     { id: "total_experience", label: "Total Experience (Years)" },
   ],
   university: [
-    { id: "university_appointment_letter_no", label: "University Appointment Letter No" },
-    { id: "university_appointment_date", label: "University Appointment Date" },
+    { id: "university_approval_details", label: "University Approvals (Detailed / Paired)" },
     { id: "uni_approval_number", label: "University Approval Letter No" },
     { id: "uni_approval_date", label: "University Approval Date" },
+    { id: "uni_approval_remarks", label: "University Approval Remarks" },
+    { id: "staff_letters_details", label: "All Letters & Approvals (Complete Details)" },
+    { id: "university_appointment_details", label: "University Appointment (Detailed)" },
+    { id: "university_appointment_letter_no", label: "University Appointment Letter No" },
+    { id: "university_appointment_date", label: "University Appointment Date" },
+    { id: "university_appointment_remarks", label: "University Appointment Remarks" },
   ],
   bank: [
     { id: "bank_name", label: "Bank Name" },
@@ -229,6 +235,17 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
       "voter_id_no",
       "driving_licence",
       "driving_license_no",
+      "university_approval_details",
+      "uni_approval_details",
+      "staff_letters_details",
+      "all_letters_details",
+      "university_appointment_details",
+      "uni_approval_number",
+      "university_approval_letter_no",
+      "university_appointment_letter_no",
+      "uni_approval_remarks",
+      "university_approval_remarks",
+      "university_appointment_remarks",
     ];
 
     const formatExcelDate = (val: any): string => {
@@ -254,6 +271,7 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
       if (typeof val === "string") {
         const trimmed = val.trim();
         if (!trimmed) return "";
+        if (trimmed.includes(",") || trimmed.includes("\n") || trimmed.includes("\r")) return trimmed;
         if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
         const parsed = new Date(trimmed);
         if (!isNaN(parsed.getTime())) {
@@ -312,6 +330,31 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
           sheetData[0] = transformedHeaders;
 
           const newWorksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+          // Set column widths based on content
+          const colWidths = originalHeaders.map((header) => {
+            if (
+              [
+                "university_approval_details",
+                "uni_approval_details",
+                "staff_letters_details",
+                "all_letters_details",
+                "university_appointment_details",
+                "uni_approval_remarks",
+                "university_approval_remarks",
+                "university_appointment_remarks",
+                "address",
+                "permanent_address",
+              ].includes(header)
+            ) {
+              return { wch: 45 };
+            }
+            if (["email", "department", "qualification"].includes(header)) {
+              return { wch: 25 };
+            }
+            return { wch: 18 };
+          });
+          newWorksheet["!cols"] = colWidths;
 
           // Force text cell type 's' on text/date columns to avoid Excel scientific notation
           for (let r = 1; r < sheetData.length; r++) {
@@ -385,6 +428,11 @@ export default function ExcelDownloadModalForStaff({ onClose }: ExcelDownloadMod
 
       URL.revokeObjectURL(url)
       document.body.removeChild(link)
+
+      // Store in cloud storage (DigitalOcean Spaces)
+      uploadExportToStorage(transformedExcel, 'staff', fileName).catch((err) =>
+        console.error("Failed to archive transformed staff excel to cloud:", err)
+      )
       
       // Close the modal using the parent's handler after successful download
       if (onClose) {

@@ -65,6 +65,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
   const form = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
     defaultValues: {
+      profile_photo: null,
       is_teaching_role: true,
       staff_role_id: undefined,
       first_name: "",

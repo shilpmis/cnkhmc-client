@@ -369,7 +369,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useConvertQueryToStudentMutation } from "@/services/InquiryServices"
 import type { ReqBodyForOnBoardingStudent, Student } from "@/types/student"
 import { toast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Landmark, Award, ShieldCheck, Coins } from "lucide-react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -378,6 +378,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
+import ApiService from "@/services/ApiService"
+import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import {
@@ -422,6 +424,8 @@ const onboardingSchema = z.object({
     .min(2, "Father's name is required")
     .regex(/^[A-Za-z\s]+$/, "Father's name should contain only alphabets and spaces")
     .nullable(),
+  quota_id: z.coerce.number().optional().nullable(),
+  fees_plan_id: z.coerce.number().optional().nullable(),
 })
 
 export type OnboardingFormData = z.infer<typeof onboardingSchema>
@@ -461,8 +465,37 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
       division: undefined,
       primary_mobile: initial_data?.primary_mobile ? initial_data.primary_mobile.toString() : "",
       father_name: initial_data?.father_name || null,
+      quota_id: (initial_data as any)?.quota_type || (initial_data as any)?.quota_id || null,
+      fees_plan_id: (initial_data as any)?.fees_plan_id || null,
     },
   })
+
+  // ── Quotas & Fee Templates ────────────────────────────────────────────────
+  const [quotas, setQuotas] = useState<any[]>([])
+  const [feePlans, setFeePlans] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchQuotasAndPlans = async () => {
+      try {
+        const qRes = await ApiService.get("quota/all")
+        if (Array.isArray(qRes?.data)) setQuotas(qRes.data)
+        else if (Array.isArray(qRes?.data?.data)) setQuotas(qRes.data.data)
+      } catch (e) {
+        console.warn("Could not load quotas in onboarding:", e)
+      }
+
+      if (academic_session_id) {
+        try {
+          const fpRes = await ApiService.get(`feesplan?academic_session=${academic_session_id}&status=Active&limit=100`)
+          if (Array.isArray(fpRes?.data?.data)) setFeePlans(fpRes.data.data)
+          else if (Array.isArray(fpRes?.data)) setFeePlans(fpRes.data)
+        } catch (e) {
+          console.warn("Could not load fee plans in onboarding:", e)
+        }
+      }
+    }
+    fetchQuotasAndPlans()
+  }, [academic_session_id])
 
   const selectedClass = form.watch("class")
 
@@ -500,6 +533,8 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
         father_name: values.father_name,
         division_id: values.division ? Number(values.division) : (availableDivisions?.divisions?.[0]?.id ?? null) as any,
         academic_session_id: academic_session_id,
+        quota_id: values.quota_id ? Number(values.quota_id) : null,
+        fees_plan_id: values.fees_plan_id ? Number(values.fees_plan_id) : null,
       }
 
       const result = await convertInquiryToStudent({ inquiry_id, payload }).unwrap()
@@ -728,6 +763,114 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* ── Admission Quota & Fee Structure Template ────────────── */}
+              <div className="p-4 rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50/50 via-white to-slate-50 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between pb-1.5 border-b border-emerald-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded-md bg-emerald-600 text-white">
+                      <Landmark className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">
+                        Admission Quota & Fee Template (Grandfathered Cohort)
+                      </h4>
+                      <p className="text-[10px] text-slate-500">
+                        Assign quota and lock student cohort fee plan upon onboarding.
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+                    <ShieldCheck className="h-3 w-3 mr-1 text-emerald-600" />
+                    Locked Cohort
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <FormField
+                    control={form.control}
+                    name="quota_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Award className="h-3.5 w-3.5 text-blue-600" />
+                          Admission Quota
+                        </FormLabel>
+                        <Select
+                          value={field.value ? String(field.value) : "none"}
+                          onValueChange={(val) => {
+                            const qId = val === "none" ? null : Number(val)
+                            field.onChange(qId)
+                            if (qId) {
+                              const match = feePlans.find((p) => Number(p.quota_id) === qId)
+                              if (match) form.setValue("fees_plan_id", match.id)
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-8 text-xs bg-white">
+                              <SelectValue placeholder="Select quota..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-xs">
+                              General / Unassigned Quota
+                            </SelectItem>
+                            {quotas.map((q) => (
+                              <SelectItem key={q.id} value={String(q.id)} className="text-xs">
+                                {q.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="fees_plan_id"
+                    render={({ field }) => {
+                      const currentQId = form.watch("quota_id")
+                      const matchingPlans = currentQId
+                        ? feePlans.filter((p) => Number(p.quota_id) === Number(currentQId))
+                        : feePlans
+                      const plansToDisplay = matchingPlans.length > 0 ? matchingPlans : feePlans
+
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                            <Coins className="h-3.5 w-3.5 text-amber-600" />
+                            Fee Template
+                          </FormLabel>
+                          <Select
+                            value={field.value ? String(field.value) : "none"}
+                            onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-8 text-xs bg-white">
+                                <SelectValue placeholder="Select fee template..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none" className="text-xs">
+                                Do not assign fee template yet
+                              </SelectItem>
+                              {plansToDisplay.map((plan) => (
+                                <SelectItem key={plan.id} value={String(plan.id)} className="text-xs">
+                                  {plan.name} — ₹{Number(plan.total_amount || 0).toLocaleString("en-IN")}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
+                  />
+                </div>
               </div>
 
               <CardFooter className="flex justify-between px-0 pt-4">

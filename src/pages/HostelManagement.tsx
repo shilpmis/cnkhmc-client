@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -16,15 +16,20 @@ import {
   ArrowRight, 
   ArrowLeft, 
   CheckCircle2,
-  Info
+  Info,
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
 import { RootState } from "@/redux/store";
+import { useCan } from "@/permissions/useCan";
 import {
   useGetHostelsQuery,
   useCreateHostelMutation,
   useCreateHostelRoomMutation,
   useDeleteHostelMutation,
+  exportHostelReport,
 } from "@/services/HostelService";
+import ApiService from "@/services/ApiService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,6 +124,26 @@ export default function HostelManagement() {
 
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [isRoomDetailsOpen, setIsRoomDetailsOpen] = useState(false);
+
+  // Export Report Dialog States
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const { can } = useCan();
+  const [exportHostelId, setExportHostelId] = useState<string>("all");
+  const [exportClassId, setExportClassId] = useState<string>("all");
+  const [classesList, setClassesList] = useState<any[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+
+  useEffect(() => {
+    if (schoolId) {
+      ApiService.get(`/classes/${schoolId}`)
+        .then((res: any) => {
+          if (Array.isArray(res.data)) {
+            setClassesList(res.data);
+          }
+        })
+        .catch((err: any) => console.error("Error loading classes for export:", err));
+    }
+  }, [schoolId]);
 
   // Initialize/Reset floors structure
   const resetHostelWizard = () => {
@@ -372,6 +397,51 @@ export default function HostelManagement() {
     }
   };
 
+  const handleExportReport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await exportHostelReport({
+        school_id: schoolId,
+        hostel_id: exportHostelId,
+        class_id: exportClassId,
+      });
+
+      const cloudUrl = response.headers?.['x-cloud-url'];
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const targetClassName =
+        exportClassId !== 'all'
+          ? classesList.find((c) => String(c.id) === String(exportClassId))?.class?.replace(/\s+/g, '_') || 'class'
+          : 'all_classes';
+      link.setAttribute('download', `hostel_report_${targetClassName}_${Date.now()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: cloudUrl
+          ? "Hostel report downloaded and stored in DigitalOcean Spaces."
+          : "Hostel report downloaded successfully.",
+      });
+      setIsExportDialogOpen(false);
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: error?.response?.data?.message || error?.message || "Failed to export hostel report",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -386,10 +456,24 @@ export default function HostelManagement() {
           <p className="text-muted-foreground">{t("manage_hostels_rooms_and_beds")}</p>
         </div>
         
-        <Dialog open={isHostelDialogOpen} onOpenChange={setIsHostelDialogOpen}>
-          <Button onClick={handleOpenAddHostel}>
-            <Plus className="mr-2 h-4 w-4" /> {t("add_hostel")}
+        <div className="flex items-center gap-3">
+          {can("export", "Hostel") && (
+<Button
+            variant="outline"
+            className="border-emerald-600/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 flex items-center gap-2"
+            onClick={() => setIsExportDialogOpen(true)}
+          >
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            Export Hostel Report
           </Button>
+)}
+
+          <Dialog open={isHostelDialogOpen} onOpenChange={setIsHostelDialogOpen}>
+            {can("create", "Hostel") && (
+<Button onClick={handleOpenAddHostel}>
+              <Plus className="mr-2 h-4 w-4" /> {t("add_hostel")}
+            </Button>
+)}
           <DialogContent className="max-w-2xl sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="px-6 pt-6 pb-2 border-b bg-muted/20">
               <div className="flex items-center justify-between">
@@ -707,6 +791,7 @@ export default function HostelManagement() {
             )}
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start grid-flow-dense">
@@ -751,7 +836,8 @@ export default function HostelManagement() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Dialog open={isRoomDialogOpen && selectedHostelId === hostel.id} onOpenChange={(open) => {
+                {can("create", "Hostel") && (
+<Dialog open={isRoomDialogOpen && selectedHostelId === hostel.id} onOpenChange={(open) => {
                   setIsRoomDialogOpen(open);
                   if (open) setSelectedHostelId(hostel.id);
                   else setSelectedHostelId(null);
@@ -789,9 +875,12 @@ export default function HostelManagement() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button variant="ghost" size="icon" onClick={() => handleDeleteHostel(hostel.id)} className="hover:bg-destructive/10 hover:text-destructive">
+)}
+                {can("delete", "Hostel") && (
+<Button variant="ghost" size="icon" onClick={() => handleDeleteHostel(hostel.id)} className="hover:bg-destructive/10 hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </Button>
+)}
               </div>
             </CardHeader>
             <CardContent className="flex-1 p-5 bg-background space-y-4">
@@ -913,6 +1002,92 @@ export default function HostelManagement() {
               })}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Hostel Report Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+              Export Hostel Report
+            </DialogTitle>
+            <DialogDescription>
+              Export student hostel room and bed allocation data directly into standard college Excel format (.xlsx).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Hostel</label>
+              <Select value={exportHostelId} onValueChange={setExportHostelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Hostels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Hostels</SelectItem>
+                  {Array.isArray(hostels) &&
+                    hostels.map((h: any) => (
+                      <SelectItem key={h.id} value={String(h.id)}>
+                        {h.name} ({h.type})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Class</label>
+              <Select value={exportClassId} onValueChange={setExportClassId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classesList.map((cls: any) => (
+                    <SelectItem key={cls.id} value={String(cls.id)}>
+                      {cls.class}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground space-y-1">
+              <div className="font-semibold text-foreground">Excel Layout Details:</div>
+              <div>• Matches official college hostel report template</div>
+              <div>• Columns: Sr.No, Name, Floor, Room No., Bed Number</div>
+              <div>• Automatically uploaded and backed up to DigitalOcean Spaces</div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsExportDialogOpen(false)}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleExportReport}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Excel
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Building2, School as SchoolIcon, GraduationCap, Loader2, Search, Info, CheckCircle2, ChevronRight, Trash2 } from "lucide-react";
+import { Plus, Building2, School as SchoolIcon, GraduationCap, Loader2, Search, Info, CheckCircle2, ChevronRight, Trash2, ReceiptText } from "lucide-react";
 import { useTranslation } from "@/redux/hooks/useTranslation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppDispatch } from "@/redux/hooks/useAppDispatch";
@@ -18,6 +18,7 @@ import { switchSchool } from "@/redux/slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { useAuth } from "@/redux/hooks/useAuth";
+import FeeReceiptMakerDialog from "@/components/Fees/Reports/FeeReceiptMakerDialog";
 
 export default function OrganisationManagement() {
   const dispatch = useAppDispatch();
@@ -39,6 +40,7 @@ export default function OrganisationManagement() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [orgToDelete, setOrgToDelete] = useState<number | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [isReceiptMakerOpen, setIsReceiptMakerOpen] = useState(false);
 
   const handleDeleteOrg = async () => {
     if (!orgToDelete) return;
@@ -263,13 +265,23 @@ export default function OrganisationManagement() {
           </h1>
           <p className="text-slate-500 font-medium mt-2">Manage Multi-Tenant organizations and their entities</p>
         </div>
-        <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="rounded-2xl h-14 px-8 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 font-bold text-lg transition-all hover:scale-[1.02]">
-              <Plus className="mr-2 h-6 w-6" />
-              New Organization
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setIsReceiptMakerOpen(true)}
+            variant="outline"
+            className="rounded-2xl h-14 px-6 border-emerald-500/50 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold text-base transition-all hover:scale-[1.02] shadow-sm flex items-center gap-2"
+          >
+            <ReceiptText className="h-5 w-5 text-emerald-600" />
+            Make Fee Receipt
+          </Button>
+
+          <Dialog open={isOrgDialogOpen} onOpenChange={setIsOrgDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="rounded-2xl h-14 px-8 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 font-bold text-lg transition-all hover:scale-[1.02]">
+                <Plus className="mr-2 h-6 w-6" />
+                New Organization
+              </Button>
+            </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] p-8 border-none shadow-2xl max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">Register Organization</DialogTitle>
@@ -355,6 +367,7 @@ export default function OrganisationManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -708,6 +721,12 @@ export default function OrganisationManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Super Admin Fee Receipt Maker */}
+      <FeeReceiptMakerDialog
+        isOpen={isReceiptMakerOpen}
+        onClose={() => setIsReceiptMakerOpen(false)}
+      />
     </div>
   );
 }

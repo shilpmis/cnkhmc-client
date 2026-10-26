@@ -1,5 +1,6 @@
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -65,6 +66,7 @@ type PayRun = {
 }
 
 const PayScheduleManagement = () => {
+  const { can } = useCan()
   const { t } = useTranslation()
 
   // State for pay schedule and UI
@@ -283,7 +285,8 @@ const PayScheduleManagement = () => {
                       : `${paySchedule.payDay}${t("th")} ${t("of_every_month")}`}
                   </p>
                 </div>
-                <Button
+                {can("update", "Payroll") && (
+<Button
                   variant="outline"
                   size="sm"
                   onClick={handleOpenChangePayDay}
@@ -291,6 +294,7 @@ const PayScheduleManagement = () => {
                 >
                   {t("change")}
                 </Button>
+)}
               </div>
 
               <div className="flex justify-between items-center">

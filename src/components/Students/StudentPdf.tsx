@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, Image, Font } from "@react-pdf/
 import type { StudentEnrollment } from "@/types/student"
 import type { User } from "@/types/user"
 import gujFonts from "./gujarat_noto_sans.ttf";
+import { getSafePdfImageUrl } from "@/components/ui/AvatarUpload"
 
 // Register fonts
 Font.register({
@@ -335,6 +336,9 @@ const StudentDetailsPDF: React.FC<StudentPDFProps> = ({ student, currentUser }) 
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
+  const rawPhoto = student.student?.profile_photo || (student as any)?.profile_photo || null;
+  const studentPhotoUrl = rawPhoto ? getSafePdfImageUrl(rawPhoto) : null;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -379,7 +383,7 @@ const StudentDetailsPDF: React.FC<StudentPDFProps> = ({ student, currentUser }) 
               <View style={styles.column}>
                 <Text style={styles.label}>Class</Text>
                 <Text style={styles.value}>
-                  {student.class?.class.class}-{student.class?.division}
+                  {student.class?.class.class}
                 </Text>
               </View>
               <View style={styles.column}>
@@ -401,7 +405,11 @@ const StudentDetailsPDF: React.FC<StudentPDFProps> = ({ student, currentUser }) 
             </View>
           </View>
           <View style={styles.studentPhoto}>
-            <Image style={styles.photo} src="/placeholder.svg?height=100&width=80" />
+            {studentPhotoUrl ? (
+              <Image style={styles.photo} src={studentPhotoUrl} />
+            ) : (
+              <Image style={styles.photo} src="/placeholder.svg?height=100&width=80" />
+            )}
           </View>
         </View>
 

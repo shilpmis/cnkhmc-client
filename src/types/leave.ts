@@ -48,6 +48,12 @@ export interface LeavePolicy {
   applicable_staff_type?: string | null;
   staff_role?: StaffRole;
   leave_type: LeaveType;
+  balance?: {
+    total_leaves: number;
+    used_leaves: number;
+    pending_leaves: number;
+    available_balance: number;
+  };
 }
 
 export interface LeaveApplication {

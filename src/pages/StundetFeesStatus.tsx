@@ -1207,6 +1207,7 @@ import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import TransactionStatusDialog from "@/components/Fees/PayFees/TransactionStatusDialog"
 import AdminReversalDialog from "@/components/Fees/PayFees/AdminReversalDialog"
+import { StudentFinancialStatementModal } from "@/components/Fees/Reports/StudentFinancialStatementModal"
 
 interface StudentFeesStatusProps {
   studentId?: number
@@ -1232,6 +1233,7 @@ export default function StudentFeesStatus({
   const [activeTab, setActiveTab] = useState("installments")
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isReversalDialogOpen, setIsReversalDialogOpen] = useState(false)
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
   const [expandedFeeTypes, setExpandedFeeTypes] = useState<Set<number>>(new Set())
 
@@ -1494,6 +1496,14 @@ export default function StudentFeesStatus({
         )} */}
 
         <div className="flex gap-2 ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsStatementModalOpen(true)}
+            className="text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
+          >
+            <FileText className="mr-2 h-4 w-4" /> Official Statement
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> {t("print_details")}
           </Button>
@@ -2393,6 +2403,12 @@ export default function StudentFeesStatus({
         payment={selectedPayment}
         studentName={`${student.first_name} ${student.middle_name || ""} ${student.last_name}`}
         isExtraFee={selectedPayment?.isExtraFee || false}
+      />
+
+      <StudentFinancialStatementModal
+        isOpen={isStatementModalOpen}
+        onClose={() => setIsStatementModalOpen(false)}
+        studentId={studentId}
       />
     </div>
   )

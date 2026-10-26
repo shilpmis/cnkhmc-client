@@ -61,7 +61,14 @@ export interface FeesPlan {
   id: number;
   name: string;
   class_id: number;
-  academic_session_id: number;
+  quota_id?: number | null;
+  quota?: {
+    id: number;
+    name: string;
+    description?: string;
+  } | null;
+  academic_session_id?: number;
+  academic_year?: number;
   description: string;
   total_amount: number;
   status: "Active" | "Inactive";
@@ -97,7 +104,9 @@ export interface InstallmentBreakdowns {
 export interface DetailFeesPlan { }
 
 export interface ReqObjectForCreateFeesPlan {
-  fees_plan: Pick<FeesPlan, "class_id" | "name" | "description">;
+  fees_plan: Pick<FeesPlan, "class_id" | "name" | "description"> & {
+    quota_id?: number | null;
+  };
   plan_details: {
     fees_type_id: number;
     installment_type: string;
@@ -111,7 +120,9 @@ export interface ReqObjectForCreateFeesPlan {
 }
 
 export interface ReqObjectForUpdateFeesPlan {
-  general_detail_for_plan?: Partial<Pick<FeesPlan, "name" | "description" | "status">>;
+  general_detail_for_plan?: Partial<Pick<FeesPlan, "name" | "description" | "status">> & {
+    quota_id?: number | null;
+  };
   new_fees_type?: {
     fees_type_id: number;
     installment_type: string;
@@ -776,4 +787,90 @@ export interface TypeOfFeesTypeWiseFeesReport {
   paid_amount: number,
   due_amount: number,
   status: string
+}
+
+export interface StatementStudentProfile {
+  id: number;
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  full_name: string;
+  gr_no: number;
+  roll_number: string;
+  enrollment_code?: string | null;
+  class_name: string;
+  division_name: string;
+  quota_id: number | null;
+  quota_name: string;
+  enrollment_year: number | null;
+  cohort_session: string;
+}
+
+export interface StatementTemplateInfo {
+  id: number | null;
+  name: string;
+  quota_name: string;
+  cohort_academic_year: number | null;
+  is_locked: boolean;
+  locked_at: string | null;
+  locked_total_amount: number;
+}
+
+export interface StatementFinancialSummary {
+  locked_total_fee: number;
+  concessions_discount: number;
+  net_payable: number;
+  paid_amount: number;
+  outstanding_balance: number;
+  status: string;
+  payment_percentage: number;
+}
+
+export interface StatementInstallmentItem {
+  installment_id: number;
+  installment_no: number;
+  due_date: string;
+  scheduled_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  status: string;
+  payment_date: string | null;
+  transaction_reference: string | null;
+  payment_mode: string | null;
+}
+
+export interface StatementFeeBreakdownItem {
+  fee_plan_details_id: number;
+  fees_type_id: number;
+  fee_type_name: string;
+  installment_type: string;
+  total_installment: number;
+  total_amount: number;
+  paid_amount: number;
+  due_amount: number;
+  installments: StatementInstallmentItem[];
+}
+
+export interface StatementTransactionItem {
+  id: number;
+  transaction_reference: string;
+  payment_date: string;
+  payment_mode: string;
+  amount: number;
+  remaining_amount: number;
+  discounted_amount: number;
+  status: string;
+  payment_status: string;
+  remarks: string | null;
+  installment_no?: number | null;
+  due_date?: string | null;
+}
+
+export interface StudentFinancialStatement {
+  statement_date: string;
+  student: StatementStudentProfile;
+  template: StatementTemplateInfo;
+  financial_summary: StatementFinancialSummary;
+  breakdown: StatementFeeBreakdownItem[];
+  transactions: StatementTransactionItem[];
 }

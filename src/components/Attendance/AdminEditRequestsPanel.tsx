@@ -1,5 +1,6 @@
 "use client"
 
+import { useCan } from "@/permissions/useCan"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ import { Pagination } from "@/components/ui/pagination"
 import { SaralPagination } from "../ui/common/SaralPagination"
 
 const AdminEditRequestsPanel = () => {
+  const { can } = useCan()
   const [currentPage, setCurrentPage] = useState(1)
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending")
   const {
@@ -151,7 +153,8 @@ const AdminEditRequestsPanel = () => {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex space-x-2">
-                          <Button
+                          {can("update", "Attendance") && (
+<Button
                             onClick={() => openProcessDialog(request.id, "approved")}
                             variant="outline"
                             size="sm"
@@ -159,7 +162,9 @@ const AdminEditRequestsPanel = () => {
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
-                          <Button
+)}
+                          {can("update", "Attendance") && (
+<Button
                             onClick={() => openProcessDialog(request.id, "rejected")}
                             variant="outline"
                             size="sm"
@@ -167,6 +172,7 @@ const AdminEditRequestsPanel = () => {
                           >
                             <XCircle className="h-4 w-4" />
                           </Button>
+)}
                         </div>
                       </td>
                     </tr>

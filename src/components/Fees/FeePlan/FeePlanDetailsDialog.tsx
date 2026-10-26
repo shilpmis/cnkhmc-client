@@ -746,7 +746,7 @@ const FeePlanDetailsDialog: React.FC<FeePlanDetailsDialogProps> = ({ isOpen, onC
                         {feePlanDetails.fees_plan.status}
                       </Badge>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Class: {feePlanDetails.fees_plan.class_id ? (
+                        Admission Class: {feePlanDetails.fees_plan.class_id ? (
                           (() => {
                             const clas = AcademicClasses?.find((cls) => cls.id === feePlanDetails.fees_plan.class_id)
                             return clas ? `${clas.class}` : "N/A"
@@ -755,6 +755,15 @@ const FeePlanDetailsDialog: React.FC<FeePlanDetailsDialogProps> = ({ isOpen, onC
                           <Badge variant="outline" className="text-amber-600 border-amber-300 ml-1">
                             Not attached
                           </Badge>
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Quota: {feePlanDetails.fees_plan.quota ? (
+                          <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 ml-1">
+                            {feePlanDetails.fees_plan.quota.name}
+                          </Badge>
+                        ) : (
+                          <span className="font-medium text-slate-600 ml-1">General / All Quotas</span>
                         )}
                       </p>
                     </CardContent>

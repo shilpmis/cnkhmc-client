@@ -47,9 +47,9 @@ class DailyDiaryService {
     return ApiService.get(`daily-diaries?${query}`);
   }
 
-  static async exportPDF(params?: { startDate?: string; endDate?: string; staffId?: number }) {
+  static async exportPDF(params?: { startDate?: string; endDate?: string; staffId?: number; subject?: string; className?: string }) {
     const cleanParams = Object.fromEntries(
-      Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null)
+      Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null && v !== 'all')
     );
     const query = new URLSearchParams(cleanParams as any).toString();
     return ApiService.get(`daily-diaries/export-pdf?${query}`, { responseType: 'blob' });

@@ -3,9 +3,10 @@ import type React from "react"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, BarChart3 } from "lucide-react"
+import { FileText, BarChart3, Receipt } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import InstallmentWiseReport from "./InstallmentWiseReport"
+import StudentStatementReportTab from "./StudentStatementReportTab"
 
 export const ReportGeneration: React.FC = () => {
   const { t } = useTranslation()
@@ -29,15 +30,23 @@ export const ReportGeneration: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-1">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="installment-wise" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 {t("installment_wise_report")}
+              </TabsTrigger>
+              <TabsTrigger value="student-statement" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Student Financial Statement & Ledger
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="installment-wise" className="mt-6">
               <InstallmentWiseReport />
+            </TabsContent>
+
+            <TabsContent value="student-statement" className="mt-6">
+              <StudentStatementReportTab />
             </TabsContent>
           </Tabs>
         </CardContent>

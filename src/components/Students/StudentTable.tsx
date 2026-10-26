@@ -4,8 +4,10 @@
 
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { useCan } from "@/permissions/useCan"
 import { Edit, FileText, UserRound, X, ChevronUp, ChevronDown, ChevronsUpDown, Download, School } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SaralPagination } from "../ui/common/SaralPagination"
 import type { PageDetailsForStudents, Student, StudentEnrollment } from "@/types/student"
 import type { Division } from "@/types/academic"
@@ -45,6 +47,7 @@ export default function StudentTable({
 
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const { can } = useCan()
   const [selectedStudent, setSelectedStudent] = useState<StudentEnrollment | null>(null)
   const { t } = useTranslation();
   const [fetchStudentDetails, { isLoading: isFetchingStundeInformation }] = useLazyFetchSingleStudentDataInDetailQuery();
@@ -230,12 +233,20 @@ export default function StudentTable({
 
                   <TableCell>{student.gr_no}</TableCell>
                   <TableCell>
-                    <button
-                      className="text-blue-600 hover:underline focus:outline-none"
-                      onClick={() => handleStudentClick(student.id)}
-                    >
-                      {student.first_name} {student.middle_name} {student.last_name}
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={student.profile_photo || undefined} alt={student.first_name} />
+                        <AvatarFallback className="text-xs font-semibold bg-primary/10">
+                          {student.first_name?.[0]}{student.last_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        className="text-blue-600 hover:underline focus:outline-none font-medium text-left"
+                        onClick={() => handleStudentClick(student.id)}
+                      >
+                        {student.first_name} {student.middle_name} {student.last_name}
+                      </button>
+                    </div>
                   </TableCell>
                   <TableCell>{student.fourth_year_roll_number || student.third_year_roll_number || student.second_year_roll_number || student.first_year_roll_number}</TableCell>
                   <TableCell>{student.gender}</TableCell>
@@ -246,9 +257,11 @@ export default function StudentTable({
                     <TableCell>{student.practical_batch || "None"}</TableCell>
                   )}
                   <TableCell>
-                    <Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(student)}>
+                    {can("update", "Student") && (
+<Button variant="outline" size="sm" className="mr-2" onClick={() => handleEdit(student)}>
                       <Edit className="h-4 w-4 mr-1" /> {t("edit")}
                     </Button>
+)}
                     <Button variant="outline" size="sm" onClick={() => {
                       setSelectedStudentForCert(student)
                       setCertStudentId(student.id)

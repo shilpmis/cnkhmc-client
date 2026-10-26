@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   User,
   GraduationCap,
@@ -31,6 +31,8 @@ import dynamic from "next/dynamic"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import StudentCertificateModal from "./StudentCertificateModal"
+import { AvatarUpload } from "@/components/ui/AvatarUpload"
+import { useUploadStudentPhotoMutation, useDeleteStudentPhotoMutation } from "@/services/StudentServices"
 
 interface StudentProfileViewProps {
   student: StudentEnrollment
@@ -45,6 +47,17 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
   // Add a state to force re-render PDFDownloadLink
   const [pdfKey, setPdfKey] = useState(Date.now())
   const [certModalOpen, setCertModalOpen] = useState(false)
+  const [uploadStudentPhoto] = useUploadStudentPhotoMutation()
+  const [deleteStudentPhoto] = useDeleteStudentPhotoMutation()
+  const studentData = student.student || (student as any)
+  const [currentPhoto, setCurrentPhoto] = useState<string | null | undefined>(
+    studentData?.profile_photo
+  )
+
+  useEffect(() => {
+    const photo = student.student?.profile_photo || (student as any)?.profile_photo
+    setCurrentPhoto(photo)
+  }, [student.student?.profile_photo, (student as any)?.profile_photo])
 
   const AcademicClasses = useAppSelector(selectAcademicClasses)
   
@@ -128,7 +141,18 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
           {typeof window !== "undefined" && (
             <PDFDownloadLink
               key={pdfKey}
-              document={<StudentDetailsPDF student={student} currentUser={null} />}
+              document={
+                <StudentDetailsPDF
+                  student={{
+                    ...student,
+                    student: {
+                      ...student.student,
+                      profile_photo: currentPhoto ?? student.student?.profile_photo,
+                    },
+                  }}
+                  currentUser={null}
+                />
+              }
               fileName={`${student.student.first_name}_${student.student.last_name}_details.pdf`}
             >
               {({ blob, url, loading, error }: { blob: Blob | null; url: string | null; loading: boolean; error: Error | null }) => (
@@ -157,13 +181,26 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
             <div className="relative">
-              <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
-                <AvatarImage src="/placeholder.svg?height=128&width=128" alt={student.student.first_name} />
-                <AvatarFallback className="text-4xl bg-primary/10">
-                  {student.student.first_name?.[0]}
-                  {student.student.last_name?.[0]}
-                </AvatarFallback>
-              </Avatar>
+              <AvatarUpload
+                currentPhotoUrl={currentPhoto}
+                fallbackText={`${student.student.first_name?.[0] || ""}${student.student.last_name?.[0] || ""}`}
+                altText={student.student.first_name}
+                size="lg"
+                onUpload={async (file) => {
+                  const studentId = (student.student as any)?.id || student.student_id || (student as any)?.id
+                  const res = await uploadStudentPhoto({ studentId, file }).unwrap()
+                  const uploadedUrl = res?.data?.url || res?.url
+                  if (uploadedUrl) {
+                    setCurrentPhoto(uploadedUrl)
+                  }
+                  return res
+                }}
+                onDelete={async () => {
+                  const studentId = (student.student as any)?.id || student.student_id || (student as any)?.id
+                  await deleteStudentPhoto(studentId).unwrap()
+                  setCurrentPhoto(null)
+                }}
+              />
               <Badge className={`absolute -top-2 -right-2 ${getStatusBadgeColor(student.status)}`}>
                 {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
               </Badge>
@@ -183,7 +220,7 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                 <div className="flex items-center gap-1">
                   <GraduationCap className="h-4 w-4" />
                   <span>
-                    {t("class")}: {student.class?.class.class}-{student.class?.division}
+                    {t("class")}: {student.class?.class.class}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -405,7 +442,6 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-3 px-4 font-medium">{t("class")}</th>
-                      <th className="text-left py-3 px-4 font-medium">{t("division")}</th>
                       <th className="text-left py-3 px-4 font-medium">{t("status")}</th>
                       <th className="text-left py-3 px-4 font-medium">{t("type")}</th>
                       <th className="text-left py-3 px-4 font-medium">{t("remarks")}</th>
@@ -414,7 +450,6 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                   <tbody>
                     <tr className="border-b hover:bg-muted/50">
                       <td className="py-3 px-4">{student.class?.class.class}</td>
-                      <td className="py-3 px-4">{student.class?.division}</td>
                       <td className="py-3 px-4">
                         <Badge className={getStatusBadgeColor(student.status)}>
                           {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
@@ -445,7 +480,7 @@ export function StudentProfileView({ student, onBack, showToolBar }: StudentProf
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">{t("class")}</span>
                   <span className="font-medium">
-                    {student.class?.class.class}-{student.class?.division}
+                    {student.class?.class.class}
                   </span>
                 </div>
                 <Separator />

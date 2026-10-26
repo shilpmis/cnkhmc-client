@@ -862,6 +862,7 @@
 
 
 
+import { useCan } from "@/permissions/useCan"
 import type React from "react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -879,7 +880,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Pencil, Plus, Search, Eye, AlertTriangle, Trash2, CheckCircle, XCircle, Copy, Loader2, MoreVertical } from 'lucide-react'
-import { AddFeePlanForm } from "./AddFeePlanForm"
+import { AddFeePlanForm, isEntryLevelClass } from "./AddFeePlanForm"
 import {
   useLazyGetAllFeesTypeQuery,
   useLazyGetFeesPlanQuery,
@@ -911,6 +912,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { AcademicClasses } from "@/types/academic"
 import { useDeleteFeesPlanMutation } from "@/services/feesService"
+import { useGetQuotasQuery } from "@/services/QuotaService"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -971,6 +973,7 @@ const cloneFormSchema = z.object({
 type CloneFormValues = z.infer<typeof cloneFormSchema>
 
 export const FeePlanManagement: React.FC = () => {
+  const { canByTemplate } = useCan()
   const { t } = useTranslation()
   const AcademicDivision = useAppSelector(selectAllAcademicClasses)
   const authState = useAppSelector(selectAuthState)
@@ -996,7 +999,17 @@ export const FeePlanManagement: React.FC = () => {
     CurrentAcademicSessionForSchool ? CurrentAcademicSessionForSchool?.id.toString() : "",
   )
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All")
+  const [quotaFilter, setQuotaFilter] = useState<string>("All")
   const [currentPage, setCurrentPage] = useState(1)
+
+  const activeAcademicSessionId = selectedAcademicYear
+    ? Number.parseInt(selectedAcademicYear)
+    : CurrentAcademicSessionForSchool?.id || 0
+
+  const { data: quotasList } = useGetQuotasQuery(
+    { academic_session_id: activeAcademicSessionId },
+    { skip: !activeAcademicSessionId }
+  )
 
   const [DialogForFeesPlan, setDialogForFeesPlan] = useState<{
     isOpen: boolean
@@ -1028,6 +1041,33 @@ export const FeePlanManagement: React.FC = () => {
   })
 
   // Clone form
+  const roleCanManageFeeTemplates = Boolean(
+    !authState.user?.role ||
+    [
+      UserRole.ADMIN,
+      UserRole.PRINCIPAL,
+      UserRole.SUPER_ADMIN,
+      UserRole.ORG_ADMIN,
+      UserRole.CLERK,
+      UserRole.IT_ADMIN,
+      UserRole.DEVELOPER,
+    ].includes(authState.user?.role as UserRole) ||
+    [1, 2, 3, 4, 5, 7, 8, 11].includes(Number(authState.user?.role_id))
+  )
+  // Roles keep what they have; a permission template can add create / edit / delete on Fees
+  const canCreateFeeTemplate = roleCanManageFeeTemplates || canByTemplate("create", "Fees")
+  const canEditFeeTemplate = roleCanManageFeeTemplates || canByTemplate("update", "Fees")
+  const canDeleteFeeTemplate = roleCanManageFeeTemplates || canByTemplate("delete", "Fees")
+  const canManageFeeTemplates = canCreateFeeTemplate || canEditFeeTemplate || canDeleteFeeTemplate
+
+  useEffect(() => {
+    const handleOpenCreate = () => {
+      setDialogForFeesPlan({ isOpen: true, paln_id: null, type: "create" })
+    }
+    window.addEventListener("open-create-fee-template", handleOpenCreate)
+    return () => window.removeEventListener("open-create-fee-template", handleOpenCreate)
+  }, [])
+
   const cloneForm = useForm<CloneFormValues>({
     resolver: zodResolver(cloneFormSchema),
     defaultValues: {
@@ -1059,18 +1099,10 @@ export const FeePlanManagement: React.FC = () => {
   }
 
   const handleDelete = (feePlan: FeesPlan) => {
-    if (feePlan.status === "Active") {
-      toast({
-        variant: "destructive",
-        title: "You cannot delete an active fee plan",
-      })
-      return
-    }
-
     setConfirmDialog({
       isOpen: true,
       title: t("delete_fee_plan"),
-      description: t("are_you_sure_you_want_to_delete_this_fee_plan?_this_action_cannot_be_undone."),
+      description: `Are you sure you want to delete "${feePlan.name}"? This action cannot be undone.`,
       onConfirm: async () => {
         try {
           await deleteFeesPlan({
@@ -1096,12 +1128,11 @@ export const FeePlanManagement: React.FC = () => {
             refreshFeePlans()
           }
 
-          // Keep the dialog open as requested
-          // closeConfirmDialog() - commented out to keep dialog open
+          closeConfirmDialog()
         } catch (error) {
           toast({
             variant: "destructive",
-            title: "Something went wrong",
+            title: "Could not delete fee plan",
             description: (error as any)?.data?.message || t("delete_not_implemented"),
           })
           closeConfirmDialog()
@@ -1265,6 +1296,7 @@ export const FeePlanManagement: React.FC = () => {
         academic_session: Number.parseInt(selectedAcademicYear),
         status: statusFilter,
         page,
+        quota_id: quotaFilter !== "All" ? Number(quotaFilter) : undefined,
       })
     }
   }
@@ -1303,35 +1335,28 @@ export const FeePlanManagement: React.FC = () => {
   useEffect(() => {
     refreshFeePlans(1)
     setCurrentPage(1)
-  }, [selectedAcademicYear, statusFilter])
-
-  if (FeesTypeForSchool && FeesTypeForSchool.length === 0 && !isFeeTypeLoading) {
-    return (
-      <div className="text-center py-8">
-        <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-4">
-          <AlertTriangle className="h-6 w-6 text-amber-600" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-1">{t("no_fee_types_found")}</h3>
-        <p className="text-gray-500 max-w-md mx-auto mb-4">
-          {t("you_need_to_create_fee_types_before_you_can_create_fee_plans")}
-        </p>
-      </div>
-    )
-  }
+  }, [selectedAcademicYear, statusFilter, quotaFilter])
 
   // Determine if we should show the skeleton loader
   const showSkeleton = isLoading || isFetching
 
   return (
     <>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">{t("fee_plan_management")}</h1>
-          {(authState.user?.role == UserRole.ADMIN || authState.user?.role == UserRole.PRINCIPAL) && (
-            <Button onClick={() => setDialogForFeesPlan({ isOpen: true, paln_id: null, type: "create" })}>
-              <Plus className="mr-2 h-4 w-4" /> {t("add_fee_plan")}
-            </Button>
-          )}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800">Fee Templates</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Standardize quota-based fee structures by academic cohort with permanent grandfathering lock-in.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {canCreateFeeTemplate && (
+              <Button size="sm" onClick={() => setDialogForFeesPlan({ isOpen: true, paln_id: null, type: "create" })} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
+                <Plus className="mr-2 h-4 w-4" /> Create Fee Template
+              </Button>
+            )}
+          </div>
         </div>
         <Card>
           <CardHeader>
@@ -1364,6 +1389,19 @@ export const FeePlanManagement: React.FC = () => {
                   <SelectItem value="Inactive">{t("inactive")}</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={quotaFilter} onValueChange={setQuotaFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Quotas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Quotas</SelectItem>
+                  {quotasList?.map((quota) => (
+                    <SelectItem key={quota.id} value={quota.id.toString()}>
+                      {quota.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
@@ -1381,7 +1419,8 @@ export const FeePlanManagement: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("plan_name")}</TableHead>
-                    <TableHead>{t("class")}</TableHead>
+                    <TableHead>Admission Class / Program</TableHead>
+                    <TableHead>Quota / Category</TableHead>
                     <TableHead>{t("total_amount")}</TableHead>
                     <TableHead>{t("status")}</TableHead>
                     <TableHead>{t("actions")}</TableHead>
@@ -1395,6 +1434,9 @@ export const FeePlanManagement: React.FC = () => {
                         <TableRow key={`loading-${index}`}>
                           <TableCell>
                             <div className="h-6 w-full max-w-[200px] bg-gray-200 animate-pulse rounded"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-6 w-24 bg-gray-200 animate-pulse rounded"></div>
                           </TableCell>
                           <TableCell>
                             <div className="h-6 w-24 bg-gray-200 animate-pulse rounded"></div>
@@ -1426,15 +1468,35 @@ export const FeePlanManagement: React.FC = () => {
                               const clas = AcademicClassesForSchool.find((cls) => cls.id === feePlan.class_id)
                               if (!clas) return "N/A"
 
-                              // const classInfo = AcademicClassesForSchool.find((cls) => cls.id === division.class_id)
+                              const isEntry = isEntryLevelClass(clas.class)
                               return (
-                                <span>
-                                  Class - {clas.class}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium">{clas.class}</span>
+                                  {isEntry ? (
+                                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5 font-normal">
+                                      1st Year
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-slate-500 text-[10px] py-0 px-1.5 font-normal">
+                                      Senior
+                                    </Badge>
+                                  )}
+                                </div>
                               )
                             })()
                           ) : (
                             <div className="h-6 w-24 bg-gray-200 animate-pulse rounded"></div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {feePlan.quota ? (
+                            <Badge variant="secondary" className="font-medium bg-blue-50 text-blue-700 border-blue-200">
+                              {feePlan.quota.name}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-500 font-normal">
+                              General / All Quotas
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>₹{Number(feePlan.total_amount).toLocaleString()}</TableCell>
@@ -1454,45 +1516,47 @@ export const FeePlanManagement: React.FC = () => {
                               <DropdownMenuItem onClick={() => handleView(feePlan.id)}>
                                 <Eye className="h-4 w-4 mr-2" /> {t("view")}
                               </DropdownMenuItem>
-                              {(authState.user?.role == UserRole.ADMIN || authState.user?.role == UserRole.PRINCIPAL) && (
+                              {canManageFeeTemplates && (
                                 <>
-                                  <DropdownMenuItem
+                                  {canEditFeeTemplate && (
+<DropdownMenuItem
                                     onClick={() => handleEdit(feePlan.id)}
-                                    disabled={CurrentAcademicSessionForSchool?.id !== feePlan.academic_session_id}
                                   >
                                     <Pencil className="h-4 w-4 mr-2" /> {t("edit")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
+)}
+                                  {canCreateFeeTemplate && (
+<DropdownMenuItem
                                     onClick={() => handleClone(feePlan)}
                                     disabled={isCreatingFeePlan}
                                   >
                                     <Copy className="h-4 w-4 mr-2 text-blue-500" /> {t("clone")}
                                   </DropdownMenuItem>
+)}
                                   <DropdownMenuSeparator />
-                                  {CurrentAcademicSessionForSchool?.id === feePlan.academic_session_id && (
-                                    <>
-                                      {feePlan.status === "Active" ? (
-                                        <DropdownMenuItem
-                                          onClick={() => handleStatusChange(feePlan, "Inactive")}
-                                          disabled={isUpdatingFeePlanStaus}
-                                        >
-                                          <XCircle className="h-4 w-4 mr-2 text-amber-500" /> {t("deactivate")}
-                                        </DropdownMenuItem>
-                                      ) : (
-                                        <DropdownMenuItem
-                                          onClick={() => handleStatusChange(feePlan, "Active")}
-                                          disabled={isUpdatingFeePlanStaus}
-                                        >
-                                          <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> {t("activate")}
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={() => handleDelete(feePlan)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2 text-red-500" /> {t("delete")}
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
+                                  {canEditFeeTemplate && (feePlan.status === "Active" ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusChange(feePlan, "Inactive")}
+                                      disabled={isUpdatingFeePlanStaus}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2 text-amber-500" /> {t("deactivate")}
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusChange(feePlan, "Active")}
+                                      disabled={isUpdatingFeePlanStaus}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2 text-green-500" /> {t("activate")}
+                                    </DropdownMenuItem>
+                                  ))}
+                                  {canDeleteFeeTemplate && (
+<DropdownMenuItem
+                                    onClick={() => handleDelete(feePlan)}
+                                    className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2 text-red-500" /> {t("delete")}
+                                  </DropdownMenuItem>
+)}
                                 </>
                               )}
                             </DropdownMenuContent>
@@ -1502,10 +1566,23 @@ export const FeePlanManagement: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
-                          <p className="text-muted-foreground">{t("no_fee_plans_found")}</p>
+                      <TableCell colSpan={6} className="h-44 text-center">
+                        <div className="flex flex-col items-center justify-center max-w-md mx-auto py-6">
+                          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                            <Plus className="h-6 w-6" />
+                          </div>
+                          <h4 className="text-base font-semibold text-slate-900 mb-1">No Fee Templates Configured</h4>
+                          <p className="text-xs text-muted-foreground mb-4">
+                            There are no fee templates found for the selected academic year and quota filters. Get started by creating your first fee template.
+                          </p>
+                          {canCreateFeeTemplate && (
+                            <Button
+                              onClick={() => setDialogForFeesPlan({ isOpen: true, paln_id: null, type: "create" })}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Create Fee Template
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1548,7 +1625,7 @@ export const FeePlanManagement: React.FC = () => {
         >
           <DialogHeader>
             <DialogTitle>
-              {DialogForFeesPlan.type === "update" ? t("edit_fee_plan") : t("create_new_fee_plan")}
+              {DialogForFeesPlan.type === "update" ? "Edit Fee Template" : "Create New Fee Template"}
             </DialogTitle>
           </DialogHeader>
           <div className="h-full">

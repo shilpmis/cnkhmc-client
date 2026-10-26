@@ -36,6 +36,22 @@ export interface School {
   pincode: number;
   academicSessions: AcademicSession[];
 }
+
+export interface PolicyRule {
+  action: string | string[];
+  subject: string | string[];
+  inverted?: boolean;
+}
+
+export interface PolicyTemplate {
+  id: number;
+  name: string;
+  description: string | null;
+  rules: PolicyRule[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: number;
   school_id: number;
@@ -48,6 +64,7 @@ export interface User {
   is_active: boolean;
   staff_id: number | null;
   permissions: string[];
+  policies?: PolicyTemplate[];
   school: School;
   staff: StaffType | null;
 }
@@ -64,6 +81,7 @@ export enum UserRole {
   HOD = "HOD",
   FACULTY = "FACULTY",
   DEVELOPER = "DEVELOPER",
+  STAFF = "STAFF",
 }
 
 export enum Permission {
@@ -86,6 +104,7 @@ export enum Permission {
   MANAGE_TIMETABLE = "MANAGE_TIMETABLE",
   MANAGE_LESSON_PLAN = "MANAGE_LESSON_PLAN",
   MANAGE_HOSTEL = "MANAGE_HOSTEL",
+  MANAGE_INVENTORY = "MANAGE_INVENTORY",
 }
 
 export const RolePermissions: Record<UserRole, Permission[]> = {
@@ -109,6 +128,7 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MANAGE_TIMETABLE,
     Permission.MANAGE_LESSON_PLAN,
     Permission.MANAGE_HOSTEL,
+    Permission.MANAGE_INVENTORY,
   ],
   [UserRole.ADMIN]: [
     Permission.VIEW_DASHBOARD,
@@ -194,6 +214,9 @@ export const RolePermissions: Record<UserRole, Permission[]> = {
     Permission.MARK_LEAVES,
     Permission.MARK_ATTENDANCE,
     Permission.MANAGE_SUBJECTS,
+  ],
+  [UserRole.STAFF]: [
+    Permission.MARK_LEAVES,
   ],
   [UserRole.DEVELOPER]: Object.values(Permission),
 };

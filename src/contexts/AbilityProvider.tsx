@@ -4,6 +4,7 @@ import { AbilityProvider as CaslAbilityProvider } from '@casl/react'
 import { useSelector } from 'react-redux'
 import { selectCurrentUser } from '../redux/slices/authSlice'
 import { RolePermissions } from '../types/user'
+import { normalizeRules } from '../permissions/policyAbility'
 
 interface AbilityProviderProps {
   children: React.ReactNode
@@ -14,22 +15,23 @@ export const AbilityProvider: React.FC<AbilityProviderProps> = ({ children }) =>
   const [ability, setAbility] = useState<AnyMongoAbility>(createMongoAbility([]))
 
   useEffect(() => {
-    // Collect rules from user.policies
-    // Since we just added this, user.policies might not exist on the Redux store yet
     let rules: any[] = []
-    
+
+    // 1. Always include base role default permissions
     if (user?.system_role) {
       if (user.system_role === 'SUPER_ADMIN' || user.system_role === 'DEVELOPER') {
-        rules = [{ action: 'manage', subject: 'all' }]
+        rules.push({ action: 'manage', subject: 'all' })
       } else {
-        // Use predefined role permissions if available
         const predefinedPermissions = RolePermissions[user.system_role] || []
-        rules = predefinedPermissions.map((p: string) => ({ action: p, subject: 'all' }))
+        rules.push(...predefinedPermissions.map((p: string) => ({ action: p, subject: 'all' })))
       }
-    } else if (user?.permissions) {
-      // Fallback to explicit permissions array if no known role is found
-      rules = user.permissions.map((p: string) => ({ action: p, subject: 'all' }))
+    } else if (user?.permissions && Array.isArray(user.permissions)) {
+      rules.push(...user.permissions.map((p: string) => ({ action: p, subject: 'all' })))
     }
+
+    // 2. Supplement with the user's permission templates (subjects normalised to catalog modules,
+    //    so "Inventory" and "DeadStock" are the same module; deny rules are applied last)
+    rules.push(...normalizeRules(user?.policies))
 
     setAbility(createMongoAbility(rules))
   }, [user])

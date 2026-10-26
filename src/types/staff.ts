@@ -95,6 +95,8 @@ export interface StaffType {
   teacher_code?: string | null;
   state_council_reg_no?: string | null;
   ayush_registration_no?: string | null;
+  nch_registration_no?: string | null;
+  nch_registration_date?: Date | string | null;
   date_of_registration?: Date | string | null;
   university_appointment_letter_no?: string | null;
   university_appointment_date?: Date | string | null;
@@ -125,8 +127,14 @@ export interface StaffType {
   designation?: string | null;
   department?: string | null;
   department_id?: number | null;
+  department_details?: {
+    id?: number | string;
+    name?: string;
+    code?: string;
+  } | null;
   leave_policy_ids?: number[];
   staff_experiences?: StaffExperience[];
+  experiences?: StaffExperience[];
   letters?: StaffLetter[];
 }
 

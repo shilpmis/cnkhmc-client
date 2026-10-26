@@ -25,6 +25,15 @@ export default defineConfig(({ mode }) => {
     define: {
       __Mode__: JSON.stringify(mode),
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            recharts: ['recharts'],
+          },
+        },
+      },
+    },
     server: {
       port: 5174,
       proxy: {

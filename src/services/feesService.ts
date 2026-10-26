@@ -19,6 +19,7 @@ import {
   RequestForApplyExtraFees,
   StudentFeeDetails,
   StudentFeesInstallment,
+  StudentFinancialStatement,
   StudentWithFeeStatus,
   TypeOfInstallmentWiseReportForClass,
 } from "@/types/fees";
@@ -41,6 +42,7 @@ export const FeesApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ["StudentFees"],
   endpoints: (builder) => ({
     getFeesType: builder.query<
       { data: FeesType[]; meta: PageMeta },
@@ -108,12 +110,19 @@ export const FeesApi = createApi({
         academic_session: number;
         status?: "All" | "Active" | "Inactive";
         page?: number;
+        quota_id?: number;
+        class_id?: number;
       }
     >({
-      query: ({ academic_session, status = "All", page = 1 }) => ({
-        url: `/feesplan?academic_session=${academic_session}&status=${status}&page=${page}`,
-        method: "GET",
-      }),
+      query: ({ academic_session, status = "All", page = 1, quota_id, class_id }) => {
+        let url = `/feesplan?academic_session=${academic_session}&status=${status}&page=${page}`;
+        if (quota_id) url += `&quota_id=${quota_id}`;
+        if (class_id) url += `&class_id=${class_id}`;
+        return {
+          url,
+          method: "GET",
+        };
+      },
 
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
@@ -162,7 +171,11 @@ export const FeesApi = createApi({
       query: ({ data, academic_session }) => ({
         url: `/feesplan`,
         method: "POST",
-        body: { ...data, academic_session_id: academic_session },
+        body: {
+          ...data,
+          academic_year: Number(academic_session),
+          academic_session_id: Number(academic_session),
+        },
       }),
     }),
 
@@ -205,6 +218,7 @@ export const FeesApi = createApi({
         url: `/fees/status/class/${class_id}?academic_session=${academic_session}&page=${page}`,
         method: "GET",
       }),
+      providesTags: ["StudentFees"],
     }),
 
     getFilterdStudentFeesDetailsForClass: builder.query<
@@ -228,6 +242,7 @@ export const FeesApi = createApi({
         url: `/fees/status/student/${student_id}?academic_session=${academic_session_id}`,
         method: "GET",
       }),
+      providesTags: ["StudentFees"],
     }),
 
     applyExtraFeesPlanOnStudentFeesPlan: builder.mutation<
@@ -264,6 +279,7 @@ export const FeesApi = createApi({
           installments: installments,
         },
       }),
+      invalidatesTags: ["StudentFees"],
     }),
 
 
@@ -276,6 +292,7 @@ export const FeesApi = createApi({
         method: "POST",
         body: payload,
       }),
+      invalidatesTags: ["StudentFees"],
     }),
 
     updatePaymentStatus: builder.mutation<
@@ -472,6 +489,7 @@ export const FeesApi = createApi({
         method: "PUT",
         body: payload,
       }),
+      invalidatesTags: ["StudentFees"],
     }),
 
     reverseTransaction: builder.mutation<
@@ -487,9 +505,48 @@ export const FeesApi = createApi({
         method: "PUT",
         body: payload,
       }),
-    })
+      invalidatesTags: ["StudentFees"],
+    }),
 
+    getStudentFinancialStatement: builder.query<
+      { data: StudentFinancialStatement },
+      { student_id: number }
+    >({
+      query: ({ student_id }) => ({
+        url: `/fees/statement/${student_id}`,
+        method: "GET",
+      }),
+    }),
 
+    lockStudentFeeTemplate: builder.mutation<
+      { message: string; data: any },
+      { student_id: number; fees_plan_id: number; locked_amount?: number; academic_year_id?: number }
+    >({
+      query: (data) => ({
+        url: `/fees/lock-template`,
+        method: "POST",
+        body: data,
+      }),
+    }),
+    exportStudentFinancialStatementExcel: builder.mutation<
+      {
+        success: boolean
+        message: string
+        file_name: string
+        file_url: string
+        is_cloud: boolean
+        storage_key: string
+        student_name: string
+        gr_no: string
+      },
+      { student_id: number; academic_year?: number }
+    >({
+      query: ({ student_id, academic_year }) => ({
+        url: `/fees/statement/${student_id}/export-excel`,
+        method: "POST",
+        params: academic_year ? { academic_year } : undefined,
+      }),
+    }),
   }),
 });
 
@@ -544,5 +601,10 @@ export const {
   useReverseTransactionMutation,
   useUpdateStatusForTransactionMutation,
 
-  useDeleteFeesPlanMutation
+  useDeleteFeesPlanMutation,
+
+  useGetStudentFinancialStatementQuery,
+  useLazyGetStudentFinancialStatementQuery,
+  useLockStudentFeeTemplateMutation,
+  useExportStudentFinancialStatementExcelMutation,
 } = FeesApi;

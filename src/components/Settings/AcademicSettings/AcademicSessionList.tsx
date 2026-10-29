@@ -154,7 +154,12 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
   }
 
   const currentActive = useAppSelector(selectActiveAccademicSessionsForSchool)
-  const sessionList = sessions?.sessions?.length ? sessions.sessions : generateDefaultAcademicYears()
+  // The server only returns a fixed year window; sessions created in the form live in localStorage
+  // (see generateDefaultAcademicYears), so merge both to list every session, oldest first.
+  const sessionMap = new Map<any, any>()
+  ;(sessions?.sessions ?? []).forEach((s: any) => sessionMap.set(s.id ?? s.academic_year, s))
+  generateDefaultAcademicYears().forEach((s: any) => sessionMap.set(s.id ?? s.academic_year, s))
+  const sessionList = Array.from(sessionMap.values()).sort((a: any, b: any) => Number(a.start_year) - Number(b.start_year))
 
   return (
     <>

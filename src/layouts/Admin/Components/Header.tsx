@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useAppDispatch } from "@/redux/hooks/useAppDispatch"
 import { logout } from "@/services/AuthService"
@@ -51,6 +51,11 @@ export default function Header() {
   const users = useAppSelector((state) => state.auth.user)
   const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
   const allAcademicSessions = useAppSelector(selectAccademicSessionsForSchool)
+  // The API returns sessions in insertion order (2022-2023 can come last), so list them chronologically.
+  const sortedSessions = useMemo(
+    () => [...(allAcademicSessions ?? [])].sort((a, b) => Number(a.start_year) - Number(b.start_year)),
+    [allAcademicSessions]
+  )
   const { t } = useTranslation()
 
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
@@ -175,17 +180,25 @@ export default function Header() {
                       <ChevronDown className="h-3 w-3 text-primary" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="center" className="w-56">
-                    <div className="p-2">
-                      <h3 className="font-semibold text-sm text-muted-foreground mb-2">{t("academic_sessions")}</h3>
+                  <DropdownMenuContent align="center" className="w-64 p-0">
+                    <div className="px-3 pt-3 pb-2 border-b">
+                      <h3 className="font-semibold text-sm text-muted-foreground">
+                        {t("academic_sessions")}
+                        {sortedSessions.length > 0 && <span className="ml-1 font-normal">({sortedSessions.length})</span>}
+                      </h3>
+                    </div>
+                    <div className="p-2 max-h-[min(24rem,60vh)] overflow-y-auto overscroll-contain">
                       <div className="space-y-1">
-                        {allAcademicSessions && allAcademicSessions.length > 0 ? (
-                          allAcademicSessions.map((session) => (
+                        {sortedSessions.length > 0 ? (
+                          sortedSessions.map((session) => (
                             <div
                               key={session.id}
+                              ref={(el) => {
+                                if (el && currentAcademicSession?.id === session.id) el.scrollIntoView({ block: "nearest" })
+                              }}
                               onClick={() => dispatch(setCurrentActiveAcademicSession(session))}
                               className={cn(
-                                "p-2 rounded-md cursor-pointer transition-colors border",
+                                "px-2 py-1.5 rounded-md cursor-pointer transition-colors border",
                                 currentAcademicSession?.id === session.id
                                   ? "bg-primary/10 border-primary/20"
                                   : "bg-transparent border-transparent hover:bg-muted"
@@ -199,7 +212,7 @@ export default function Header() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-xs text-muted-foreground mt-1">
+                              <div className="text-xs text-muted-foreground">
                                 {session.start_month} - {session.end_month}
                               </div>
                             </div>
@@ -345,10 +358,10 @@ export default function Header() {
                     </div>
 
                     {/* Academic Session in dropdown for mobile */}
-                    <div className="md:hidden mb-2 space-y-2">
+                    <div className="md:hidden mb-2 space-y-2 max-h-60 overflow-y-auto overscroll-contain">
                       <p className="px-2 text-xs text-muted-foreground mb-1">{t("academic_sessions")}</p>
-                      {allAcademicSessions && allAcademicSessions.length > 0 ? (
-                        allAcademicSessions.map((session) => (
+                      {sortedSessions.length > 0 ? (
+                        sortedSessions.map((session) => (
                           <div
                             key={session.id}
                             onClick={() => dispatch(setCurrentActiveAcademicSession(session))}

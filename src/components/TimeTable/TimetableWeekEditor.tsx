@@ -376,7 +376,9 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       setMaxPeriods(max)
       setHasChanges(false)
     }
-  }, [timetableConfig, divisionId, days])
+    // `days` is rebuilt on every parent render; depending on it would reset unsaved edits whenever the page re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timetableConfig, divisionId])
 
   const handleCellClick = async (dayValue: string, periodIndex: number, period: PeriodState, addingBatch: boolean = false, addSpan: number = 1) => {
     if (viewMode === 'readonly') return;

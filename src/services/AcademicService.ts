@@ -62,6 +62,27 @@ export const AcademicApi = createApi({
         url: `/academic-sessions/${school_id}`,
         method: "GET",
       }),
+      // The server only returns a fixed year window; sessions created in the form are kept in localStorage
+      // (see generateDefaultAcademicYears). Merge them in so every screen lists all sessions, oldest first.
+      transformResponse: (response: any) => {
+        let custom: any[] = [];
+        try {
+          const raw = localStorage.getItem("custom_academic_years");
+          custom = raw ? JSON.parse(raw) : [];
+        } catch {
+          custom = [];
+        }
+        const serverList: any[] = Array.isArray(response) ? response : response?.sessions ?? response?.data ?? [];
+        const merged = new Map<any, any>();
+        serverList.forEach((s) => merged.set(s.id ?? s.academic_year, s));
+        // The form saves custom sessions as is_active; only the server's current-year session should count as current.
+        custom.forEach((s) => {
+          const key = s.id ?? s.academic_year;
+          merged.set(key, { ...s, is_active: merged.get(key)?.is_active ?? false });
+        });
+        const sessions = Array.from(merged.values()).sort((a, b) => Number(a.start_year) - Number(b.start_year));
+        return Array.isArray(response) ? sessions : { ...response, sessions, data: sessions };
+      },
     }),
     createAcademicSession: builder.mutation<
       AcademicSession,

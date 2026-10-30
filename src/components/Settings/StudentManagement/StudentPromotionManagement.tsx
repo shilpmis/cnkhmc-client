@@ -673,11 +673,13 @@ export function StudentPromotionManagement() {
   }
 
   // Toggle select all students
+  // Works on the visible page only and keeps selections made on other pages
   const toggleSelectAll = () => {
-    if (selectedStudents.length === filteredStudents.length) {
-      setSelectedStudents([])
+    const pageIds = filteredStudents.map((item) => item.student.id)
+    if (allPageSelected) {
+      setSelectedStudents((prev) => prev.filter((id) => !pageIds.includes(id)))
     } else {
-      setSelectedStudents(filteredStudents.map((item) => item.student.id))
+      setSelectedStudents((prev) => Array.from(new Set([...prev, ...pageIds])))
     }
   }
 
@@ -697,6 +699,9 @@ export function StudentPromotionManagement() {
       )
     })
   }, [students, searchTerm])
+
+  const allPageSelected =
+    filteredStudents.length > 0 && filteredStudents.every((item) => selectedStudents.includes(item.student.id))
 
   // // Use server-side pagination
   // const paginatedStudents = students
@@ -995,7 +1000,7 @@ export function StudentPromotionManagement() {
                     <TableRow>
                       <TableHead className="w-[50px]">
                         <Checkbox
-                          checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                          checked={allPageSelected}
                           onCheckedChange={toggleSelectAll}
                         />
                       </TableHead>

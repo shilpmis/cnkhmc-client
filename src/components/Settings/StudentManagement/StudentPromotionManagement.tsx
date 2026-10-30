@@ -128,6 +128,7 @@ export function StudentPromotionManagement() {
   // State for students
   const [selectedStudents, setSelectedStudents] = useState<number[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
 
   // Pagination
@@ -296,6 +297,7 @@ export function StudentPromotionManagement() {
       academic_session_id: Number.parseInt(sourceAcademicSession),
       class_id: sourceClass ? Number.parseInt(sourceClass) : undefined,
       page: currentPage,
+      search: debouncedSearch || undefined,
       ...queryParams,
     })
     setHasSearched(true)
@@ -685,20 +687,9 @@ export function StudentPromotionManagement() {
 
   // Filter students based on search term
   const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return students
-
-    return students.filter((student) => {
-      const fullName =
-        `${student.student.first_name} ${student.student.middle_name || ""} ${student.student.last_name || ""}`.toLowerCase()
-      const searchLower = searchTerm.toLowerCase()
-
-      return (
-        fullName.includes(searchLower) ||
-        (student.student.gr_no != null && student.student.gr_no.toString().includes(searchTerm)) ||
-        (student.student.roll_number && student.student.roll_number.toString().includes(searchTerm))
-      )
-    })
-  }, [students, searchTerm])
+    // Search is applied by the server (see debouncedSearch)
+    return students
+  }, [students])
 
   const allPageSelected =
     filteredStudents.length > 0 && filteredStudents.every((item) => selectedStudents.includes(item.student.id))
@@ -746,6 +737,7 @@ export function StudentPromotionManagement() {
         academic_session_id: Number.parseInt(sourceAcademicSession),
         class_id: sourceClass ? Number.parseInt(sourceClass) : undefined,
         page: page, // Use the page parameter directly
+        search: debouncedSearch || undefined,
         ...queryParams,
       })
     }
@@ -802,6 +794,28 @@ export function StudentPromotionManagement() {
   useEffect(() => {
     setSearchTerm("")
   }, [sourceAcademicSession, sourceClass, sourceDivision])
+
+  // Search runs on the server so it covers every page, not just the open one
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (!hasSearched) return
+    setCurrentPage(1)
+    getStudentsForPromotion({
+      academic_session_id: Number.parseInt(sourceAcademicSession),
+      class_id: sourceClass ? Number.parseInt(sourceClass) : undefined,
+      division_id:
+        sourceDivision && sourceDivision !== "all"
+          ? Number.parseInt(sourceDivision.replace("division-", ""))
+          : undefined,
+      page: 1,
+      limit: itemsPerPage,
+      search: debouncedSearch || undefined,
+    })
+  }, [debouncedSearch])
 
   // Determine if any loading state is active
   const isLoading =

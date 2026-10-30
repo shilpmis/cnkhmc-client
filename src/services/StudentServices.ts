@@ -39,6 +39,7 @@ export const StudentApi = createApi({
         class_id: number;
         page?: number;
         student_meta?: boolean;
+        search?: string;
       }
     >({
       query: ({
@@ -46,8 +47,11 @@ export const StudentApi = createApi({
         class_id,
         page = 1,
         student_meta = false,
+        search,
       }) => ({
-        url: `students/${academic_session}/${class_id}?page=${page}&student_meta=${student_meta}`,
+        url: `students/${academic_session}/${class_id}?page=${page}&student_meta=${student_meta}${
+          search ? `&search=${encodeURIComponent(search)}` : ""
+        }`,
         method: "GET",
       }),
     }),

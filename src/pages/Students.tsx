@@ -137,6 +137,7 @@ export const Students: React.FC = () => {
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(null)
   const [SelectedSession, setSelectedSession] = useState<number | null>(null)
   const [searchValue, setSearchValue] = useState<string>("")
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("")
 
   const [listedStudentForSelectedClass, setListedStudentForSelectedClass] = useState<Student[] | null>(null)
   const [paginationDataForSelectedClass, setPaginationDataForSelectedClass] = useState<PageDetailsForStudents | null>(
@@ -238,27 +239,29 @@ export const Students: React.FC = () => {
     [selectedDivision, getStudentForClass],
   )
 
-  const filteredStudents = useMemo(() => {
-    if (listedStudentForSelectedClass) {
-      return listedStudentForSelectedClass.filter((student) => {
-        const searchLower = searchValue.toLowerCase()
-        return (
-          student.first_name?.toLowerCase().includes(searchLower) ||
-          student.last_name?.toLowerCase().includes(searchLower) ||
-          student.middle_name?.toLowerCase().includes(searchLower) ||
-          student.gr_no?.toString().includes(searchLower) ||
-          student.first_year_roll_number?.toString().includes(searchLower) ||
-          student.second_year_roll_number?.toString().includes(searchLower) ||
-          student.third_year_roll_number?.toString().includes(searchLower) ||
-          student.fourth_year_roll_number?.toString().includes(searchLower) ||
-          student.aadhar_no?.toString().includes(searchLower) ||
-          student.father_name?.toLowerCase().includes(searchLower) ||
-          student.primary_mobile?.toString().includes(searchLower)
-        )
+  // Search is applied by the server (see debouncedSearch) so it covers every page
+  const filteredStudents = useMemo(() => listedStudentForSelectedClass ?? [], [listedStudentForSelectedClass])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchValue.trim()), 400)
+    return () => clearTimeout(timer)
+  }, [searchValue])
+
+  const lastSearchRef = useRef("")
+  useEffect(() => {
+    if (lastSearchRef.current === debouncedSearch) return
+    lastSearchRef.current = debouncedSearch
+    if (selectedDivision && SelectedSession) {
+      setCurrentPage(1)
+      sessionStorage.setItem(SESSION_SELECTED_PAGE_KEY, "1")
+      getStudentForClass({
+        class_id: selectedDivision.id,
+        academic_session: SelectedSession,
+        page: 1,
+        search: debouncedSearch || undefined,
       })
     }
-    return []
-  }, [listedStudentForSelectedClass, searchValue])
+  }, [debouncedSearch, selectedDivision, SelectedSession, getStudentForClass])
 
   const availableDivisions = useMemo(() => {
     if (AcademicClasses && selectedClass) {
@@ -517,14 +520,19 @@ export const Students: React.FC = () => {
       setCurrentPage(page)
       sessionStorage.setItem(SESSION_SELECTED_PAGE_KEY, page.toString())
       if (selectedDivision && SelectedSession) {
-        await getStudentForClass({ class_id: selectedDivision.id, page: page, academic_session: SelectedSession }).then(
+        await getStudentForClass({
+          class_id: selectedDivision.id,
+          page: page,
+          academic_session: SelectedSession,
+          search: debouncedSearch || undefined,
+        }).then(
           (response) => {
             setPaginationDataForSelectedClass(response.data.meta)
           },
         )
       }
     },
-    [setCurrentPage, selectedDivision, getStudentForClass, SelectedSession],
+    [setCurrentPage, selectedDivision, getStudentForClass, SelectedSession, debouncedSearch],
   )
 
   // Get all unique fields from the parsed data
@@ -1235,6 +1243,7 @@ export const Students: React.FC = () => {
                         class_id: student_data.class_id,
                         academic_session: SelectedSession,
                         page: currentPage,
+                        search: debouncedSearch || undefined,
                         student_meta: false,
                       })
                     }

@@ -105,6 +105,7 @@ export const PromotionApi = createApi({
         division_id?: number;
         limit?: number;
         page?: number;
+        search?: string;
       }
     >({
       query: ({
@@ -113,6 +114,7 @@ export const PromotionApi = createApi({
         division_id,
         limit = 10,
         page = 1,
+        search,
       }) => {
         const url = `students-for-permotion?limit=${limit}${
           page ? `&page=${page}` : ""
@@ -124,6 +126,7 @@ export const PromotionApi = createApi({
             academic_session_id,
             ...(class_id && { class_id }),
             ...(division_id && { division_id }),
+            ...(search && { search }),
           },
         };
       },

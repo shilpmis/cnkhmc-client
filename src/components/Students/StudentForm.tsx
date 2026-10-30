@@ -2799,8 +2799,10 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               <FormControl>
                                 <NumberInput
                                   {...field}
-                                  value={field.value ? String(field.value) : ""}
-                                  onChange={(value) => field.onChange(value ? Number(value) : null)}
+                                  decimal
+                                  decimalPlaces={2}
+                                  value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
+                                  onChange={(value) => field.onChange(value ? value : null)}
                                   disabled={form_type === "view"}
                                 />
                               </FormControl>
@@ -2817,8 +2819,10 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               <FormControl>
                                 <NumberInput
                                   {...field}
-                                  value={field.value ? String(field.value) : ""}
-                                  onChange={(value) => field.onChange(value ? Number(value) : null)}
+                                  decimal
+                                  decimalPlaces={2}
+                                  value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
+                                  onChange={(value) => field.onChange(value ? value : null)}
                                   disabled={form_type === "view"}
                                 />
                               </FormControl>

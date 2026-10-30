@@ -32,9 +32,9 @@ export const StudentManagementApi = createApi({
         },
     }),
     endpoints: (builder) => ({
-        fetchStudentEnrollmentsForDivision: builder.query<{ data: StudentEnrollment[], meta: PageMeta }, { division_id: number, page?: number, academic_session?: number }>({
-            query: ({ division_id, page = 1, academic_session }) => ({
-                url: `/management/students/${division_id}?page=${page}${academic_session ? `&academic_session=${academic_session}` : ''}`,
+        fetchStudentEnrollmentsForDivision: builder.query<{ data: StudentEnrollment[], meta: PageMeta }, { division_id: number, page?: number, academic_session?: number, search?: string, status?: string }>({
+            query: ({ division_id, page = 1, academic_session, search, status }) => ({
+                url: `/management/students/${division_id}?page=${page}${academic_session ? `&academic_session=${academic_session}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${status && status !== 'all' ? `&status=${encodeURIComponent(status)}` : ''}`,
                 method: "GET",
             }),
         }),

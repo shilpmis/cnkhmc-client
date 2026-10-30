@@ -129,6 +129,17 @@ const ManageStudents: React.FC = () => {
   const [selectedDivision, setSelectedDivision] = useState<string>("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("")
+
+  // Search and status are applied on the server so they cover every page, not just the open one
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, selectedStatus])
 
   // Dialog states
   const [selectedStudent, setSelectedStudent] = useState<StudentEnrollment | null>(null)
@@ -233,6 +244,8 @@ const ManageStudents: React.FC = () => {
       division_id: selectedDivision ? Number.parseInt(selectedDivision) : 0,
       page: currentPage,
       academic_session: currentAcademicSession?.id || 0,
+      search: debouncedSearch,
+      status: selectedStatus,
     },
     {
       skip: !selectedDivision || !currentAcademicSession,
@@ -807,21 +820,6 @@ const ManageStudents: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {studentEnrollments
-                      .filter((enrollment) => {
-                        // Filter by status if not "all"
-                        if (selectedStatus !== "all" && enrollment.status !== selectedStatus) {
-                          return false
-                        }
-
-                        // Filter by search query
-                        if (searchQuery === "") return true
-
-                        return (
-                          enrollment.student.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          enrollment.student.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          enrollment.student.gr_no?.toString().includes(searchQuery)
-                        )
-                      })
                       .map((enrollment) => (
                         <TableRow key={enrollment.id}>
                           <TableCell>{enrollment.student.gr_no}</TableCell>

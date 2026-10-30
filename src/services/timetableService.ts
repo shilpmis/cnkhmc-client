@@ -161,7 +161,7 @@ export const TimeTableApi = createApi({
         }),
 
 
-        verifyPeriodConfigurationForDay: builder.mutation<PeriodsConfig, { payload: Omit<PeriodsConfig, 'id'> }>({
+        verifyPeriodConfigurationForDay: builder.mutation<PeriodsConfig, { payload: Omit<PeriodsConfig, 'id'> & { id?: number } }>({
             query: ({ payload }) => ({
                 url: `/timetable/verify/config/period`,
                 method: "POST",

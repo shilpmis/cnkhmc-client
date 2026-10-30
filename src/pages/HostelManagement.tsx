@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Info,
   FileSpreadsheet,
-  Download
+  Download,
+  Edit,
 } from "lucide-react";
 import { RootState } from "@/redux/store";
 import { useCan } from "@/permissions/useCan";
@@ -46,6 +47,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import HostelAllotmentModal from "@/components/Students/HostelAllotmentModal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -124,6 +126,7 @@ export default function HostelManagement() {
 
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [isRoomDetailsOpen, setIsRoomDetailsOpen] = useState(false);
+  const [allotmentStudent, setAllotmentStudent] = useState<{ id: number; gender?: string } | null>(null);
 
   // Export Report Dialog States
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -991,6 +994,20 @@ export default function HostelManagement() {
                             Staying since: {(activeAllocation.allocation_date || activeAllocation.allocationDate) ? format(new Date(activeAllocation.allocation_date || activeAllocation.allocationDate), 'dd MMM yyyy') : 'N/A'}
                           </span>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-auto"
+                          onClick={() => {
+                            setAllotmentStudent({
+                              id: activeAllocation.student.id ?? activeAllocation.student_id ?? activeAllocation.studentId,
+                              gender: activeAllocation.student.gender,
+                            });
+                            setIsRoomDetailsOpen(false);
+                          }}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center h-16 text-sm text-muted-foreground italic">
@@ -1004,6 +1021,15 @@ export default function HostelManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {allotmentStudent && (
+        <HostelAllotmentModal
+          isOpen
+          onClose={() => setAllotmentStudent(null)}
+          studentId={allotmentStudent.id}
+          studentGender={allotmentStudent.gender}
+        />
+      )}
 
       {/* Export Hostel Report Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>

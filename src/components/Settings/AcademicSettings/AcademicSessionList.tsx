@@ -69,6 +69,7 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<{ id: number; name: string } | null>(null)
   const { t } = useTranslation()
+  const currentActive = useAppSelector(selectActiveAccademicSessionsForSchool)
 
   const dispatch = useAppDispatch()
 
@@ -153,7 +154,6 @@ export function AcademicSessionsList({ onActivate }: AcademicSessionsListProps) 
     )
   }
 
-  const currentActive = useAppSelector(selectActiveAccademicSessionsForSchool)
   const sessionList = [...(sessions?.sessions ?? [])].sort((a: any, b: any) => Number(a.start_year) - Number(b.start_year))
 
   return (

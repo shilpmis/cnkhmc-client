@@ -1428,10 +1428,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
                       <FormItem>
                         <FormLabel required>{t("gender")}</FormLabel>
                         <Select
-                          // onValueChange={field.onChange}]
-                          defaultValue={field.value}
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          // Radix Select reports "" when the form is reset or its items re-render; ignore it so a loaded gender is not wiped
+                          onValueChange={(val) => {
+                            if (val) field.onChange(val)
+                          }}
+                          value={field.value ?? ""}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -2605,8 +2606,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
                               <FormControl>
                                 <NumberInput
                                   {...field}
-                                  value={field.value ? String(field.value) : ""}
-                                  onChange={(value) => field.onChange(value ? Number(value) : null)}
+                                  decimal
+                                  decimalPlaces={2}
+                                  value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
+                                  // keep the typed text (e.g. "540.") so the decimal point is not lost; zod converts it to a number on submit
+                                  onChange={(value) => field.onChange(value ? value : null)}
                                   disabled={form_type === "view"}
                                 />
                               </FormControl>

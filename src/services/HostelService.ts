@@ -81,6 +81,18 @@ export const HostelApi = createApi({
       }),
       invalidatesTags: ["HostelAllocation", "Hostel"],
     }),
+    getStudentAllocation: builder.query<any, string | number>({
+      query: (studentId) => `/hostels/allocations/student/${studentId}`,
+      providesTags: ["HostelAllocation"],
+    }),
+    changeBed: builder.mutation<any, { id: string | number; bed_id: number }>({
+      query: ({ id, bed_id }) => ({
+        url: `/hostels/allocations/${id}`,
+        method: "PUT",
+        body: { bed_id },
+      }),
+      invalidatesTags: ["HostelAllocation", "Hostel"],
+    }),
     vacateBed: builder.mutation<any, { id: string | number; vacation_date?: string }>({
       query: ({ id, vacation_date }) => ({
         url: `/hostels/allocations/${id}/vacate`,
@@ -102,6 +114,8 @@ export const {
   useUpdateHostelRoomMutation,
   useDeleteHostelRoomMutation,
   useAllocateBedMutation,
+  useGetStudentAllocationQuery,
+  useChangeBedMutation,
   useVacateBedMutation,
 } = HostelApi;
 

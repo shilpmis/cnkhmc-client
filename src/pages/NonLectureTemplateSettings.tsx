@@ -388,7 +388,7 @@ export default function NonLectureTemplateSettings() {
     currentY += 3.5
 
     // Dynamic Columns Calculation
-    const colDefs = config.columns || DEFAULT_NON_LECTURE_PDF_CONFIG.columns
+    const colDefs: Record<string, any> = config.columns || DEFAULT_NON_LECTURE_PDF_CONFIG.columns
     const enabledColKeys = (Object.keys(colDefs) as Array<keyof typeof colDefs>).filter(
       (k) => colDefs[k].enabled
     )
@@ -2489,8 +2489,8 @@ export default function NonLectureTemplateSettings() {
 
       {/* Delete Confirm Dialog */}
       <ConfirmDialog
-        isOpen={!!deleteConfirmId}
-        onClose={() => setDeleteConfirmId(null)}
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}
         onConfirm={handleConfirmDelete}
         title="Delete Non-Lecture Template"
         description="Are you sure you want to delete this template? All associated topic definitions and teacher assignments will be deleted."

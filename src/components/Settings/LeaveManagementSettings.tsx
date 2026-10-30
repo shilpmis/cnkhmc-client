@@ -1011,7 +1011,7 @@ export function LeaveManagementSettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {field.value !== undefined && field.value !== null && field.value !== ""
+                          {field.value !== undefined && field.value !== null && (field.value as unknown) !== ""
                             ? `${field.value} days (${Math.min(100, Math.round((Number(field.value) / quota) * 100))}% of annual allowance)`
                             : "Enter max consecutive days"}
                         </FormDescription>
@@ -1133,7 +1133,7 @@ export function LeaveManagementSettings() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {field.value !== undefined && field.value !== null && field.value !== ""
+                          {field.value !== undefined && field.value !== null && (field.value as unknown) !== ""
                             ? `${field.value} days (${Math.min(100, Math.round((Number(field.value) / quota) * 100))}% of annual allowance)`
                             : "Enter max carry forward days"}
                         </FormDescription>

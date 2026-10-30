@@ -145,6 +145,8 @@ export default function TimetableGenerator({
         lab_id: period.lab_id,
         is_pt: period.is_pt,
         is_free_period: period.is_free_period,
+        is_library: period.is_library ?? false,
+        is_seminar: period.is_seminar ?? false,
         duration: calculateDuration(period.start_time, period.end_time),
       }))
 

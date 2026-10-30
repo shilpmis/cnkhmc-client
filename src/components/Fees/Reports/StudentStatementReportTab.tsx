@@ -33,7 +33,7 @@ export const StudentStatementReportTab: React.FC = () => {
   // Auto-select first class & division if available
   useEffect(() => {
     if (academicClasses && academicClasses.length > 0 && !selectedClass) {
-      const firstClassWithDivisions = academicClasses.find((cls) => cls.divisions.length > 0)
+      const firstClassWithDivisions = (academicClasses ?? []).find((cls) => cls.divisions.length > 0)
       if (firstClassWithDivisions) {
         setSelectedClass(firstClassWithDivisions.class.toString())
         setSelectedDivision(firstClassWithDivisions.divisions[0])
@@ -52,7 +52,7 @@ export const StudentStatementReportTab: React.FC = () => {
     }
   }, [selectedDivision, currentAcademicSession, getClassFeesStatus])
 
-  const students: StudentWithFeeStatus[] = feesData?.students || []
+  const students: StudentWithFeeStatus[] = feesData?.data || (feesData as any)?.students || []
 
   const filteredStudents = students.filter((s) => {
     const fullName = `${s.first_name} ${s.middle_name || ""} ${s.last_name}`.toLowerCase()
@@ -97,7 +97,7 @@ export const StudentStatementReportTab: React.FC = () => {
                 value={selectedClass}
                 onValueChange={(val) => {
                   setSelectedClass(val)
-                  const classObj = academicClasses.find((cls) => cls.class.toString() === val)
+                  const classObj = (academicClasses ?? []).find((cls) => cls.class.toString() === val)
                   if (classObj && classObj.divisions.length > 0) {
                     setSelectedDivision(classObj.divisions[0])
                   } else {
@@ -124,7 +124,7 @@ export const StudentStatementReportTab: React.FC = () => {
               <Select
                 value={selectedDivision?.id ? selectedDivision.id.toString() : ""}
                 onValueChange={(val) => {
-                  const classObj = academicClasses.find((cls) => cls.class.toString() === selectedClass)
+                  const classObj = (academicClasses ?? []).find((cls) => cls.class.toString() === selectedClass)
                   if (classObj) {
                     const div = classObj.divisions.find((d) => d.id.toString() === val)
                     setSelectedDivision(div || null)
@@ -136,7 +136,7 @@ export const StudentStatementReportTab: React.FC = () => {
                   <SelectValue placeholder="Select Division" />
                 </SelectTrigger>
                 <SelectContent>
-                  {academicClasses
+                  {(academicClasses ?? [])
                     .find((cls) => cls.class.toString() === selectedClass)
                     ?.divisions.map((div) => (
                       <SelectItem key={div.id} value={div.id.toString()}>

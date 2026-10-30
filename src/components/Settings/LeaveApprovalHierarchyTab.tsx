@@ -256,7 +256,7 @@ export const LeaveApprovalHierarchyTab: React.FC = () => {
   const staffList: StaffHierarchyMapping[] = Array.isArray(staffMappingsData)
     ? staffMappingsData
     : staffMappingsData?.data || []
-  const staffMeta = !Array.isArray(staffMappingsData) ? staffMappingsData?.meta : undefined
+  const staffMeta: any = !Array.isArray(staffMappingsData) ? staffMappingsData?.meta : undefined
 
   return (
     <div className="space-y-6">

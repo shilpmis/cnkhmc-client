@@ -2,7 +2,14 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useTranslation } from "@/redux/hooks/useTranslation";
-import { useGetHostelsQuery, useAllocateBedMutation } from "@/services/HostelService";
+import {
+  useGetHostelsQuery,
+  useAllocateBedMutation,
+  useGetStudentAllocationQuery,
+  useChangeBedMutation,
+  useVacateBedMutation,
+} from "@/services/HostelService";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +58,24 @@ export default function HostelAllotmentModal({
   }, [isOpen, effectiveSchoolId, refetch]);
 
   const [allocateBed, { isLoading: isAllocating }] = useAllocateBedMutation();
+  const [changeBed, { isLoading: isChanging }] = useChangeBedMutation();
+  const [vacateBed, { isLoading: isVacating }] = useVacateBedMutation();
+
+  const { data: currentAllocation, isLoading: isLoadingAllocation } = useGetStudentAllocationQuery(studentId, {
+    skip: !isOpen || !studentId,
+    refetchOnMountOrArgChange: true,
+  });
+  const [isChangingBed, setIsChangingBed] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  // The API may serialize keys as camelCase or snake_case; read both.
+  const currentBed = currentAllocation?.bed;
+  const currentRoom = currentBed?.room;
+  const currentHostel = currentRoom?.hostel;
+  const sinceRaw = currentAllocation?.allocation_date || currentAllocation?.allocationDate;
+  const hasAllocation = Boolean(currentAllocation?.id);
+  const showInfoView = hasAllocation && !isChangingBed;
+  const isBusy = isAllocating || isChanging || isVacating;
 
   const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
@@ -96,11 +121,15 @@ export default function HostelAllotmentModal({
     }
 
     try {
-      await allocateBed({
-        student_id: studentId,
-        bed_id: selectedBedId,
-        allocation_date: format(new Date(), "yyyy-MM-dd"),
-      }).unwrap();
+      if (hasAllocation) {
+        await changeBed({ id: currentAllocation.id, bed_id: selectedBedId }).unwrap();
+      } else {
+        await allocateBed({
+          student_id: studentId,
+          bed_id: selectedBedId,
+          allocation_date: format(new Date(), "yyyy-MM-dd"),
+        }).unwrap();
+      }
 
       toast({ title: t("success"), description: t("hostel_allotted_successfully") });
       if (onSuccess) onSuccess();
@@ -114,7 +143,24 @@ export default function HostelAllotmentModal({
     }
   };
 
+  const handleRemove = async () => {
+    try {
+      await vacateBed({ id: currentAllocation.id, vacation_date: format(new Date(), "yyyy-MM-dd") }).unwrap();
+      toast({ title: t("success"), description: "Hostel allotment removed" });
+      if (onSuccess) onSuccess();
+      handleClose();
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.data?.message || "Failed to remove hostel allotment",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleClose = () => {
+    setIsChangingBed(false);
+    setConfirmRemove(false);
     setSelectedHostelId(null);
     setSelectedRoomId(null);
     setSelectedBedId(null);
@@ -125,15 +171,26 @@ export default function HostelAllotmentModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{t("allot_hostel")}</DialogTitle>
+          <DialogTitle>{hasAllocation ? "Hostel Allotment" : t("allot_hostel")}</DialogTitle>
           <DialogDescription>
-            {t("select_hostel_room_and_bed_for_the_student")}
+            {showInfoView
+              ? "Current hostel, room and bed of the student."
+              : t("select_hostel_room_and_bed_for_the_student")}
           </DialogDescription>
         </DialogHeader>
 
-        {isLoadingHostels ? (
+        {isLoadingHostels || isLoadingAllocation ? (
           <div className="flex justify-center p-6">
             <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : showInfoView ? (
+          <div className="grid gap-3 py-4 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">{t("hostel")}</span><span className="font-medium">{currentHostel?.name ?? "-"}{currentHostel?.type ? ` (${currentHostel.type})` : ""}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Floor</span><span className="font-medium">{currentRoom?.floor ?? "-"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{t("room")}</span><span className="font-medium">{currentRoom?.roomNumber ?? currentRoom?.room_number ?? "-"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{t("bed")}</span><span className="font-medium">{(currentBed?.bedNumber ?? currentBed?.bed_number ?? "-").toString().split("-").pop()}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Staying since</span><span className="font-medium">{sinceRaw ? format(new Date(sinceRaw), "dd MMM yyyy") : "-"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="default">{currentAllocation?.status ?? "Active"}</Badge></div>
           </div>
         ) : (
           <div className="grid gap-4 py-4">
@@ -224,15 +281,44 @@ export default function HostelAllotmentModal({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isAllocating}>
-            {t("cancel")}
-          </Button>
-          <Button onClick={handleAllotment} disabled={!selectedBedId || isAllocating}>
-            {isAllocating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("allot_bed")}
-          </Button>
+          {showInfoView ? (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={isBusy}>
+                {t("cancel")}
+              </Button>
+              <Button variant="destructive" onClick={() => setConfirmRemove(true)} disabled={isBusy}>
+                Remove allotment
+              </Button>
+              <Button onClick={() => setIsChangingBed(true)} disabled={isBusy}>
+                Change allotment
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={hasAllocation ? () => setIsChangingBed(false) : handleClose}
+                disabled={isBusy}
+              >
+                {t("cancel")}
+              </Button>
+              <Button onClick={handleAllotment} disabled={!selectedBedId || isBusy}>
+                {(isAllocating || isChanging) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {hasAllocation ? "Change bed" : t("allot_bed")}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
+      <ConfirmDialog
+        open={confirmRemove}
+        onOpenChange={setConfirmRemove}
+        title="Remove hostel allotment"
+        description="The student will be vacated from this bed and the bed becomes available."
+        confirmText="Remove"
+        variant="destructive"
+        onConfirm={handleRemove}
+      />
     </Dialog>
   );
 }

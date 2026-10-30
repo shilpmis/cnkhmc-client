@@ -169,15 +169,15 @@ export const UserManagement: React.FC = () => {
 
       // Check role_type.is_teaching_role if staff_type is empty or ambiguous
       const roleTypeTeaching = staff.role_type?.is_teaching_role
-      if (roleTypeTeaching === false || roleTypeTeaching === 0) {
+      if (roleTypeTeaching === false || (roleTypeTeaching as unknown) === 0) {
         return { label: "Non-Teaching Staff", variant: "outline" as const, color: "bg-amber-100 text-amber-800 border-amber-200" }
       }
-      if (roleTypeTeaching === true || roleTypeTeaching === 1) {
+      if (roleTypeTeaching === true || (roleTypeTeaching as unknown) === 1) {
         return { label: "Teaching Staff", variant: "default" as const, color: "bg-blue-100 text-blue-800 border-blue-200" }
       }
 
       // Check is_teching_staff flag on staff record
-      if (staff.is_teching_staff === false || staff.is_teching_staff === 0) {
+      if (staff.is_teching_staff === false || (staff.is_teching_staff as unknown) === 0) {
         return { label: "Non-Teaching Staff", variant: "outline" as const, color: "bg-amber-100 text-amber-800 border-amber-200" }
       }
       if (staff.is_teching_staff === true || staff.is_teching_staff === 1) {

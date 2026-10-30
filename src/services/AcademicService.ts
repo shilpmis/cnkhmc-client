@@ -4,6 +4,7 @@ import type { Class } from "@/types/class";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { AcademicClasses, Division } from "@/types/academic";
 import { setAcademicClasses } from "@/redux/slices/academicSlice";
+import { setAcademicSessions } from "@/redux/slices/authSlice";
 import baseUrl from "@/utils/base-urls";
 
 interface AcademicSession {
@@ -23,6 +24,7 @@ interface AcademicSession {
 
 export const AcademicApi = createApi({
   reducerPath: "AcademicApi",
+  tagTypes: ["AcademicSessions"],
   baseQuery: fetchBaseQuery({
     baseUrl: `${baseUrl.serverUrl}api/v1/`,
     prepareHeaders: (headers, { getState }) => {
@@ -62,26 +64,17 @@ export const AcademicApi = createApi({
         url: `/academic-sessions/${school_id}`,
         method: "GET",
       }),
-      // The server only returns a fixed year window; sessions created in the form are kept in localStorage
-      // (see generateDefaultAcademicYears). Merge them in so every screen lists all sessions, oldest first.
-      transformResponse: (response: any) => {
-        let custom: any[] = [];
+      providesTags: ["AcademicSessions"],
+      // Sessions live on the server and are shared by every user and device; keep a copy in the store
+      // so the header dropdown and other selectors can list them.
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
-          const raw = localStorage.getItem("custom_academic_years");
-          custom = raw ? JSON.parse(raw) : [];
-        } catch {
-          custom = [];
+          const { data } = await queryFulfilled;
+          const list = Array.isArray(data) ? data : data?.sessions ?? data?.data ?? [];
+          dispatch(setAcademicSessions(list));
+        } catch (error) {
+          console.log("Error while fetching academic sessions", error);
         }
-        const serverList: any[] = Array.isArray(response) ? response : response?.sessions ?? response?.data ?? [];
-        const merged = new Map<any, any>();
-        serverList.forEach((s) => merged.set(s.id ?? s.academic_year, s));
-        // The form saves custom sessions as is_active; only the server's current-year session should count as current.
-        custom.forEach((s) => {
-          const key = s.id ?? s.academic_year;
-          merged.set(key, { ...s, is_active: merged.get(key)?.is_active ?? false });
-        });
-        const sessions = Array.from(merged.values()).sort((a, b) => Number(a.start_year) - Number(b.start_year));
-        return Array.isArray(response) ? sessions : { ...response, sessions, data: sessions };
       },
     }),
     createAcademicSession: builder.mutation<
@@ -93,6 +86,7 @@ export const AcademicApi = createApi({
         method: "POST",
         body: session,
       }),
+      invalidatesTags: ["AcademicSessions"],
     }),
     setActiveSession: builder.mutation<AcademicSession, number>({
       query: (sessionId) => ({
@@ -106,6 +100,7 @@ export const AcademicApi = createApi({
         url: `/academic-session/${sessionId}`,
         method: "DELETE",
       }),
+      invalidatesTags: ["AcademicSessions"],
     }),
     getBatches: builder.query<any[], number>({
       query: (school_id) => ({

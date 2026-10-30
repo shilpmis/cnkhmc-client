@@ -71,38 +71,14 @@ export function AcademicSessionForm({ onSuccess }: { onSuccess?: () => void }) {
   ]
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const startYr = Number(values.start_year)
-    const newSession = {
-      id: startYr,
-      academic_year: startYr,
-      session_name: `${values.start_year}-${values.end_year}`,
-      start_year: values.start_year,
-      end_year: values.end_year,
-      start_month: `${values.start_year}-${values.start_month}`,
-      end_month: `${values.end_year}-${values.end_month}`,
-      year: startYr,
-      is_active: true,
-    }
-
     try {
-      try {
-        await createAcademicSession({
-          school_id: user?.school_id || 1,
-          start_month: `${values.start_year}-${values.start_month}`,
-          end_month: `${values.end_year}-${values.end_month}`,
-          start_year: values.start_year,
-          end_year: values.end_year,
-        }).unwrap()
-      } catch {
-        // Fallback to client-side year creation
-      }
-
-      const existingRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('custom_academic_years') : null
-      const existing = existingRaw ? JSON.parse(existingRaw) : []
-      existing.push(newSession)
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('custom_academic_years', JSON.stringify(existing))
-      }
+      await createAcademicSession({
+        school_id: user?.school_id || 1,
+        start_month: `${values.start_year}-${values.start_month}`,
+        end_month: `${values.end_year}-${values.end_month}`,
+        start_year: values.start_year,
+        end_year: values.end_year,
+      }).unwrap()
 
       toast({
         title: "Success",
@@ -112,7 +88,6 @@ export function AcademicSessionForm({ onSuccess }: { onSuccess?: () => void }) {
       if (onSuccess) {
         onSuccess()
       }
-      window.location.reload(); 
     } catch (error: any) {
       console.log("Failed to create academic session:", error)
 

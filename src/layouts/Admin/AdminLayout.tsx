@@ -11,6 +11,7 @@ import { useLazyGetAcademicCalendarSettingsQuery } from "@/services/AcademicCale
 import { hydrateAcademicCalendar } from "@/redux/slices/academicCalendarSlice";
 import { useAppDispatch } from "@/redux/hooks/useAppDispatch";
 import { useGetSchoolQuery } from "@/services/SchoolServices";
+import { useCreateAcademicSessionMutation, useGetAcademicSessionsQuery } from "@/services/AcademicService";
 import { updateUserSchool, selectCurrentUser, selectCurrentSchool } from "@/redux/slices/authSlice";
 import {
   AlertDialog,
@@ -46,6 +47,46 @@ export default function AdminLayout() {
   });
 
   const [getAcademicCalendarSettings] = useLazyGetAcademicCalendarSettingsQuery();
+
+  // Load the shared academic sessions from the server (the query stores them for the header and selectors).
+  const { refetch: refetchAcademicSessions } = useGetAcademicSessionsQuery(user?.school_id as number, {
+    skip: !user?.school_id || !verificationStatus.isAuthenticated,
+  });
+  const [createAcademicSession] = useCreateAcademicSessionMutation();
+
+  // One-time upload of sessions that older versions kept only in this browser's localStorage.
+  useEffect(() => {
+    if (!user?.school_id || !verificationStatus.isAuthenticated) return;
+    let legacy: any[] = [];
+    try {
+      const raw = localStorage.getItem("custom_academic_years");
+      legacy = raw ? JSON.parse(raw) : [];
+    } catch {
+      return;
+    }
+    if (!Array.isArray(legacy) || legacy.length === 0) {
+      try { localStorage.removeItem("custom_academic_years"); } catch { /* ignore */ }
+      return;
+    }
+    (async () => {
+      for (const s of legacy) {
+        try {
+          await createAcademicSession({
+            school_id: user.school_id,
+            start_year: String(s.start_year),
+            end_year: String(s.end_year),
+            start_month: s.start_month,
+            end_month: s.end_month,
+          }).unwrap();
+        } catch (error: any) {
+          // 409 means the session already exists on the server, which is fine.
+          if (error?.status !== 409) return; // keep the local copy and retry on the next load
+        }
+      }
+      try { localStorage.removeItem("custom_academic_years"); } catch { /* ignore */ }
+      refetchAcademicSessions();
+    })();
+  }, [user?.school_id, verificationStatus.isAuthenticated, createAcademicSession, refetchAcademicSessions]);
 
   useEffect(() => {
     // Only update if we got data and it matches our intended school_id

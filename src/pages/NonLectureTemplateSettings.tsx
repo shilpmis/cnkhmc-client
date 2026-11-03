@@ -99,6 +99,15 @@ const ACTIVITY_BADGE_COLORS: Record<string, string> = {
   "Journal Club": "bg-orange-50 text-orange-700 border-orange-200",
 }
 
+/** Hours a plan owes: the allotted teaching hours, else its own total, else what its topics add up to. */
+const planHours = (t: { teaching_hours?: number | null; total_hours?: number | null; topics?: { hours?: number | null }[] }) => {
+  const teaching = Number(t.teaching_hours)
+  if (t.teaching_hours != null && teaching > 0) return teaching
+  const total = Number(t.total_hours)
+  if (total > 0) return total
+  return (t.topics || []).reduce((sum, tp) => sum + Number(tp.hours || 0), 0)
+}
+
 export default function NonLectureTemplateSettings() {
   const { toast } = useToast()
   const user = useAppSelector(selectCurrentUser)
@@ -235,7 +244,7 @@ export default function NonLectureTemplateSettings() {
   // Summary Metrics
   const metrics = useMemo(() => {
     const totalCount = templates.length
-    const totalHours = templates.reduce((sum, t) => sum + Number(t.total_hours || 0), 0)
+    const totalHours = templates.reduce((sum, t) => sum + planHours(t), 0)
     const totalAssignments = templates.reduce((sum, t) => sum + (t.assignments_count || 0), 0)
     const totalLogs = templates.reduce((sum, t) => sum + (t.logs_count || 0), 0)
     return { totalCount, totalHours, totalAssignments, totalLogs }
@@ -328,7 +337,7 @@ export default function NonLectureTemplateSettings() {
       doc.text(leftMetaParts.join(" "), margin, currentY)
     }
 
-    const targetHours = Number(targetTemplate.total_hours || 0)
+    const targetHours = planHours(targetTemplate)
     const loggedHours = logs.reduce(
       (sum, l: any) => sum + Number(l.hours_spent || l.hoursSpent || 0),
       0
@@ -635,7 +644,7 @@ export default function NonLectureTemplateSettings() {
     doc.setFont("helvetica", "normal")
     doc.setTextColor(71, 85, 105)
     doc.text(
-      `Activity Type: ${targetTemplate.activity_type} | Class: ${targetTemplate.class?.class || "General"} | Total Planned Hours: ${targetTemplate.total_hours} hrs`,
+      `Activity Type: ${targetTemplate.activity_type} | Class: ${targetTemplate.class?.class || "General"} | Total Planned Hours: ${planHours(targetTemplate)} hrs`,
       margin,
       36
     )
@@ -1080,7 +1089,7 @@ export default function NonLectureTemplateSettings() {
     if (!activeConfigTemplate) return { targetHours: 0, loggedHours: 0, pct: 0, remaining: 0 }
     const logs = activeConfigTemplate.logs || []
     const logged = logs.reduce((sum, l: any) => sum + Number(l.hours_spent || l.hoursSpent || 0), 0)
-    const target = Number(activeConfigTemplate.total_hours || 0)
+    const target = planHours(activeConfigTemplate)
     const pct = target > 0 ? Math.min(100, Math.round((logged / target) * 100)) : 0
     const remaining = Math.max(0, target - logged)
     return { targetHours: target, loggedHours: logged, pct, remaining }
@@ -1409,7 +1418,7 @@ export default function NonLectureTemplateSettings() {
                             <span>•</span>
                             <span>Department: {activeConfigTemplate.department?.name || "General"}</span>
                             <span>•</span>
-                            <span>Total Hours: {activeConfigTemplate.total_hours} hrs</span>
+                            <span>Total Hours: {planHours(activeConfigTemplate)} hrs</span>
                           </div>
                         </div>
 
@@ -1796,7 +1805,7 @@ export default function NonLectureTemplateSettings() {
                   ACTIVITY_BADGE_COLORS[template.activity_type] || "bg-gray-100 text-gray-800 border-gray-200"
 
                 const loggedHours = Number(template.total_logged_hours || 0)
-                const targetHours = Number(template.total_hours || 0)
+                const targetHours = planHours(template)
                 const percent = targetHours > 0 ? Math.min(100, Math.round((loggedHours / targetHours) * 100)) : 0
 
                 return (
@@ -2348,7 +2357,7 @@ export default function NonLectureTemplateSettings() {
                 <div>
                   <h4 className="font-bold text-sm text-indigo-950">{selectedTemplateForAssign.title}</h4>
                   <p className="text-xs text-indigo-700">
-                    {selectedTemplateForAssign.activity_type} • {selectedTemplateForAssign.total_hours} hrs target
+                    {selectedTemplateForAssign.activity_type} • {planHours(selectedTemplateForAssign)} hrs target
                   </p>
                 </div>
                 <Badge variant="outline" className="bg-white text-indigo-700 border-indigo-200">

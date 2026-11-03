@@ -147,6 +147,7 @@ export interface NonLectureTemplate {
   code?: string | null;
   activity_type: string;
   total_hours: number;
+  teaching_hours?: number | null;
   description?: string | null;
   is_active: boolean;
   department?: any;

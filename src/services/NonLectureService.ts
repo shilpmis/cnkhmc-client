@@ -67,6 +67,8 @@ export interface NonLecturePlanView {
     subject_id?: number | null;
     subject_name?: string | null;
     academic_session_id?: number | null;
+    teaching_hours?: number | null;
+    total_hours?: number;
     session_label?: string;
     heading: string;
     teachers: string[];
@@ -386,7 +388,7 @@ export const NonLectureApi = createApi({
 
     saveNonLecturePlan: builder.mutation<
       { success: boolean; message?: string; data: NonLecturePlanView },
-      { template_id: number; topics: NonLecturePlanTopicData[]; removed_topic_ids?: number[] }
+      { template_id: number; topics: NonLecturePlanTopicData[]; removed_topic_ids?: number[]; teaching_hours?: number | null }
     >({
       query: ({ template_id, ...body }) => ({
         url: `non-lecture-templates/${template_id}/plan`,

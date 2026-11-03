@@ -1,6 +1,7 @@
 
 
 "use client"
+import { parseNonWorkingDates, toLocalDateString } from "@/utils/working-days"
 
 import { useState, useEffect, useMemo } from "react"
 import { useForm } from "react-hook-form"
@@ -198,7 +199,7 @@ export default function AutoTimetableGenerator({
       endDate.setMonth(endDate.getMonth() + 1)
       endDate.setDate(0)
 
-      const holidays = new Set(calendarSettings?.non_working_dates || [])
+      const holidays = parseNonWorkingDates(calendarSettings?.non_working_dates)
       const isSatWorking = calendarSettings?.is_saturday_working !== false
 
       const current = new Date(startDate)
@@ -213,7 +214,7 @@ export default function AutoTimetableGenerator({
 
       while (current <= endDate) {
         const dayOfWeek = current.getDay() // 0 = Sunday, 6 = Saturday
-        const dateString = current.toISOString().split("T")[0]
+        const dateString = toLocalDateString(current)
 
         if (dayOfWeek !== 0 && !holidays.has(dateString)) {
           if (dayOfWeek !== 6 || isSatWorking) {

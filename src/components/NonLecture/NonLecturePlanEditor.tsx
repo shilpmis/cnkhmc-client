@@ -86,9 +86,12 @@ function PlanEditorBody({ templateId, onSaved, onDirtyChange }: BodyProps) {
   const [topics, setTopics] = useState<NonLecturePlanTopicData[]>([])
   const [removedTopicIds, setRemovedTopicIds] = useState<number[]>([])
   const [dirty, setDirty] = useState(false)
+  const [teachingHours, setTeachingHours] = useState("")
 
   useEffect(() => {
     if (data?.data && !dirty) {
+      const allotted = data.data.template.teaching_hours
+      setTeachingHours(allotted === null || allotted === undefined ? "" : String(allotted))
       setTopics(data.data.topics.map((t) => ({ ...t, rows: t.rows.map((r) => ({ ...r })) })))
       setRemovedTopicIds([])
     }
@@ -99,6 +102,12 @@ function PlanEditorBody({ templateId, onSaved, onDirtyChange }: BodyProps) {
   }, [dirty, onDirtyChange])
 
   const view = data?.data
+  // what the rows add up to; a topic with no rows counts its own hours
+  const planHours = topics.reduce(
+    (sum, t) => sum + (t.rows.length ? t.rows.reduce((s, r) => s + Number(r.required_hours || 0), 0) : Number(t.hours || 0)),
+    0
+  )
+  const allotted = teachingHours.trim() === "" ? null : Number(teachingHours)
   const edit = (fn: (draft: NonLecturePlanTopicData[]) => NonLecturePlanTopicData[]) => {
     setTopics((prev) => fn(prev))
     setDirty(true)
@@ -150,6 +159,7 @@ function PlanEditorBody({ templateId, onSaved, onDirtyChange }: BodyProps) {
         template_id: templateId,
         topics: topics.map((t, i) => ({ ...t, topic_order: i + 1 })),
         removed_topic_ids: removedTopicIds,
+        teaching_hours: teachingHours.trim() === "" ? null : Number(teachingHours),
       }).unwrap()
       setDirty(false)
       toast({ title: "Lesson plan saved" })
@@ -205,6 +215,37 @@ function PlanEditorBody({ templateId, onSaved, onDirtyChange }: BodyProps) {
             <CardDescription className="text-xs">
               Build the plan with the standard heads. Teachers see these rows when they write their daily diary and tick what they covered.
             </CardDescription>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label htmlFor="teaching-hours" className="text-xs font-semibold">
+                Total teaching hours
+              </label>
+              <Input
+                id="teaching-hours"
+                type="number"
+                min="0"
+                step="0.5"
+                className="h-8 w-24 text-xs"
+                value={teachingHours}
+                placeholder={String(view?.template.total_hours ?? "")}
+                onChange={(e) => {
+                  setTeachingHours(e.target.value)
+                  setDirty(true)
+                }}
+              />
+              <span className="text-[11px] text-gray-500">
+                Hours the timetable must give this subject over the session. Left empty, the plan's rows total is used.
+              </span>
+              <span
+                className={`text-[11px] font-medium ${
+                  allotted !== null && Math.abs(allotted - planHours) > 0.01 ? "text-amber-600" : "text-gray-600"
+                }`}
+              >
+                Rows add up to {planHours.toFixed(1)}h
+                {allotted !== null && Math.abs(allotted - planHours) > 0.01
+                  ? ` (${allotted > planHours ? "teaching hours are more" : "teaching hours are less"} by ${Math.abs(allotted - planHours).toFixed(1)}h)`
+                  : ""}
+              </span>
+            </div>
             {summary && (
               <div className="mt-2 max-w-md space-y-1">
                 <div className="flex justify-between text-[11px] text-gray-500">
@@ -261,6 +302,21 @@ function PlanEditorBody({ templateId, onSaved, onDirtyChange }: BodyProps) {
               onChange={(e) => edit((prev) => prev.map((t, i) => (i === ti ? { ...t, title: e.target.value } : t)))}
               className="h-8 text-xs font-semibold max-w-md"
             />
+            {topic.rows.length === 0 && (
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                Hours
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={topic.hours ?? 0}
+                  onChange={(e) =>
+                    edit((prev) => prev.map((t, i) => (i === ti ? { ...t, hours: Number(e.target.value) } : t)))
+                  }
+                  className="h-8 w-20 rounded-md border px-2 text-sm"
+                />
+              </label>
+            )}
             {!!topic.is_completed && (
               <Badge className="bg-emerald-100 text-emerald-700 gap-1 text-[10px]">
                 <CheckCircle2 className="h-3 w-3" /> Completed

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -134,83 +134,40 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   }, [configuredBatches, editBatchName])
 
   // Validation state
-  const [coverageReport, setCoverageReport] = useState<any[]>([])
-  const [calendarSettings, setCalendarSettings] = useState<any>(null)
+  const [syllabusHours, setSyllabusHours] = useState<{
+    working_days: Record<string, number>
+    required: { subject_id: number; subject_name: string; total_hours: number }[]
+  } | null>(null)
+  const [syllabusStatus, setSyllabusStatus] = useState<"loading" | "ready" | "error">("loading")
   const [isValidationDialogOpen, setIsValidationDialogOpen] = useState(false)
   const [validationType, setValidationType] = useState<"under" | "over" | null>(null)
 
+  const loadSyllabusHours = () => {
+    if (!currentAcademicSession || !divisionId) return
+    setSyllabusStatus("loading")
+    ApiService.get(`timetable/syllabus-hours/${divisionId}`, {
+      params: { academic_session_id: currentAcademicSession.id },
+      timeout: 30000,
+    })
+      .then((res: any) => {
+        setSyllabusHours(res.data)
+        setSyllabusStatus("ready")
+      })
+      .catch((err: any) => {
+        console.error("Error fetching syllabus hours:", err)
+        setSyllabusStatus("error")
+      })
+  }
+
   useEffect(() => {
-    if (currentAcademicSession) {
-      ApiService.get(`lesson-plans/reports/coverage/${currentAcademicSession.id}`)
-        .then((res: any) => {
-          setCoverageReport(res.data || [])
-        })
-        .catch((err: any) => {
-          console.error("Error fetching coverage report:", err)
-        })
+    loadSyllabusHours()
+  }, [currentAcademicSession, divisionId])
 
-      ApiService.get(`academic-calendar-settings/${currentAcademicSession.id}`)
-        .then((res: any) => {
-          setCalendarSettings(res.data || null)
-        })
-        .catch((err: any) => {
-          console.error("Error fetching calendar settings:", err)
-        })
-    }
-  }, [currentAcademicSession])
-
-  const workingDaysCount = useMemo(() => {
-    const counts = { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0 }
-    if (!currentAcademicSession) return counts
-
-    try {
-      const extractMonth = (monthString: string): number => {
-        if (!monthString) return 0;
-        if (monthString.includes("-")) {
-          const parts = monthString.split("-");
-          const monthPart = parts.find(p => p.length <= 2) || parts[1];
-          return (parseInt(monthPart) || 1) - 1;
-        }
-        return (parseInt(monthString) || 1) - 1;
-      };
-
-      const startMonthIdx = extractMonth(currentAcademicSession.start_month);
-      const endMonthIdx = extractMonth(currentAcademicSession.end_month);
-
-      const start = new Date(parseInt(currentAcademicSession.start_year), startMonthIdx, 1);
-      const end = new Date(parseInt(currentAcademicSession.end_year), endMonthIdx, 1);
-      // Set to last day of the end month
-      end.setMonth(end.getMonth() + 1);
-      end.setDate(0);
-
-      const holidays =
-        calendarSettings?.holidays?.map((h: any) => {
-          return new Date(h.date).toISOString().split("T")[0]
-        }) || []
-
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split("T")[0]
-        if (holidays.includes(dateStr)) continue
-
-        const dayOfWeek = d.getDay()
-        if (dayOfWeek === 0) continue
-
-        const dayMap = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-        const dayStr = dayMap[dayOfWeek]
-
-        const isDayConfigured = timetableConfig.class_day_config?.some(
-          (c) => c.day === dayStr
-        )
-
-        if (isDayConfigured && dayStr !== "sun") {
-          counts[dayStr as keyof typeof counts]++
-        }
-      }
-    } catch (e) {
-      console.error("Error calculating working days:", e)
-    }
-    return counts
-  }, [currentAcademicSession, calendarSettings, timetableConfig])
+  // Teaching days per weekday after holidays, from the server so it matches what is enforced on save
+  const workingDaysCount = useMemo(
+    () => ({ mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, ...(syllabusHours?.working_days || {}) }),
+    [syllabusHours]
+  )
 
   const calculateDuration = (startTime: string, endTime: string) => {
     const [startHour, startMinute] = startTime.split(":").map(Number)
@@ -221,7 +178,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   }
 
   const subjectHourCheck = useMemo(() => {
-    if (!subjectsData || Object.keys(periodsState).length === 0) return { under: [], over: [] }
+    if (!subjectsData || Object.keys(periodsState).length === 0) return { under: [], over: [], summary: [] as any[] }
     
     const weeklyMinutes: Record<number, number> = {}
     
@@ -263,14 +220,24 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     
     const under: any[] = []
     const over: any[] = []
+    const summary: { id: number; name: string; required: number; allocated: number; status: "ok" | "under" | "over"; isNonLecture: boolean }[] = []
     
     subjectsData.forEach(s => {
-      const lpReportItem = coverageReport.find(r => r.subjectId === s.subject_id || r.subject_id === s.subject_id)
-      const requiredHours = lpReportItem ? lpReportItem.totalHours || 0 : 0
+      const requiredItem = syllabusHours?.required.find(r => r.subject_id === s.subject_id)
+      const requiredHours = requiredItem ? requiredItem.total_hours || 0 : 0
       
       if (requiredHours > 0) {
         const totalMinutes = weeklyMinutes[s.id] || 0
         const allocatedHours = totalMinutes / 60
+        const status = allocatedHours < requiredHours - 0.1 ? "under" : allocatedHours > requiredHours + 0.1 ? "over" : "ok"
+        summary.push({
+          id: s.subject_id,
+          name: s.subject?.name || t("unknown_subject"),
+          required: requiredHours,
+          allocated: allocatedHours,
+          status,
+          isNonLecture: !!s.is_non_lecture,
+        })
         
         if (allocatedHours < requiredHours - 0.1) {
           under.push({ id: s.subject_id, name: s.subject?.name || t("unknown_subject"), required: requiredHours, allocated: allocatedHours })
@@ -280,8 +247,8 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       }
     })
     
-    return { under, over }
-  }, [periodsState, subjectsData, workingDaysCount, coverageReport, t])
+    return { under, over, summary }
+  }, [periodsState, subjectsData, workingDaysCount, syllabusHours, t])
 
   // Initialize data
   useEffect(() => {
@@ -899,6 +866,19 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   };
 
   const handleSaveAll = async () => {
+    // Without the syllabus hours and holidays the check cannot run, so do not let it pass silently
+    if (syllabusStatus !== "ready") {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description:
+          syllabusStatus === "loading"
+            ? "Syllabus hours are still loading. Please try again in a moment."
+            : "Could not load the syllabus hours, so the timetable cannot be checked. Retrying now.",
+      })
+      if (syllabusStatus === "error") loadSyllabusHours()
+      return
+    }
     if (subjectHourCheck.under.length > 0) {
       setValidationType("under")
       setIsValidationDialogOpen(true)
@@ -1013,7 +993,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
 
   // Options generation
   const subjectOptions = useMemo(() => {
-    const options: { value: string; label: string; code: string; isNew?: boolean }[] = []
+    const options: { value: string; label: string; code: string; isNew?: boolean; isNonLecture?: boolean }[] = []
     
     let targetYearString: string | null = null;
     let targetClassNum: string | null = null;
@@ -1045,6 +1025,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
           value: s.id.toString(),
           label: s.subject?.name || `Subject ${s.id}`,
           code: s.code_for_division || s.subject?.code || "",
+          isNonLecture: !!s.is_non_lecture,
         })
       })
     }
@@ -1104,6 +1085,17 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
     const subject = subjects.find(s => s.id.toString() === editSubjectId)
     if (!subject) return []
 
+    // A non-lecture plan names its teachers; without any, every teaching staff member can take it
+    if (subject.is_non_lecture) {
+      const planStaffIds = subject.non_lecture_staff_ids || []
+      return staff
+        .filter(st => planStaffIds.length === 0 || planStaffIds.includes(st.id))
+        .map(st => ({
+          value: st.staff_enrollment_id.toString(),
+          label: `${st.first_name || ""} ${st.last_name || ""}`.trim(),
+        }))
+    }
+
     return (subject.subject_staff_divisioin_master || [])
       .filter(ssm => ssm.status === "Active" && ssm.staff_enrollment && ssm.staff_enrollment.status === "Retained")
       .map(ssm => {
@@ -1113,7 +1105,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
           label: `${t?.first_name || ""} ${t?.last_name || ""}`.trim(),
         }
       })
-  }, [editSubjectId, subjects])
+  }, [editSubjectId, subjects, staff])
 
   const labOptions = useMemo(() => {
     if (!timetableConfig.lab_config) return []
@@ -1244,6 +1236,44 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
         </div>
       </div>
 
+      {subjectHourCheck.summary.length > 0 && (
+        <Card className="mb-4 border-slate-200">
+          <CardContent className="p-3 space-y-3">
+            {[false, true].map((nonLecture) => {
+              const rows = subjectHourCheck.summary.filter((r) => r.isNonLecture === nonLecture)
+              if (rows.length === 0) return null
+              return (
+                <div key={String(nonLecture)}>
+                  <p className="mb-1 text-xs font-semibold text-slate-600">
+                    {nonLecture ? "Non Lecture Subjects" : "Lecture Subjects"}: timetable hours / required hours
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {rows.map((r) => (
+                      <div
+                        key={r.id}
+                        className={`flex items-center justify-between rounded-md border px-3 py-1.5 text-xs ${
+                          r.status === "under"
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : r.status === "over"
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        <span className="truncate pr-2 font-medium">{r.name}</span>
+                        <span className="whitespace-nowrap">
+                          {r.allocated.toFixed(1)}h / {r.required.toFixed(1)}h
+                          {r.status === "under" ? ` (short ${(r.required - r.allocated).toFixed(1)}h)` : r.status === "over" ? ` (+${(r.allocated - r.required).toFixed(1)}h)` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {viewMode === 'edit' && (
         <Card className="mb-4 bg-slate-50 border-blue-100">
            <CardContent className="p-3">
@@ -1259,7 +1289,16 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                         <SelectTrigger className="h-8"><SelectValue placeholder="Subject" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
-                          {subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.subject?.name}</SelectItem>)}
+                          {subjects.filter(s => !s.is_non_lecture).map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.subject?.name}</SelectItem>)}
+                          {subjects.some(s => s.is_non_lecture) && (
+                            <>
+                              <SelectSeparator />
+                              <SelectGroup>
+                                <SelectLabel>Non Lecture Subjects</SelectLabel>
+                                {subjects.filter(s => s.is_non_lecture).map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.subject?.name}</SelectItem>)}
+                              </SelectGroup>
+                            </>
+                          )}
                         </SelectContent>
                      </Select>
                    </div>
@@ -1615,9 +1654,20 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">{t("no_subject")}</SelectItem>
-                                    {subjectOptions.map(opt => (
+                                    {subjectOptions.filter(opt => !opt.isNonLecture).map(opt => (
                                         <SelectItem key={opt.value} value={opt.value}>{opt.label} {opt.code ? `(${opt.code})` : ""}</SelectItem>
                                     ))}
+                                    {subjectOptions.some(opt => opt.isNonLecture) && (
+                                        <>
+                                            <SelectSeparator />
+                                            <SelectGroup>
+                                                <SelectLabel>Non Lecture Subjects</SelectLabel>
+                                                {subjectOptions.filter(opt => opt.isNonLecture).map(opt => (
+                                                    <SelectItem key={opt.value} value={opt.value}>{opt.label} {opt.code ? `(${opt.code})` : ""}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>

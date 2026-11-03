@@ -2202,14 +2202,11 @@ export default function NonLectureTemplateSettings() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Total Target Hours *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  step="0.5"
-                  value={formData.totalHours}
-                  onChange={(e) => setFormData({ ...formData, totalHours: Number(e.target.value) || 0 })}
-                />
+                <Label className="text-xs font-semibold">Plan Hours (sum of the sessions)</Label>
+                <Input type="number" value={formData.totalHours} readOnly disabled />
+                <p className="text-[10px] text-gray-400">
+                  Worked out from the session hours below. The hours the timetable must give this subject are set in the lesson plan editor as "Total teaching hours".
+                </p>
               </div>
             </div>
 

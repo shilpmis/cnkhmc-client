@@ -35,6 +35,11 @@ export interface SubjectDivisionMaster {
     academic_session?: AcademicSession
     Staff_enrollment?: StaffEnrollment
     subject_staff_divisioin_master: SubjectDivisionStaffMaster[]
+    /** Set by the server for subjects that have a non-lecture lesson plan */
+    is_non_lecture?: boolean
+    non_lecture_hours?: number | null
+    /** Staff ids the plan names; empty means any teaching staff */
+    non_lecture_staff_ids?: number[]
 }
 
 // timetable 

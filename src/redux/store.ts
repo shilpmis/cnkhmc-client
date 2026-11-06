@@ -29,6 +29,7 @@ import { StudentManagementApi } from "@/services/StudentManagementService";
 import { SubjectApi } from "@/services/subjects";
 import { TimeTableApi } from "@/services/timetableService";
 import { StaffAttendanceApi } from "@/services/StaffAttendanceService";
+import { BiometricApi } from "@/services/BiometricService";
 import { AcademicCalendarApi } from "@/services/AcademicCalendarService";
 import { DepartmentApi } from "@/services/DepartmentService";
 import { CertificateTemplateApi } from "@/services/CertificateTemplateService";
@@ -67,6 +68,7 @@ const store = configureStore({
     [PromotionApi.reducerPath]: PromotionApi.reducer,
     [PayrollApi.reducerPath]: PayrollApi.reducer,
     [StaffAttendanceApi.reducerPath]: StaffAttendanceApi.reducer,
+    [BiometricApi.reducerPath]: BiometricApi.reducer,
     [OrganisationApi.reducerPath]: OrganisationApi.reducer,
     [AcademicCalendarApi.reducerPath]: AcademicCalendarApi.reducer,
     [DepartmentApi.reducerPath]: DepartmentApi.reducer,
@@ -104,6 +106,7 @@ const store = configureStore({
       PromotionApi.middleware,
       PayrollApi.middleware,
       StaffAttendanceApi.middleware,
+      BiometricApi.middleware,
       OrganisationApi.middleware,
       AcademicCalendarApi.middleware,
       DepartmentApi.middleware,

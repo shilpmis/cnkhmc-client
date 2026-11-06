@@ -34,6 +34,7 @@ import {
   Package,
   BookOpen,
   ReceiptText,
+  Fingerprint,
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { Permission, UserRole } from "@/types/user"
@@ -80,6 +81,12 @@ const SideBarItems: SidebarItem[] = [
     url: "/d/lecture-attendance",
     icon: BookOpen,
     requiredPermission: [Permission.MARK_ATTENDANCE, Permission.MANAGE_ATTENDANCE],
+  },
+  {
+    title: "biometric_attendance",
+    url: "/d/staff/biometric",
+    icon: Fingerprint,
+    requiredPermission: Permission.MANAGE_ATTENDANCE,
   },
   { title: "payments", url: "/d/pay-fees", icon: IndianRupee, requiredPermission: Permission.PAY_FEES },
   { title: "manage_fees", url: "/d/fee", icon: IndianRupee, requiredPermission: Permission.MANAGE_FEES },

@@ -60,6 +60,7 @@ import TimetableConfig from "../Settings/AcademicSettings/TimetableConfig"
 import TimetableManagement from "@/pages/TimeTable"
 import StaffAttendancePage from "../Attendance/StaffAttendancePage"
 import AdminEditRequestsPanel from "../Attendance/AdminEditRequestsPanel"
+import BiometricAttendance from "@/pages/BiometricAttendance"
 import OrganisationManagement from "@/pages/OrganisationManagement"
 import DepartmentManagement from "@/pages/DepartmentManagement"
 import AcademicCalendar from "@/pages/AcademicCalendar"
@@ -451,6 +452,16 @@ export default function RootRoute() {
               element={
                 <PrivateRoute allowedPermissions={[Permission.MANAGE_ATTENDANCE]} allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.HEAD_TEACHER]}>
                   <AdminEditRequestsPanel />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Biometric (eSSL) attendance import for staff */}
+            <Route
+              path="staff/biometric"
+              element={
+                <PrivateRoute allowedPermissions={[Permission.MANAGE_ATTENDANCE]} allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.HEAD_TEACHER]}>
+                  <BiometricAttendance />
                 </PrivateRoute>
               }
             />

@@ -18,9 +18,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+      alias: [
+        { find: "@", replacement: path.resolve(__dirname, "./src") },
+        // mdb-reader (biometric import) only uses these for encrypted files; their real code needs Node's stream
+        { find: /^create-hash$/, replacement: path.resolve(__dirname, "./src/utils/mdb-crypto-stub.ts") },
+        { find: /^browserify-aes\/browser\.js$/, replacement: path.resolve(__dirname, "./src/utils/mdb-crypto-stub.ts") },
+      ],
     },
     define: {
       __Mode__: JSON.stringify(mode),

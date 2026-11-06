@@ -105,7 +105,7 @@ export const TimeTableApi = createApi({
                 method: "POST",
                 body: payload
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
         }),
 
         updateDayWiseTimeTableForDivison: builder.mutation<PeriodsConfig[], { payload: TypeForUpdatePeriodsConfigForADay }>({
@@ -114,7 +114,7 @@ export const TimeTableApi = createApi({
                 method: "PUT",
                 body: payload
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
         }),
 
         updateWeekWiseTimeTableForDivision: builder.mutation<PeriodsConfig[], { payload: TypeForUpdatePeriodsConfigForAWeek }>({
@@ -123,7 +123,7 @@ export const TimeTableApi = createApi({
                 method: "PUT",
                 body: payload
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
         }),
 
 
@@ -133,7 +133,7 @@ export const TimeTableApi = createApi({
                 method: "PUT",
                 body: payload
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
         }),
 
         deleteSinglePeriod: builder.mutation<{ message: string, id: number }, { period_id: number }>({
@@ -141,7 +141,7 @@ export const TimeTableApi = createApi({
                 url: `/timetable/config/period/${period_id}`,
                 method: "DELETE",
             }),
-            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig'],
+            invalidatesTags: ['PeriodsConfig', 'TimeTableConfig', 'TimetableVersions'],
         }),
 
         deleteDayWiseTimeTableForDivison: builder.mutation<any, { school_timetable_config_id: number, division_id: number }>({

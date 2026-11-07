@@ -79,6 +79,8 @@ const fieldGroups = {
   academic: [
     { id: "qualification", label: "Primary Qualification" },
     { id: "subject_specialization", label: "Subject Specialization" },
+    { id: "qualification_college", label: "Qualification College" },
+    { id: "qualification_university", label: "Qualification University" },
     { id: "ug_degree", label: "UG Degree" },
     { id: "ug_passing_university", label: "UG University" },
     { id: "ug_passing_year", label: "UG Passing Year" },

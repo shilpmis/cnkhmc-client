@@ -129,6 +129,58 @@ export const AcademicDetailsSection: React.FC<AcademicDetailsSectionProps> = ({
                 }}
               />
             )}
+            <FormField
+              control={form.control}
+              name="qualification_college"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Qualification College</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="qualification_university"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Qualification University</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="passing_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date of Passing</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="md_subject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>MD Subject</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         </div>
         {/* UG Details */}

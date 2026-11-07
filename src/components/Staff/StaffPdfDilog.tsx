@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,7 +28,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer"
 import type { ComponentType } from "react"
 import type { StaffType } from "@/types/staff"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { getFullPhotoUrl } from "@/components/ui/AvatarUpload"
+import { getFullPhotoUrl, getSafePdfImageUrl } from "@/components/ui/AvatarUpload"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectCurrentUser } from "@/redux/slices/authSlice"
 import { selectSchool } from "@/redux/slices/schoolSlice"
@@ -60,6 +60,35 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
   )
 
   const staff = fullStaff || selectedStaff
+
+  // The PDF renderer fetches remote images itself and drops the photo when that request fails (expired
+  // signed link, CORS). Fetch it here once and embed it as a data URL so the photo always makes it in.
+  const rawPhoto = staff?.profile_photo
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
+  const [isPhotoLoading, setIsPhotoLoading] = useState(false)
+  useEffect(() => {
+    setPhotoDataUrl(null)
+    if (!dialogOpen || !rawPhoto || isFullStaffLoading) return
+    let cancelled = false
+    setIsPhotoLoading(true)
+    fetch(getSafePdfImageUrl(rawPhoto)!)
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(blob)
+          }),
+      )
+      .then((dataUrl) => !cancelled && setPhotoDataUrl(dataUrl))
+      .catch((err) => console.error("Could not load staff photo for the PDF:", err))
+      .finally(() => !cancelled && setIsPhotoLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [dialogOpen, rawPhoto, isFullStaffLoading])
 
   const formatData = useCallback((value: any): string => {
     if (!value) return "N/A"
@@ -108,19 +137,24 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                     {typeof window !== "undefined" && (
                       <PDFDownloadLink
                         key={pdfKey}
-                        document={<StaffDetailsPDF staff={staff} school={school} />}
+                        document={
+                          <StaffDetailsPDF
+                            staff={photoDataUrl ? { ...staff, profile_photo: photoDataUrl } : staff}
+                            school={school}
+                          />
+                        }
                         fileName={`${staff.first_name}_${staff.last_name}_details.pdf`}
                       >
                         {({ loading }) => (
                           <Button
                             variant="default"
                             size="sm"
-                            disabled={loading || isFullStaffLoading}
+                            disabled={loading || isFullStaffLoading || isPhotoLoading}
                             onClick={handlePDFDownload}
                             className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white"
                           >
                             <Download className="h-4 w-4" />
-                            {loading || isFullStaffLoading ? t("generating") : t("download_pdf")}
+                            {loading || isFullStaffLoading || isPhotoLoading ? t("generating") : t("download_pdf")}
                           </Button>
                         )}
                       </PDFDownloadLink>

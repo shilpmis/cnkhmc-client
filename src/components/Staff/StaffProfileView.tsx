@@ -343,6 +343,30 @@ export function StaffProfileView({ staff, onBack, showToolBar }: StaffProfileVie
                   <span className="text-muted-foreground">{t("qualification")}</span>
                   <span className="font-medium">{staff.qualification || "N/A"}</span>
                 </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Qualification College</span>
+                  <span className="font-medium">{staff.qualification_college || "N/A"}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Qualification University</span>
+                  <span className="font-medium">{staff.qualification_university || "N/A"}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Date of Passing</span>
+                  <span className="font-medium">{staff.passing_date ? formatDate(staff.passing_date) : "N/A"}</span>
+                </div>
+                {staff.md_subject && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">MD Subject</span>
+                      <span className="font-medium">{staff.md_subject}</span>
+                    </div>
+                  </>
+                )}
                 {isTeachingStaff && (
                   <>
                     <Separator />

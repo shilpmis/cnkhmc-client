@@ -524,6 +524,22 @@ const StaffDetailsPDF = ({ staff, school }: any) => {
               <Text style={styles.label}>Subject Specialization</Text>
               <Text style={styles.value}>{formatVal(staff.subject_specialization)}</Text>
             </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>Qualification College</Text>
+              <Text style={styles.value}>{formatVal(staff.qualification_college)}</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>Qualification University</Text>
+              <Text style={styles.value}>{formatVal(staff.qualification_university)}</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>Date of Passing</Text>
+              <Text style={styles.value}>{formatDate(staff.passing_date)}</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>MD Subject</Text>
+              <Text style={styles.value}>{formatVal(staff.md_subject)}</Text>
+            </View>
           </View>
 
           {educationRows.length > 0 && (

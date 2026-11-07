@@ -350,6 +350,22 @@ const StaffDetailsDialog: React.FC<StaffDetailsDialogProps> = ({
                     <p className="text-xs text-muted-foreground">{t("subject_specialization")}</p>
                     <p className="font-medium">{getDisplayValue(staff.subject_specialization)}</p>
                   </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Qualification College</p>
+                    <p className="font-medium">{getDisplayValue(staff.qualification_college)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Qualification University</p>
+                    <p className="font-medium">{getDisplayValue(staff.qualification_university)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date of Passing</p>
+                    <p className="font-medium">{staff.passing_date ? formatData(staff.passing_date) : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">MD Subject</p>
+                    <p className="font-medium">{getDisplayValue(staff.md_subject)}</p>
+                  </div>
                 </div>
                 <div className="space-y-2 pt-1">
                   {staff.ug_degree && (

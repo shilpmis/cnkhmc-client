@@ -56,6 +56,10 @@ export interface StaffType {
   emergency_contact_name: string | null;
   emergency_contact_number: number | null;
   qualification: string | null;
+  qualification_college?: string | null;
+  qualification_university?: string | null;
+  passing_date?: string | null;
+  md_subject?: string | null;
   subject_specialization: string | null;
   joining_date: Date | null;
   employment_status: string;

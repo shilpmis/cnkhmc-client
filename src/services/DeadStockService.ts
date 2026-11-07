@@ -52,6 +52,27 @@ export interface DeadStockTransaction {
   department?: InventoryDepartment;
 }
 
+export interface MyDeadStockAccess {
+  /** Sees every department and the central store, and may add, import, issue and discard */
+  all_departments: boolean;
+  /** Departments this user may see when all_departments is false */
+  department_ids: number[];
+  /** May give dead stock access to staff */
+  can_manage_access: boolean;
+}
+
+export interface DeadStockAccessStaff {
+  id: number;
+  employee_code: string;
+  name: string;
+  designation: string | null;
+  department: string | null;
+  is_active: boolean;
+  has_login: boolean;
+  all_departments: boolean;
+  department_ids: number[];
+}
+
 export const DeadStockApi = createApi({
   reducerPath: "deadStockApi",
   baseQuery: fetchBaseQuery({
@@ -61,8 +82,25 @@ export const DeadStockApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["InventoryDepartment", "DeadStock"],
+  tagTypes: ["InventoryDepartment", "DeadStock", "DeadStockAccess"],
   endpoints: (builder) => ({
+    // Person-based access: what the signed-in user may do, and the admin screen to give access
+    getMyDeadStockAccess: builder.query<MyDeadStockAccess, void>({
+      query: () => ({ url: `/dead-stock-access/me`, method: "GET" }),
+      providesTags: ["DeadStockAccess"],
+    }),
+    getDeadStockAccessList: builder.query<{ staff: DeadStockAccessStaff[]; departments: { id: number; name: string; is_active: boolean }[] }, void>({
+      query: () => ({ url: `/dead-stock-access`, method: "GET" }),
+      providesTags: ["DeadStockAccess"],
+    }),
+    updateDeadStockAccess: builder.mutation<
+      { staff_id: number; all_departments: boolean; department_ids: number[] },
+      { staff_id: number; all_departments: boolean; department_ids: number[] }
+    >({
+      query: ({ staff_id, ...body }) => ({ url: `/dead-stock-access/${staff_id}`, method: "PUT", body }),
+      invalidatesTags: ["DeadStockAccess", "DeadStock", "InventoryDepartment"],
+    }),
+
     // Inventory Departments
     getInventoryDepartments: builder.query<{ data: InventoryDepartment[] }, void>({
       query: () => ({
@@ -156,6 +194,9 @@ export const DeadStockApi = createApi({
 });
 
 export const {
+  useGetMyDeadStockAccessQuery,
+  useGetDeadStockAccessListQuery,
+  useUpdateDeadStockAccessMutation,
   useGetInventoryDepartmentsQuery,
   useCreateInventoryDepartmentMutation,
   useDeleteInventoryDepartmentMutation,

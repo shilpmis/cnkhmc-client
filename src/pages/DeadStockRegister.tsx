@@ -26,6 +26,7 @@ import {
   useDiscardDeadStockMutation,
   useTransferDeadStockMutation,
   useGetInventoryDepartmentsQuery,
+  useGetMyDeadStockAccessQuery,
   DeadStock
 } from "@/services/DeadStockService";
 
@@ -38,7 +39,13 @@ export default function DeadStockRegister() {
 
   const { data: deptResponse } = useGetInventoryDepartmentsQuery();
   const departments = deptResponse?.data || [];
-  
+
+  // Person-based access: the server already returns only the departments this user may see. Central
+  // store actions (add, import, issue, discard from store) need access to all departments.
+  const { data: myAccess } = useGetMyDeadStockAccessQuery();
+  const hasAllDepartments = !!myAccess?.all_departments;
+  const hasNoAccess = !!myAccess && !myAccess.all_departments && myAccess.department_ids.length === 0;
+
   const [createDeadStock] = useCreateDeadStockMutation();
   const [importDeadStock, { isLoading: isImporting }] = useImportDeadStockExcelMutation();
   const [issueStock] = useIssueDeadStockMutation();
@@ -260,6 +267,20 @@ export default function DeadStockRegister() {
     return <div className="p-8 text-center text-slate-500 font-medium">Loading dead stock register...</div>;
   }
 
+  if (hasNoAccess) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <Card className="p-8 text-center rounded-2xl border-slate-100">
+          <Package className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-slate-900">No dead stock access</h2>
+          <p className="text-slate-500 mt-1">
+            You have not been given access to any dead stock department. Ask an administrator to give you access.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6 max-w-[95rem] mx-auto">
       {/* Header */}
@@ -274,7 +295,7 @@ export default function DeadStockRegister() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {can("import", "DeadStock") && (
+          {can("import", "DeadStock") && hasAllDepartments && (
 <Button
             variant="outline"
             onClick={() => setIsImportOpen(true)}
@@ -284,7 +305,7 @@ export default function DeadStockRegister() {
             Bulk Import (Excel)
           </Button>
 )}
-          {can("create", "DeadStock") && (
+          {can("create", "DeadStock") && hasAllDepartments && (
 <Button
             onClick={openAdd}
             className="rounded-2xl h-12 px-6 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 font-bold text-sm transition-all hover:scale-[1.02]"
@@ -369,8 +390,8 @@ export default function DeadStockRegister() {
               onChange={(e) => setSelectedDeptFilter(e.target.value)}
               className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm focus:outline-none"
             >
-              <option value="ALL">All Departments & Store</option>
-              <option value="STORE">In Central Store Only</option>
+              <option value="ALL">{hasAllDepartments ? "All Departments & Store" : "All My Departments"}</option>
+              {hasAllDepartments && <option value="STORE">In Central Store Only</option>}
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
@@ -499,15 +520,17 @@ export default function DeadStockRegister() {
                         <td className="p-4 text-center">
                           {can("update", "DeadStock") && (
 <div className="flex justify-center items-center gap-1.5 flex-wrap">
-                            <Button 
+                            {hasAllDepartments && (
+                            <Button
                               size="sm"
-                              onClick={() => openAction(stock, 'ISSUE')} 
-                              disabled={stock.availableQuantity < 1} 
+                              onClick={() => openAction(stock, 'ISSUE')}
+                              disabled={stock.availableQuantity < 1}
                               className="h-8 px-2.5 rounded-lg text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white"
                               title="Issue Stock to Department"
                             >
                               <Send className="h-3 w-3 mr-1" /> Issue
                             </Button>
+                            )}
                             <Button 
                               size="sm"
                               onClick={() => openAction(stock, 'RETURN')} 
@@ -518,14 +541,14 @@ export default function DeadStockRegister() {
                             </Button>
                             <Button 
                               size="sm"
-                              onClick={() => openAction(stock, 'TRANSFER')} 
-                              disabled={stock.availableQuantity < 1} 
+                              onClick={() => openAction(stock, 'TRANSFER')}
+                              disabled={deptAllocations.length === 0}
                               className="h-8 px-2.5 rounded-lg text-xs font-bold bg-indigo-500 hover:bg-indigo-600 text-white"
                               title="Transfer between Departments"
                             >
                               <ArrowRightLeft className="h-3 w-3 mr-1" /> Transfer
                             </Button>
-                            {can("delete", "DeadStock") && (
+                            {can("delete", "DeadStock") && hasAllDepartments && (
 <Button 
                               size="sm"
                               onClick={() => openAction(stock, 'DISCARD')} 
@@ -616,13 +639,15 @@ export default function DeadStockRegister() {
                     {/* Actions */}
                     {can("update", "DeadStock") && (
 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                      <Button 
-                        onClick={() => openAction(stock, 'ISSUE')} 
-                        disabled={stock.availableQuantity < 1} 
+                      {hasAllDepartments && (
+                      <Button
+                        onClick={() => openAction(stock, 'ISSUE')}
+                        disabled={stock.availableQuantity < 1}
                         className="rounded-xl font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
                       >
                         <Send className="mr-2 h-4 w-4" /> Issue
                       </Button>
+                      )}
                       <Button 
                         onClick={() => openAction(stock, 'RETURN')} 
                         className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
@@ -630,13 +655,13 @@ export default function DeadStockRegister() {
                         <Undo2 className="mr-2 h-4 w-4" /> Return
                       </Button>
                       <Button 
-                        onClick={() => openAction(stock, 'TRANSFER')} 
-                        disabled={stock.availableQuantity < 1} 
+                        onClick={() => openAction(stock, 'TRANSFER')}
+                        disabled={getStockDeptAllocations(stock).length === 0}
                         className="rounded-xl font-bold bg-indigo-500 hover:bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                       >
                         <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
                       </Button>
-                      {can("delete", "DeadStock") && (
+                      {can("delete", "DeadStock") && hasAllDepartments && (
 <Button 
                         onClick={() => openAction(stock, 'DISCARD')} 
                         disabled={stock.availableQuantity < 1} 

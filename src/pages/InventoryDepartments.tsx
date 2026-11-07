@@ -17,7 +17,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import { 
-  useGetInventoryDepartmentsQuery, 
+  useGetInventoryDepartmentsQuery,
+  useGetMyDeadStockAccessQuery,
   useCreateInventoryDepartmentMutation,
   useDeleteInventoryDepartmentMutation,
   InventoryDepartment,
@@ -29,7 +30,10 @@ export default function InventoryDepartments() {
 
   const { data: response, isLoading } = useGetInventoryDepartmentsQuery();
   const departments = response?.data || [];
-  
+  // Only all-department access may add or delete departments; others see only their own departments
+  const { data: myAccess } = useGetMyDeadStockAccessQuery();
+  const hasAllDepartments = !!myAccess?.all_departments;
+
   const [createDepartment] = useCreateInventoryDepartmentMutation();
   const [deleteDepartment] = useDeleteInventoryDepartmentMutation();
 
@@ -102,6 +106,7 @@ export default function InventoryDepartments() {
             Manage locations/departments that hold dead stock
           </p>
         </div>
+        {hasAllDepartments && (
         <Button
           onClick={openAdd}
           className="rounded-2xl h-14 px-8 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 font-bold text-lg transition-all hover:scale-[1.02]"
@@ -109,6 +114,7 @@ export default function InventoryDepartments() {
           <Plus className="mr-2 h-6 w-6" />
           Add Department
         </Button>
+        )}
       </div>
 
       {/* Search and Stats */}
@@ -161,14 +167,16 @@ export default function InventoryDepartments() {
                       <Badge className="bg-primary/10 text-primary font-bold rounded mb-1 text-[10px] px-2 py-0">ID: {dept.id}</Badge>
                       <CardTitle className="text-lg font-bold leading-tight">{dept.name}</CardTitle>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    {hasAllDepartments && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 -mt-1 -mr-1 h-8 w-8 z-10"
                       onClick={(e) => handleDelete(e, dept.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 pt-3 text-slate-500 text-xs">

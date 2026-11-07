@@ -32,6 +32,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Package,
+  KeyRound,
   BookOpen,
   ReceiptText,
 } from "lucide-react"
@@ -110,6 +111,8 @@ const InventoryItems = {
   subItems: [
     { title: "Dead Stock Register", url: "/d/inventory/dead-stock", icon: ClipboardList },
     { title: "Departments", url: "/d/inventory/departments", icon: Building2 },
+    // Only admin roles give dead stock access to staff
+    { title: "Access", url: "/d/inventory/access", icon: KeyRound, adminOnly: true },
   ],
 }
 
@@ -141,6 +144,11 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
   const isActive = (url: string) => {
     return location.pathname === url || location.pathname.startsWith(`${url}/`)
   }
+
+  // Dead stock "Access" is for the roles that give access to others (the server checks the same roles)
+  const canManageDeadStockAccess = [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.SUPER_ADMIN, UserRole.DEVELOPER].some((r) => hasRole(r))
+  const inventorySubItems = InventoryItems.subItems.filter((item) => !("adminOnly" in item && item.adminOnly) || canManageDeadStockAccess)
+  const inventoryActive = inventorySubItems.some((item) => isActive(item.url))
 
   // Function to check if any payroll sub-item is active
   const isAnyPayrollItemActive = () => {
@@ -294,18 +302,18 @@ export default function AppSidebar({ isCollapsed }: AppSidebarProps) {
                   <SidebarMenuButton
                     onClick={() => {}} // Could add state for expanded/collapsed
                     className={cn(
-                      (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "bg-orange-100 text-orange-700 font-medium",
-                      (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "hover:bg-orange-200 hover:text-orange-800",
+                      inventoryActive && "bg-orange-100 text-orange-700 font-medium",
+                      inventoryActive && "hover:bg-orange-200 hover:text-orange-800",
                     )}
-                    isActive={(isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url))}
+                    isActive={inventoryActive}
                   >
-                    <InventoryItems.icon className={cn("mr-2", (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "text-orange-700")} />
+                    <InventoryItems.icon className={cn("mr-2", inventoryActive && "text-orange-700")} />
                     <span>{t(InventoryItems.title)}</span>
-                    <ChevronDown className={cn("ml-auto h-4 w-4", (isActive(InventoryItems.subItems[0].url) || isActive(InventoryItems.subItems[1].url)) && "text-orange-700")} />
+                    <ChevronDown className={cn("ml-auto h-4 w-4", inventoryActive && "text-orange-700")} />
                   </SidebarMenuButton>
 
                   <SidebarMenuSub>
-                    {InventoryItems.subItems.map((subItem) => {
+                    {inventorySubItems.map((subItem) => {
                       const subActive = isActive(subItem.url)
                       return (
                         <SidebarMenuSubItem key={subItem.title}>

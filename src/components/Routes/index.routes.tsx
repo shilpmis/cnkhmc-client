@@ -73,6 +73,7 @@ import ExamMasters from "@/pages/ExamMasters"
 import ExamSchedules from "@/pages/ExamSchedules"
 import HostelManagement from "@/pages/HostelManagement"
 import DeadStockRegister from "@/pages/DeadStockRegister"
+import DeadStockAccess from "@/pages/DeadStockAccess"
 import InventoryDepartments from "@/pages/InventoryDepartments"
 import PracticalBatchSettings from "@/components/Settings/PracticalBatchSettings"
 
@@ -271,6 +272,16 @@ export default function RootRoute() {
                   ]}
                 >
                   <InventoryDepartments />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Who can see which dead stock departments (admins only; the server checks too) */}
+            <Route
+              path="inventory/access"
+              element={
+                <PrivateRoute allowedRoles={[UserRole.ADMIN, UserRole.PRINCIPAL]}>
+                  <DeadStockAccess />
                 </PrivateRoute>
               }
             />

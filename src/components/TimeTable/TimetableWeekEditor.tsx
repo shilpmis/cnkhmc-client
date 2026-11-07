@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
+import { timetableSubjectLabel } from "@/utils/subjectLabel"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -1023,7 +1024,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
       subjects.forEach((s) => {
         options.push({
           value: s.id.toString(),
-          label: s.subject?.name || `Subject ${s.id}`,
+          label: timetableSubjectLabel(s, `Subject ${s.id}`),
           code: s.code_for_division || s.subject?.code || "",
           isNonLecture: !!s.is_non_lecture,
         })
@@ -1128,7 +1129,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
   const getSubjectName = (period: PeriodState) => {
     if (!period.subjects_division_masters_id) return ""
     const subject = subjects.find((s) => s.id === period.subjects_division_masters_id)
-    return subject ? subject.subject?.name : ""
+    return subject ? timetableSubjectLabel(subject) : ""
   }
 
   const getTeacherName = (period: PeriodState) => {
@@ -1295,7 +1296,7 @@ export default function TimetableWeekEditor({ timetableConfig, divisionId, days,
                               <SelectSeparator />
                               <SelectGroup>
                                 <SelectLabel>Non Lecture Subjects</SelectLabel>
-                                {subjects.filter(s => s.is_non_lecture).map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.subject?.name}</SelectItem>)}
+                                {subjects.filter(s => s.is_non_lecture).map(s => <SelectItem key={s.id} value={s.id.toString()}>{timetableSubjectLabel(s)}</SelectItem>)}
                               </SelectGroup>
                             </>
                           )}

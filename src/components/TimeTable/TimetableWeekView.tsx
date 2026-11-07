@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, Fragment } from "react"
 import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
+import { timetableSubjectLabel } from "@/utils/subjectLabel"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -87,7 +88,7 @@ export default function TimetableWeekView({ timetableConfig, divisionId, days }:
   const getSubjectName = (period: PeriodsConfig) => {
     if (!period.subjects_division_masters_id) return t("no_subject")
     const subject = subjects.find((s) => s.id === period.subjects_division_masters_id)
-    return subject ? subject.subject?.name || t("unknown_subject") : t("unknown_subject")
+    return subject ? timetableSubjectLabel(subject, t("unknown_subject")) : t("unknown_subject")
   }
 
   // Get subject code

@@ -257,6 +257,7 @@ import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useEffect, useState } from "react"
 import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
+import { timetableSubjectLabel } from "@/utils/subjectLabel"
 import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
@@ -394,7 +395,7 @@ export default function TimetableDisplay({ dayConfig, divisionId, timetableConfi
     if (!period.subjects_division_masters_id) return t("no_subject")
 
     const subject = subjects.find((s) => s.id === period.subjects_division_masters_id)
-    return subject ? subject.subject?.name || t("unknown_subject") : t("unknown_subject")
+    return subject ? timetableSubjectLabel(subject, t("unknown_subject")) : t("unknown_subject")
   }
 
   // Get subject code

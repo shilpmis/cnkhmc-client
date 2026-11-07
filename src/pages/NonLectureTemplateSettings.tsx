@@ -75,29 +75,51 @@ import {
 import jsPDF from "jspdf"
 import * as XLSX from "xlsx"
 
+// Activity types of a non-lecture plan. The chosen type is also shown next to the subject wherever it
+// is scheduled in the timetable (e.g. "Human Anatomy · Seminar").
 const ACTIVITY_TYPES = [
-  "Clinical Posting",
-  "Bedside Clinic",
-  "Hospital Duty",
-  "Practical / Lab",
-  "Tutorial",
+  "Clinical",
+  "Demonstration",
   "Seminar",
-  "Case Presentation",
-  "Community Outreach",
-  "Journal Club",
+  "PBL, CBL, Assignment,GD",
+  "Symposium",
+  "Practical",
+  "Field Visit",
+  "Homoeo Case taking",
+  "Homoeo Management",
+  "Tutorial",
+  "OSCE",
+  "Mini-CEX/Dops",
+  "Clinical Posting",
+  "Self Directed Learning",
+  "Integrated Teaching",
+  "Tutorials, Assignments, Project",
+  "Hematology",
+  "Biochemistry",
+  "Clinical Physiology",
+  "OPD(Applied Physiology)",
 ]
 
-const ACTIVITY_BADGE_COLORS: Record<string, string> = {
-  "Clinical Posting": "bg-blue-50 text-blue-700 border-blue-200",
-  "Bedside Clinic": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Hospital Duty": "bg-rose-50 text-rose-700 border-rose-200",
-  "Practical / Lab": "bg-purple-50 text-purple-700 border-purple-200",
-  "Tutorial": "bg-amber-50 text-amber-700 border-amber-200",
-  "Seminar": "bg-cyan-50 text-cyan-700 border-cyan-200",
-  "Case Presentation": "bg-indigo-50 text-indigo-700 border-indigo-200",
-  "Community Outreach": "bg-teal-50 text-teal-700 border-teal-200",
-  "Journal Club": "bg-orange-50 text-orange-700 border-orange-200",
-}
+const BADGE_PALETTE = [
+  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "bg-cyan-50 text-cyan-700 border-cyan-200",
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-purple-50 text-purple-700 border-purple-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-teal-50 text-teal-700 border-teal-200",
+  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "bg-orange-50 text-orange-700 border-orange-200",
+  "bg-lime-50 text-lime-700 border-lime-200",
+]
+
+const ACTIVITY_BADGE_COLORS: Record<string, string> = Object.fromEntries(
+  ACTIVITY_TYPES.map((type, i) => [type, BADGE_PALETTE[i % BADGE_PALETTE.length]])
+)
+
+/** The list, plus the record's current type if it is an older one no longer listed, so it never shows blank. */
+const activityTypeOptions = (current?: string | null) =>
+  current && !ACTIVITY_TYPES.includes(current) ? [...ACTIVITY_TYPES, current] : ACTIVITY_TYPES
 
 /** Hours a plan owes: the allotted teaching hours, else its own total, else what its topics add up to. */
 const planHours = (t: { teaching_hours?: number | null; total_hours?: number | null; topics?: { hours?: number | null }[] }) => {
@@ -2045,7 +2067,7 @@ export default function NonLectureTemplateSettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACTIVITY_TYPES.map((type) => (
+                    {activityTypeOptions(quickTopicData.activityType).map((type) => (
                       <SelectItem key={type} value={type} className="text-xs">
                         {type}
                       </SelectItem>
@@ -2140,7 +2162,7 @@ export default function NonLectureTemplateSettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACTIVITY_TYPES.map((type) => (
+                    {activityTypeOptions(formData.activityType).map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>

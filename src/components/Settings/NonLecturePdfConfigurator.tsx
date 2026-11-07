@@ -533,7 +533,7 @@ export default function NonLecturePdfConfigurator({
                     <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
                       <div>
                         <p className="font-bold text-gray-800">Activity Type</p>
-                        <p className="text-[11px] text-gray-400">e.g., Bedside Clinic, Tutorial</p>
+                        <p className="text-[11px] text-gray-400">e.g., Seminar, Tutorial</p>
                       </div>
                       <Switch
                         checked={config.showActivityType}

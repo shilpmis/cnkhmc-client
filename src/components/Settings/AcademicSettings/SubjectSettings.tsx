@@ -29,7 +29,8 @@ import {
   selectAccademicSessionsForSchool,
   selectAuthState,
 } from "@/redux/slices/authSlice"
-import { Loader2, Plus, Pencil, AlertCircle, Search, Trash2, FileUp } from "lucide-react"
+import { Loader2, Plus, Pencil, AlertCircle, Search, Trash2, FileUp, CheckCircle2, CircleDashed } from "lucide-react"
+import LessonPlanService, { type SyllabusStatus } from "@/services/LessonPlanService"
 import SyllabusUploadDialog from "./SyllabusUploadDialog"
 import { 
   useLazyGetAllSubjectsQuery, 
@@ -118,6 +119,28 @@ export default function SubjectSettings() {
       getAllSubjects({ academic_session_id: selectedAcademicSession })
     }
   }, [selectedAcademicSession, getAllSubjects])
+
+  // Which subjects already have a syllabus in the selected session (each session has its own)
+  const [syllabusBySubject, setSyllabusBySubject] = useState<Map<number, SyllabusStatus>>(new Map())
+  const [isLoadingSyllabusStatus, setIsLoadingSyllabusStatus] = useState(false)
+  const loadSyllabusStatus = useCallback(async () => {
+    if (!selectedAcademicSession) return
+    setIsLoadingSyllabusStatus(true)
+    try {
+      const rows = await LessonPlanService.getSyllabusStatus(selectedAcademicSession)
+      setSyllabusBySubject(new Map(rows.map((r) => [Number(r.subject_id), r])))
+    } catch (error) {
+      console.error("Error loading syllabus status:", error)
+      setSyllabusBySubject(new Map())
+    } finally {
+      setIsLoadingSyllabusStatus(false)
+    }
+  }, [selectedAcademicSession])
+
+  useEffect(() => {
+    setSyllabusBySubject(new Map())
+    loadSyllabusStatus()
+  }, [loadSyllabusStatus])
 
   // Handle academic session change
   const handleAcademicSessionChange = useCallback(async (value: string) => {
@@ -230,9 +253,9 @@ export default function SubjectSettings() {
 
     try {
       setIsDeletingSyllabus(true)
-      const LessonPlanService = (await import("@/services/LessonPlanService")).default
       await LessonPlanService.deleteSyllabus(subjectToDeleteSyllabus.id, selectedAcademicSession)
-      
+      loadSyllabusStatus()
+
       toast({
         title: "Syllabus Deleted",
         description: "The syllabus has been deleted successfully",
@@ -536,6 +559,7 @@ export default function SubjectSettings() {
                         <TableHead>{t("year")}</TableHead>
                         <TableHead>{t("description")}</TableHead>
                         <TableHead>{t("status")}</TableHead>
+                        <TableHead>{t("syllabus")}</TableHead>
                         <TableHead className="text-right">{t("actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -554,6 +578,36 @@ export default function SubjectSettings() {
                             <Badge variant={subject.status === "Active" ? "default" : "secondary"}>
                               {subject.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const syllabus = syllabusBySubject.get(Number(subject.id))
+                              if (isLoadingSyllabusStatus && !syllabus) {
+                                return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              }
+                              if (!syllabus) {
+                                return (
+                                  <Badge variant="outline" className="gap-1 border-slate-200 text-slate-500 font-normal">
+                                    <CircleDashed className="h-3 w-3" /> Not added
+                                  </Badge>
+                                )
+                              }
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge
+                                    className="w-fit gap-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                                    title={syllabus.updated_on ? `Last uploaded ${syllabus.updated_on}` : undefined}
+                                  >
+                                    <CheckCircle2 className="h-3 w-3" /> Added
+                                  </Badge>
+                                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                    {syllabus.topics} topics
+                                    {syllabus.subtopics ? ` · ${syllabus.subtopics} subtopics` : ""}
+                                    {syllabus.total_hours ? ` · ${syllabus.total_hours}h` : ""}
+                                  </span>
+                                </div>
+                              )
+                            })()}
                           </TableCell>
                           <TableCell className="text-right flex items-center justify-end space-x-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(subject)}>
@@ -579,6 +633,8 @@ export default function SubjectSettings() {
                                 setSubjectToDeleteSyllabus(subject)
                                 setIsDeleteSyllabusDialogOpen(true)
                               }}
+                              disabled={!isLoadingSyllabusStatus && !syllabusBySubject.has(Number(subject.id))}
+                              title={!syllabusBySubject.has(Number(subject.id)) ? "No syllabus in this session" : undefined}
                               className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -653,6 +709,8 @@ export default function SubjectSettings() {
         onOpenChange={setIsSyllabusDialogOpen}
         subject={selectedSubjectForSyllabus}
         academicSessionId={selectedAcademicSession!}
+        onSuccess={loadSyllabusStatus}
+        existingSyllabus={selectedSubjectForSyllabus ? syllabusBySubject.get(Number(selectedSubjectForSyllabus.id)) || null : null}
       />
 
       <AlertDialog open={isDeleteSyllabusDialogOpen} onOpenChange={setIsDeleteSyllabusDialogOpen}>

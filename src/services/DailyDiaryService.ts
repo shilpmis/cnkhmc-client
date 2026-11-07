@@ -19,6 +19,8 @@ class DailyDiaryService {
     topicIds?: number[];
     subtopicIds?: number[];
     topicDurations?: Record<number, number>;
+    /** Only used when the period itself has no subject assigned */
+    subjectId?: number;
   }) {
     return ApiService.post('daily-diaries', data);
   }

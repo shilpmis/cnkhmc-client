@@ -127,8 +127,15 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
     try {
       setIsLoadingLessonPlan(true)
       setLessonPlan(null)
-      const academicSessionId = currentAcademicSession?.id || period.academic_session_id || period.period_config_class_day?.class?.academic_session_id
-      const response = await LessonPlanService.getLessonPlan(subjectId, academicSessionId)
+      // Load the syllabus of the session this period's timetable belongs to, not the session selected in
+      // the header: a 2023-24 lecture must only tick off 2023-24 topics.
+      const knownSubjectId = Number(propSubjectId || period.period_config_subject?.subject_id) || undefined
+      const response = period?.id
+        ? await LessonPlanService.getLessonPlanForPeriod(Number(period.id), knownSubjectId)
+        : await LessonPlanService.getLessonPlan(
+            subjectId,
+            currentAcademicSession?.id || period.academic_session_id || period.period_config_class_day?.class?.academic_session_id
+          )
       setLessonPlan(response.data)
     } catch (error) {
       console.error("Error fetching lesson plan:", error)
@@ -243,13 +250,15 @@ export default function LogLectureDialog({ isOpen, onOpenChange, period, subject
         }
       })
 
+      const knownSubjectId = Number(propSubjectId || period.period_config_subject?.subject_id) || undefined
       await DailyDiaryService.logActivity({
         periodsConfigId: period.id,
         date: date || format(new Date(), 'yyyy-MM-dd'),
         ...logData,
         conclusion: canEnterConclusionAndReference ? logData.conclusion : "",
         referenceBook: canEnterConclusionAndReference ? logData.referenceBook : "",
-        topicDurations: cleanDurations
+        topicDurations: cleanDurations,
+        subjectId: knownSubjectId,
       })
       
       toast({

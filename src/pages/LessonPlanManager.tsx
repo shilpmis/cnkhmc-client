@@ -44,7 +44,7 @@ import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
 import { selectCurrentUser } from "@/redux/slices/authSlice"
 import { PageAcademicSessionProvider, PageAcademicSessionSelect, useAcademicSession } from "@/contexts/PageAcademicSessionContext"
-import LessonPlanService from "@/services/LessonPlanService"
+import LessonPlanService, { type TopicResetPreview } from "@/services/LessonPlanService"
 import { useLazyGetAllSubjectsQuery } from "@/services/subjects"
 import { useGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useToast } from "@/hooks/use-toast"
@@ -234,7 +234,48 @@ function LessonPlanManagerContent() {
   }
 
 
+  // Taught -> Pending resets the whole topic: its logged hours, its links in the daily diaries and
+  // therefore its LP export. Ask first, showing what will be undone.
+  const [resetTarget, setResetTarget] = useState<TopicResetPreview | null>(null)
+  const [isLoadingReset, setIsLoadingReset] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  const askResetToPending = async (item: any) => {
+    const topicId = Number(item.topicId ?? String(item.id).replace("topic-", ""))
+    if (!topicId) return
+    try {
+      setIsLoadingReset(true)
+      setResetTarget(await LessonPlanService.getTopicResetPreview(topicId))
+    } catch (error: any) {
+      toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || "Could not load what would be reset" })
+    } finally {
+      setIsLoadingReset(false)
+    }
+  }
+
+  const confirmResetToPending = async () => {
+    if (!resetTarget) return
+    try {
+      setIsResetting(true)
+      const result = await LessonPlanService.resetTopic(resetTarget.topic_id)
+      toast({ title: "Topic set back to pending", description: result.message })
+      setResetTarget(null)
+      await fetchLessonPlan(selectedSubjectId)
+      const reportResponse = await LessonPlanService.getCoverageReport(Number(selectedSubjectId), currentAcademicSession!.id)
+      setCoverageReport(reportResponse.data)
+    } catch (error: any) {
+      toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || "Could not reset the topic" })
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   const toggleCompletion = async (item: any) => {
+    if (item.isCompleted) {
+      await askResetToPending(item)
+      return
+    }
+
     // Determine if it's a topic or subtopic
     const isTopic = item.id.toString().startsWith("topic-")
     const id = isTopic ? Number(item.id.replace("topic-", "")) : Number(item.id)
@@ -724,6 +765,8 @@ function LessonPlanManagerContent() {
                               variant={item.isCompleted ? "default" : "outline"} 
                               size="sm"
                               onClick={() => toggleCompletion(item)}
+                              disabled={isLoadingReset || isResetting}
+                              title={item.isCompleted ? "Set back to pending (resets the topic and its diary links)" : undefined}
                               className={`h-8 px-3 text-[10px] font-bold rounded-full transition-all duration-300 ${
                                 item.isCompleted 
                                   ? "bg-green-500 hover:bg-green-600 shadow-sm" 
@@ -755,6 +798,48 @@ function LessonPlanManagerContent() {
           )}
         </div>
       </div>
+
+      {/* Taught -> Pending: confirm the reset of the whole topic */}
+      <AlertDialog open={!!resetTarget} onOpenChange={(open) => !open && !isResetting && setResetTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set "{resetTarget?.topic_name}" back to pending?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Progress is kept per topic, so the whole topic
+                  {resetTarget && resetTarget.subtopics > 1 ? ` and all its ${resetTarget.subtopics} subtopics` : ""} goes back to the start:
+                </p>
+                <ul className="ml-4 list-disc space-y-1">
+                  <li>{resetTarget?.completed_hours ?? 0}h taught resets to 0h.</li>
+                  <li>
+                    {resetTarget?.diaries
+                      ? `${resetTarget.diaries} daily diary ${resetTarget.diaries === 1 ? "entry stops" : "entries stop"} counting towards it${
+                          resetTarget.dates.length ? ` (${resetTarget.dates.slice(0, 6).join(", ")}${resetTarget.dates.length > 6 ? ", …" : ""})` : ""
+                        }. The entries and their notes stay; other topics in them are not affected.`
+                      : "No daily diary entries are linked to it."}
+                  </li>
+                  <li>Its LP export loses these dates and teachers and cannot be exported until it is taught again.</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                confirmResetToPending()
+              }}
+              disabled={isResetting}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
+              {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Set back to pending
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

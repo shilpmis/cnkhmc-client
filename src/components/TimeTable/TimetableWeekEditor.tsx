@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from "react"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +12,6 @@ import { Save, Loader2, BookOpen, Users, Beaker, Dumbbell, Coffee, Clock, Rotate
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useToast } from "@/hooks/use-toast"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useLazyGetSubjectsForDivisionQuery, useAssignSubjectToDivisionMutation, useLazyGetAllSubjectsQuery } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
@@ -64,7 +64,7 @@ interface PeriodState extends Partial<PeriodsConfig> {
 export default function TimetableWeekEditor({ timetableConfig, divisionId, days, onSave }: TimetableWeekEditorProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const academicClasses = useAppSelector(selectAcademicClasses)
   
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()

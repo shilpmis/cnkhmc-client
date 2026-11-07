@@ -1,11 +1,10 @@
 import { useEffect, useState, useMemo, Fragment } from "react"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Users, Dumbbell, Coffee, Beaker, Clock, Presentation, Edit, ClipboardList } from "lucide-react"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import type { SubjectDivisionMaster } from "@/types/subjects"
@@ -22,7 +21,7 @@ interface TimetableWeekViewProps {
 
 export default function TimetableWeekView({ timetableConfig, divisionId, days }: TimetableWeekViewProps) {
   const { t } = useTranslation()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()
   const [getTeachingStaff, { data: staffData }] = useLazyGetAllTeachingStaffQuery()
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])

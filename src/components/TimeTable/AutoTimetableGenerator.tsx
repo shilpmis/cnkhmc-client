@@ -40,8 +40,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
-import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
 import { useLazyGetTeachingStaffQuery } from "@/services/StaffService"
 import {
@@ -104,7 +103,7 @@ export default function AutoTimetableGenerator({
 }: AutoTimetableGeneratorProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
 
   // API hooks
   const [autoGenerateTimeTable, { isLoading: isGenerating }] = useAutoGenerateTimeTableForWeekMutation()

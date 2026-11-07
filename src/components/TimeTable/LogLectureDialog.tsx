@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -15,7 +16,7 @@ import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
+import { selectCurrentUser } from "@/redux/slices/authSlice"
 import LogNonLectureDialog from "@/components/TimeTable/LogNonLectureDialog"
 import { fetchNonLecturePlansForSubject, NonLectureAssignment } from "@/services/NonLectureService"
 
@@ -32,7 +33,7 @@ interface LogLectureDialogProps {
 export default function LogLectureDialog({ isOpen, onOpenChange, period, subjectId: propSubjectId, subjectName: propSubjectName, date, onSuccess }: LogLectureDialogProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const currentUser = useAppSelector(selectCurrentUser)
   
   const [logData, setLogData] = useState({

@@ -12,8 +12,7 @@ import { RotateCcw, Save, Trash2, Plus, Loader2, AlertCircle, Beaker, Dumbbell, 
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { parseBackendError } from "@/lib/errorParser"
-import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import {
@@ -77,7 +76,7 @@ export default function TimetableGenerator({
 }: TimetableGeneratorProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
 
   const [getSubjectsForDivision, { data: subjectsData, isLoading: isLoadingSubjects }] =
     useLazyGetSubjectsForDivisionQuery()

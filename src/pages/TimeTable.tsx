@@ -9,7 +9,7 @@ import { Loader2, AlertCircle, Calendar, Edit, Info, Eye, Wand2, Settings, Table
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { PageAcademicSessionProvider, PageAcademicSessionSelect, useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import { selectAcademicClasses } from "@/redux/slices/academicSlice"
 import { useLazyGetAcademicClassesQuery } from "@/services/AcademicService"
 import {
@@ -33,10 +33,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+// The page keeps its own session (selector in the page header), so another session's timetable can be
+// checked without changing the session for the whole app.
 export default function TimetableManagement() {
+  return (
+    <PageAcademicSessionProvider storageKey="timetable">
+      <TimetableManagementContent />
+    </PageAcademicSessionProvider>
+  )
+}
+
+function TimetableManagementContent() {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const academicClasses = useAppSelector(selectAcademicClasses)
   const [getAcademicClasses] = useLazyGetAcademicClassesQuery()
   const [fetchTimeTableConfig, fetchConfigResult] = useLazyFetchTimeTableConfigForDivisionQuery()
@@ -257,11 +267,7 @@ export default function TimetableManagement() {
               <h1 className="text-3xl font-bold text-gray-900">{t("timetable_management")}</h1>
               <p className="text-gray-600 mt-1">{t("create_and_manage_timetables_for_classes_and_divisions")}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {currentAcademicSession.session_name}
-              </Badge>
-            </div>
+            <PageAcademicSessionSelect className="items-end" />
           </div>
 
           {/* Class and Division Selection */}

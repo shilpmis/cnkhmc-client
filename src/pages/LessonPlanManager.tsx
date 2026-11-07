@@ -42,17 +42,28 @@ import {
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { useTranslation } from "@/redux/hooks/useTranslation"
 import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool, selectCurrentUser } from "@/redux/slices/authSlice"
+import { selectCurrentUser } from "@/redux/slices/authSlice"
+import { PageAcademicSessionProvider, PageAcademicSessionSelect, useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import LessonPlanService from "@/services/LessonPlanService"
 import { useLazyGetAllSubjectsQuery } from "@/services/subjects"
 import { useGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useToast } from "@/hooks/use-toast"
 import { UserRole } from "@/types/user"
 
+// The page keeps its own session (selector in the page header), so another session's curriculum can be
+// checked without changing the session for the whole app.
 export default function LessonPlanManager() {
+  return (
+    <PageAcademicSessionProvider storageKey="curriculum">
+      <LessonPlanManagerContent />
+    </PageAcademicSessionProvider>
+  )
+}
+
+function LessonPlanManagerContent() {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const currentUser = useAppSelector(selectCurrentUser)
 
   const { data: teachingStaff } = useGetAllTeachingStaffQuery({ academic_sessions: currentAcademicSession?.id ?? 0 }, { skip: !currentAcademicSession?.id })
@@ -163,8 +174,10 @@ export default function LessonPlanManager() {
   }, [subjects, selectedSubjectId])
 
   useEffect(() => {
-    console.log("Current Academic Session:", currentAcademicSession)
     if (currentAcademicSession) {
+      // Drop the previous session's grid so it never shows under another session's name
+      setLessonPlan(null)
+      setCoverageReport(null)
       getSubjects({ academic_session_id: currentAcademicSession.id })
     }
   }, [currentAcademicSession, getSubjects])
@@ -417,9 +430,10 @@ export default function LessonPlanManager() {
             <p className="text-gray-500 font-medium">{t("view_and_manage_syllabus_as_per_excel_format")}</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button 
-            variant="outline" 
+        <div className="flex items-start gap-3">
+          <PageAcademicSessionSelect className="items-end" />
+          <Button
+            variant="outline"
             className="gap-2 shadow-sm border-gray-200"
             onClick={handleExportCoverageReport}
           >

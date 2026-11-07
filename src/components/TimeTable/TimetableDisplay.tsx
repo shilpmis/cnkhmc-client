@@ -256,8 +256,7 @@ import type { ClassDayConfigForTimeTable, TimeTableConfigForSchool, PeriodsConfi
 import { useLazyGetSubjectsForDivisionQuery } from "@/services/subjects"
 import { useLazyGetAllTeachingStaffQuery } from "@/services/StaffService"
 import { useEffect, useState } from "react"
-import { useAppSelector } from "@/redux/hooks/useAppSelector"
-import { selectActiveAccademicSessionsForSchool } from "@/redux/slices/authSlice"
+import { useAcademicSession } from "@/contexts/PageAcademicSessionContext"
 import type { SubjectDivisionMaster } from "@/types/subjects"
 import type { StaffType } from "@/types/staff"
 import LogLectureDialog from "@/components/TimeTable/LogLectureDialog"
@@ -273,7 +272,7 @@ interface TimetableDisplayProps {
 
 export default function TimetableDisplay({ dayConfig, divisionId, timetableConfig, onEdit }: TimetableDisplayProps) {
   const { t } = useTranslation()
-  const currentAcademicSession = useAppSelector(selectActiveAccademicSessionsForSchool)
+  const currentAcademicSession = useAcademicSession()
   const [getSubjectsForDivision, { data: subjectsData }] = useLazyGetSubjectsForDivisionQuery()
   const [getTeachingStaff, { data: staffData }] = useLazyGetAllTeachingStaffQuery()
   const [subjects, setSubjects] = useState<SubjectDivisionMaster[]>([])
